@@ -3,11 +3,10 @@ import { useCallback } from "react";
 import moment from "moment";
 import BN from "bignumber.js";
 import { useRouter } from "next/navigation";
-import { Button } from "@/components/ui/button";
-import { ChevronRight, Clock, Copy } from "lucide-react";
+import { ArrowRight, Clock, Copy } from "lucide-react";
 import { OrderStatusBadge } from "./order-status-badge";
 import { useNetwork } from "@/lib/hooks/use-network";
-import { abbreviate, shortenAddress } from "@/lib/utils/utils";
+import { abbreviate, parseListOrderStatus, shortenAddress } from "@/lib/utils/utils";
 import { VirtualTable } from "../virtual-table";
 import { useSpotOrdersPaginated } from "@/lib/hooks/use-spot-orders";
 import { map } from "lodash";
@@ -16,6 +15,8 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip";
 import { ListOrder } from "@/lib/types";
 import { useTwapPartner } from "@/lib/hooks/twap-hooks";
 import { Partner } from "../ui/partner";
+import { OrdersFilter } from "./filter";
+import { useToken } from "@/lib/hooks/use-token";
 
 const Timestamp = ({ item }: { item: ListOrder }) => {
   return (
@@ -40,11 +41,12 @@ const TradeUSDValue = ({ item }: { item: ListOrder }) => {
 };
 
 const Status = ({ item }: { item: ListOrder }) => {
+  
   return (
     <OrderStatusBadge
       totalTrades={item.metadata.expectedChunks}
       filledTrades={item.metadata.chunkSummary.success}
-      status={item.metadata.displayOnlyStatus}
+      status={parseListOrderStatus(item)}
     />
   );
 };
@@ -86,37 +88,60 @@ const TxHash = ({ item }: { item: ListOrder }) => {
   );
 };
 
+const TokenPair = ({ item }: { item: ListOrder }) => {
+  const {chainId} = useTwapPartner(item.exchangeAdapter);
+  const srcToken = useToken(item.inputToken, chainId).data;
+  const dstToken = useToken(item.outputToken, chainId).data;
+  return (
+    <div className="flex flex-row gap-2 items-center">
+      <span className="text-sm font-medium text-foreground">{srcToken?.symbol}</span>
+      <ArrowRight className="w-3.5 h-3.5 text-muted-foreground" />
+      <span className="text-sm font-medium text-foreground">{dstToken?.symbol}</span>
+    </div>
+  );
+};
+
 const desktopRows = [
   {
     Component: TxHash,
     text: "Tx Hash",
+    width: "15%",
   },
   {
     Component: PartnerCell,
     text: "Partner",
+    width: "20%",
   },
   {
     Component: OrderTypeComponent,
     text: "Type",
+    width: "12%",
   },
-
   {
     Component: Timestamp,
     text: "Timestamp",
+    width: "22%",
   },
-
   {
     Component: TradeUSDValue,
     text: "USD",
+    width: "11%",
+  },
+  {
+    Component: TokenPair,
+    text: "Token Pair",
+    width: "20%",
   },
   {
     Component: Status,
     text: "Status",
+    width: "20%",
   },
 ];
 
 const headerLabels = map(desktopRows, (row) => ({
   text: row.text,
+  width: row.width,
 }));
 
 export function TwapOrdersTable() {
@@ -141,6 +166,7 @@ export function TwapOrdersTable() {
       desktopRows={desktopRows}
       onSelect={onSelect}
       title="TWAP Orders"
+      headerAction={<OrdersFilter />}
     />
   );
 }

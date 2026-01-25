@@ -37,6 +37,7 @@ import { toast } from "sonner";
 
 import { TransactionDisplay } from "@/components/transaction-display";
 import { Address, TokenAddress } from "@/components/token-address";
+import { ROUTES } from "@/lib/routes";
 import {
   createContext,
   useCallback,
@@ -88,7 +89,7 @@ export function LiquidityHubTxView({
 }) {
   const content = (
     <TransactionDisplay.Container>
-      {!isPreview && <TransactionDisplay.ContainerHeader />}
+      {!isPreview && <TransactionDisplay.ContainerHeader backHref={ROUTES.LIQUIDITY_HUB.ROOT} />}
       <State isPreview={isPreview} identifier={identifier} />
     </TransactionDisplay.Container>
   );

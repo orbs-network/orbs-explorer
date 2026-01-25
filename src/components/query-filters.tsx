@@ -13,7 +13,19 @@ import {
 } from "@/lib/utils/utils";
 import { networks } from "@orbs-network/spot-ui";
 import { map, size } from "lodash";
-import { Filter, Plus, X } from "lucide-react";
+import {
+  Check,
+  ChevronRight,
+  Filter,
+  Link2,
+  Plus,
+  RotateCcw,
+  SlidersHorizontal,
+  Trash2,
+  User,
+  Wallet,
+  X,
+} from "lucide-react";
 import {
   ReactNode,
   useState,
@@ -108,7 +120,6 @@ const BadgesFilter = ({
 }) => {
   const { onUpdate } = useFilterContext();
   const data = useFilterData(queryKey);
-console.log({data});
 
   const onSelect = useCallback(
     (option: FilterOption) => {
@@ -129,7 +140,7 @@ console.log({data});
   }, [onUpdate, queryKey]);
 
   return (
-    <div className="flex items-center gap-2 flex-col">
+    <FilterSection>
       <FilterHeader
         label={label}
         onReset={onReset}
@@ -139,21 +150,41 @@ console.log({data});
         {options.map((option) => {
           const selected = data?.includes(option.value);
           return (
-            <div key={option.value}>
-              <Badge
-                onClick={() => onSelect(option)}
-                className={cn(
-                  `bg-gray-700/80 hover:bg-gray-700 ${
-                    selected && "bg-primary hover:bg-primary"
-                  }  cursor-pointer`
-                )}
-              >
-                {option.label}
-              </Badge>
-            </div>
+            <button
+              key={option.value}
+              onClick={() => onSelect(option)}
+              className={cn(
+                "inline-flex items-center px-3 py-1.5 rounded-lg text-sm font-medium transition-all duration-200 cursor-pointer",
+                "border",
+                selected
+                  ? "bg-primary/20 border-primary/50 text-primary"
+                  : "bg-muted/50 border-border text-muted-foreground hover:bg-muted hover:text-foreground hover:border-border"
+              )}
+            >
+              {option.label}
+            </button>
           );
         })}
       </FilterBadgesContainer>
+    </FilterSection>
+  );
+};
+
+const FilterSection = ({
+  children,
+  className,
+}: {
+  children: ReactNode;
+  className?: string;
+}) => {
+  return (
+    <div
+      className={cn(
+        "flex flex-col gap-3 p-4 bg-muted/30 rounded-xl border border-border",
+        className
+      )}
+    >
+      {children}
     </div>
   );
 };
@@ -171,7 +202,7 @@ const FilterBadgesContainer = ({
   return (
     <div
       className={cn(
-        "flex items-center gap-2 flex-row flex-wrap bg-background w-full rounded-lg p-2",
+        "flex items-center gap-2 flex-row flex-wrap",
         className
       )}
     >
@@ -191,15 +222,16 @@ const FilterHeader = ({
 }) => {
   return (
     <div className="flex items-center gap-2 w-full justify-between">
-      <p className="text-sm text-white">{label}</p>
-      {showReset ? (
-        <div
-          className="cursor-pointer text-gray-400 text-[12px] hover:text-white"
+      <span className="text-sm font-medium text-foreground">{label}</span>
+      {showReset && (
+        <button
+          className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors cursor-pointer"
           onClick={onReset}
         >
+          <RotateCcw className="w-3 h-3" />
           Reset
-        </div>
-      ) : null}
+        </button>
+      )}
     </div>
   );
 };
@@ -241,16 +273,19 @@ const InputWithBadgesFilter = ({
 
   const onKeyDown = useCallback(
     (e: any) => {
-      if (e.key === "Enter") {
+      if (e.key === "Enter" && !disabledBtn) {
+        if (!validateValue(inputValue)) {
+          return;
+        }
         onSelect(inputValue);
         setInputValue("");
       }
     },
-    [onSelect, inputValue, setInputValue]
+    [onSelect, inputValue, disabledBtn, validateValue]
   );
 
   return (
-    <div className={cn("flex items-center gap-2 flex-col", className)}>
+    <FilterSection className={className}>
       <FilterHeader
         label={label}
         onReset={() => onUpdate(queryKey, [])}
@@ -259,7 +294,7 @@ const InputWithBadgesFilter = ({
       <div className="flex items-center gap-2 w-full">
         <Input
           onKeyDown={onKeyDown}
-          className="flex-1"
+          className="flex-1 h-10 bg-background/50 border-border/50 focus:border-primary/50 focus:ring-primary/20 placeholder:text-muted-foreground/60"
           type={inputType}
           placeholder={placeholder}
           onChange={(e) => setInputValue(e.target.value)}
@@ -270,29 +305,29 @@ const InputWithBadgesFilter = ({
           onClick={() => {
             if (!inputValue) return;
             if (!validateValue(inputValue)) {
-              alert("Invalid value");
               return;
             }
             onSelect(inputValue);
             setInputValue("");
           }}
-          className="rounded-full bg-primary hover:bg-primary/80 text-white w-8 h-8 p-0"
+          size="icon"
+          className="shrink-0 h-10 w-10 bg-primary hover:bg-primary/80 text-white disabled:opacity-50 cursor-pointer"
         >
           <Plus className="w-4 h-4" />
         </Button>
       </div>
-      <FilterBadgesContainer isEmpty={!data?.length}>
-        {data?.map((option) => {
-          return (
-            <ActiveBadge
+      {data && data.length > 0 && (
+        <div className="flex flex-wrap gap-2 pt-2 border-t border-border">
+          {data.map((option) => (
+            <SelectedBadge
               key={option}
               onClick={() => onSelect(option)}
               text={modifyDisplayValue(option)}
             />
-          );
-        })}
-      </FilterBadgesContainer>
-    </div>
+          ))}
+        </div>
+      )}
+    </FilterSection>
   );
 };
 
@@ -363,20 +398,33 @@ const UserFilter = () => {
   );
 };
 
-const FilterModalButton = () => {
+const FilterModalButtons = () => {
   const { onSubmit } = useFilterContext();
+  const { setQuery } = useQueryFilterParams();
+
   return (
-    <DrawerClose className="mt-auto">
+    <div className="flex gap-2">
       <Button
-        variant="default"
-        className="w-full"
-        onClick={() => {
-          onSubmit();
-        }}
+        variant="outline"
+        className="gap-2 cursor-pointer"
+        onClick={() => setQuery.resetQuery()}
       >
-        Save
+        <RotateCcw className="w-4 h-4" />
+        Reset All
       </Button>
-    </DrawerClose>
+      <DrawerClose asChild>
+        <Button
+          variant="default"
+          className="flex-1 gap-2 cursor-pointer"
+          onClick={() => {
+            onSubmit();
+          }}
+        >
+          <Check className="w-4 h-4" />
+          Apply Filters
+        </Button>
+      </DrawerClose>
+    </div>
   );
 };
 
@@ -390,22 +438,22 @@ const InputFilter = ({
   label: string;
 }) => {
   const data = useFilterData(queryKey)[0];
-
   const { onUpdate } = useFilterContext();
 
   return (
-    <div className="flex items-center gap-2 flex-col">
+    <FilterSection>
       <FilterHeader
         label={label}
         onReset={() => onUpdate(queryKey, undefined)}
         showReset={!!data}
       />
       <Input
+        className="h-10 bg-background/50 border-border/50 focus:border-primary/50 focus:ring-primary/20 placeholder:text-muted-foreground/60"
         placeholder={placeholder}
         onChange={(e) => onUpdate(queryKey, e.target.value)}
         value={data || ""}
       />
-    </div>
+    </FilterSection>
   );
 };
 
@@ -427,13 +475,15 @@ const FiltersTrigger = () => {
   }, [query]);
 
   return (
-    <DrawerTrigger>
-      <Button variant="outline">
-        <div className="flex items-center gap-2 text-white">
-          <Filter size={16} />
-          <p className="hidden sm:block">Filters</p>
-          <Badge>{filtersCount}</Badge>
-        </div>
+    <DrawerTrigger asChild>
+      <Button variant="outline" className="gap-2">
+        <SlidersHorizontal className="w-4 h-4" />
+        <span className="hidden sm:inline">Filters</span>
+        {filtersCount > 0 && (
+          <span className="flex items-center justify-center min-w-5 h-5 px-1.5 text-xs font-medium bg-primary text-primary-foreground rounded-full">
+            {filtersCount}
+          </span>
+        )}
       </Button>
     </DrawerTrigger>
   );
@@ -456,23 +506,32 @@ export const QueryFilters = ({
     <FilterContextProvider>
       <Drawer direction="right">
         <FiltersTrigger />
-        <DrawerContent className="fixed right-0 top-0 bg-card border-l border-border outline-none overflow-y-auto">
-          <DrawerHeader>
+        <DrawerContent className="fixed right-0 top-0 h-full bg-card border-l border-border outline-none flex flex-col">
+          <DrawerHeader className="border-b border-border pb-4 shrink-0">
             <div className="flex items-center justify-between">
-              <DrawerTitle className="text-white">Filters</DrawerTitle>
-              <DrawerClose>
-                <X className="w-5 h-5 text-white" />
+              <div className="flex items-center gap-2">
+                <div className="p-2 rounded-lg bg-primary/10">
+                  <SlidersHorizontal className="w-5 h-5 text-primary" />
+                </div>
+                <DrawerTitle className="text-lg font-semibold text-foreground">
+                  Filters
+                </DrawerTitle>
+              </div>
+              <DrawerClose asChild>
+                <Button variant="ghost" size="icon" className="h-8 w-8">
+                  <X className="w-4 h-4" />
+                </Button>
               </DrawerClose>
             </div>
           </DrawerHeader>
 
-          <div className="p-4 flex flex-col gap-4 h-full overflow-y-auto">
+          <div className="flex-1 overflow-y-auto p-4">
             <div className="flex flex-col gap-4">
+            {children}
               {!filters ? (
                 <>
                   <TokensFilter />
                   <UserFilter />
-                  <MinDollarValueFilter />
                   <ChainIdFilter />
                   <PartnerIdFilter />
                 </>
@@ -485,9 +544,12 @@ export const QueryFilters = ({
                   {filters.tokensFilter && <TokensFilter />}
                 </>
               )}
-              {children}
+             
             </div>
-            <FilterModalButton />
+          </div>
+          
+          <div className="shrink-0 p-4 border-t border-border bg-card">
+            <FilterModalButtons />
           </div>
         </DrawerContent>
       </Drawer>
@@ -495,7 +557,7 @@ export const QueryFilters = ({
   );
 };
 
-const ActiveBadge = ({
+const SelectedBadge = ({
   text,
   onClick,
   className,
@@ -505,13 +567,36 @@ const ActiveBadge = ({
   className?: string;
 }) => {
   return (
-    <Badge
-      className={cn("cursor-pointer bg-primary hover:bg-primary", className)}
+    <button
+      className={cn(
+        "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium cursor-pointer",
+        "bg-primary/20 text-primary border border-primary/30",
+        "hover:bg-primary/30 transition-colors",
+        className
+      )}
       onClick={onClick}
     >
       <span>{text}</span>
-      <X className="w-4 h-4" onClick={onClick} />
-    </Badge>
+      <X className="w-3 h-3" />
+    </button>
+  );
+};
+
+const ActiveFilterBadge = ({
+  text,
+  onClick,
+}: {
+  text: string;
+  onClick: () => void;
+}) => {
+  return (
+    <button
+      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20 transition-colors group cursor-pointer"
+      onClick={onClick}
+    >
+      <span>{text}</span>
+      <X className="w-3.5 h-3.5 opacity-60 group-hover:opacity-100" />
+    </button>
   );
 };
 
@@ -529,22 +614,31 @@ function ActiveQueryFilters() {
     });
   };
 
+  const appliedFilters = useMemo(() => parseAppliedFilters(query), [query]);
+  const hasFilters = appliedFilters.length > 0;
+
+  if (!hasFilters) return null;
+
   return (
-    <div className="flex gap-4 flex-col  w-full bg-gray-800/80 rounded-md p-4 mb-4">
+    <div className="flex flex-col gap-3 w-full bg-muted/30 rounded-xl border border-border p-4 mb-4">
       <div className="flex flex-row justify-between items-center">
-        <p className="text-sm text-gray-400">Applied filters:</p>
-        <div
-          className="cursor-pointer text-gray-400"
+        <div className="flex items-center gap-2">
+          <Filter className="w-4 h-4 text-muted-foreground" />
+          <span className="text-sm font-medium text-foreground">Active Filters</span>
+        </div>
+        <button
+          className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-primary transition-colors cursor-pointer"
           onClick={() => setQuery.resetQuery()}
         >
-          clear all
-        </div>
+          <Trash2 className="w-3.5 h-3.5" />
+          Clear all
+        </button>
       </div>
-      <div className="flex flex-wrap gap-2 flex-row justify-start items-center">
-        {map(parseAppliedFilters(query), (item) => {
+      <div className="flex flex-wrap gap-2">
+        {map(appliedFilters, (item) => {
           if (typeof item.value === "string") {
             return (
-              <ActiveBadge
+              <ActiveFilterBadge
                 key={item.key}
                 text={`${item.name}: ${item.value}`}
                 onClick={() => onRemove(item.key, item.value as string)}
@@ -553,13 +647,14 @@ function ActiveQueryFilters() {
           }
           if (Array.isArray(item.value)) {
             return item.value.map((value) => (
-              <ActiveBadge
-                key={value}
+              <ActiveFilterBadge
+                key={`${item.key}-${value}`}
                 text={`${item.name}: ${value}`}
                 onClick={() => onRemove(item.key, value)}
               />
             ));
           }
+          return null;
         })}
       </div>
     </div>

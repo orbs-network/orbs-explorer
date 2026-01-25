@@ -36,7 +36,7 @@ const getOrders = async ({
 
     const response = await axios.get(
       `
-    ${SINK_PROD_URL}/orders?view=list&page=${page}&limit=${limit}${filtersQuery}`,
+    ${SINK_DEV_URL}/orders?view=list&page=${page}&limit=${limit}${filtersQuery}`,
       {
         signal,
       },

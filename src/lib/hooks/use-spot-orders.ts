@@ -19,7 +19,7 @@ export const useSpotOrdersPaginated = () => {
       return getSpotOrders({
         signal,
         page: pageParam,
-        limit: 50,
+        limit: 400,
         filters: {
           account: queryParams.user,
           chainIds: queryParams.chain_id?.map(Number),

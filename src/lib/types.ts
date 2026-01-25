@@ -39,6 +39,8 @@ export type Token = {
 export interface ListOrder {
   exchangeAdapter: string;
   hash: string;
+  inputToken: string;
+  outputToken: string;
   metadata: {
     chunkSummary: {
       error: number;

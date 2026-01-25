@@ -23,6 +23,7 @@ import { Card, CardContent, CardHeader } from "./ui/card";
 import { AuthComponent } from "@/app/providers/auth-provider";
 import { useRouter } from "next/navigation";
 import { Spinner } from "./ui/spinner";
+import { OrderStatus } from "@orbs-network/spot-ui";
 
 export const Row = ({
   label,
@@ -97,43 +98,16 @@ const TransactionDisplay = ({
 
 const BackButton = ({ onClick }: { onClick: () => void }) => {
   return (
-    <AuthComponent>
-      <button
-        className="group flex items-center gap-2 px-4 py-2 bg-card border border-border rounded-lg text-foreground hover:border-primary/50 hover:bg-card/80 transition-all duration-200"
-        onClick={onClick}
-      >
-        <ArrowLeftIcon className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" />
-        <span className="text-sm font-medium">Back</span>
-      </button>
-    </AuthComponent>
+    <button
+      className="group flex items-center gap-2 px-4 py-2 bg-card border border-border rounded-lg text-foreground hover:border-primary/50 hover:bg-card/80 transition-all duration-200 cursor-pointer"
+      onClick={onClick}
+    >
+      <ArrowLeftIcon className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" />
+      <span className="text-sm font-medium">Back</span>
+    </button>
   );
 };
 
-const Section = ({
-  children,
-  title,
-  className,
-}: {
-  children: React.ReactNode;
-  title?: string;
-  className?: string;
-}) => {
-  return (
-    <div className="flex flex-col">
-      {title && (
-        <div
-          className={cn(
-            "font-semibold text-base text-foreground border-b border-border pb-3 mb-2",
-            className,
-          )}
-        >
-          {title}
-        </div>
-      )}
-      <div className="flex flex-col flex-1">{children}</div>
-    </div>
-  );
-};
 
 const Grid = ({ children }: { children: ReactNode }) => {
   return (
@@ -149,11 +123,11 @@ const Container = ({ children }: { children: ReactNode }) => {
   );
 };
 
-const ContainerHeader = ({ children }: { children?: ReactNode }) => {
+const ContainerHeader = ({ children, backHref }: { children?: ReactNode; backHref?: string }) => {
   const router = useRouter();
   return (
     <div className="flex flex-row justify-between items-center w-full mb-2">
-      <BackButton onClick={() => router.back()} />
+      <BackButton onClick={() => backHref ? router.push(backHref) : router.back()} />
       {children}
     </div>
   );
@@ -210,7 +184,7 @@ const SectionCard = ({
 }) => {
   return (
     <Card className={cn("border-border", className)}>
-      <CardContent className="pt-6">
+      <CardContent className="pt-0">
         <div className="flex items-center gap-2 mb-4 pb-3 border-b border-border">
           {Icon && <Icon className="w-5 h-5 text-primary" />}
           <h3 className="font-semibold text-foreground">{title}</h3>
@@ -230,36 +204,7 @@ const Hero = ({ children, className }: { children: ReactNode; className?: string
   );
 };
 
-// Status badge component
-const getStatusConfig = (status: string) => {
-  const statusLower = status.toLowerCase().replace(/_/g, " ");
-  if (statusLower.includes("completed") || statusLower.includes("filled") || statusLower.includes("success")) {
-    return { icon: CheckCircle2, color: "text-green-500", bg: "bg-green-500/10", border: "border-green-500/20" };
-  }
-  if (statusLower.includes("cancelled") || statusLower.includes("canceled") || statusLower.includes("failed")) {
-    return { icon: XCircle, color: "text-red-500", bg: "bg-red-500/10", border: "border-red-500/20" };
-  }
-  if (statusLower.includes("expired")) {
-    return { icon: Clock, color: "text-orange-500", bg: "bg-orange-500/10", border: "border-orange-500/20" };
-  }
-  if (statusLower.includes("pending") || statusLower.includes("open")) {
-    return { icon: PlayCircle, color: "text-blue-500", bg: "bg-blue-500/10", border: "border-blue-500/20" };
-  }
-  return { icon: RefreshCw, color: "text-primary", bg: "bg-primary/10", border: "border-primary/20" };
-};
 
-const StatusBadge = ({ status }: { status: string }) => {
-  const config = getStatusConfig(status);
-  const StatusIcon = config.icon;
-  return (
-    <div className={cn("flex items-center gap-1.5 px-3 py-1 rounded-full border", config.bg, config.border)}>
-      <StatusIcon className={cn("w-3.5 h-3.5", config.color)} />
-      <span className={cn("text-xs font-medium capitalize", config.color)}>
-        {status.replace(/_/g, " ").toLowerCase()}
-      </span>
-    </div>
-  );
-};
 
 // Badge component
 const Badge = ({
@@ -396,7 +341,7 @@ const InfoBox = ({
   );
 };
 
-TransactionDisplay.Section = Section;
+
 TransactionDisplay.SectionItem = Row;
 TransactionDisplay.Grid = Grid;
 TransactionDisplay.Container = Container;
@@ -405,7 +350,6 @@ TransactionDisplay.Loading = Loading;
 TransactionDisplay.NotFound = NotFound;
 TransactionDisplay.SectionCard = SectionCard;
 TransactionDisplay.Hero = Hero;
-TransactionDisplay.StatusBadge = StatusBadge;
 TransactionDisplay.Badge = Badge;
 TransactionDisplay.SwapDirection = SwapDirection;
 TransactionDisplay.ProgressBar = ProgressBar;

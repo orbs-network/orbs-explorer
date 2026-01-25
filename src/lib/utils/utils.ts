@@ -1,13 +1,13 @@
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 import moment from "moment";
-import { networks } from "@orbs-network/spot-ui";
+import { networks, OrderStatus } from "@orbs-network/spot-ui";
 import { FILTER_KEY_NAMES, ROUTES, URL_QUERY_KEYS } from "../consts";
 import { useQueryFilterParams } from "../hooks/use-query-filter-params";
 import { map } from "lodash";
 import { formatUnits, parseUnits } from "viem";
 import BN from "bignumber.js";
-import { Order, Token } from "../types";
+import { ListOrder, Order, Token } from "../types";
 import { PARTNERS } from "../partners";
 
 export function cn(...inputs: ClassValue[]) {
@@ -242,4 +242,33 @@ export const getWrappedNativeCurrency = (chainId?: number) => {
  const chain = getChain(chainId);
  if (!chain) return undefined;
  return chain.wToken;
+};
+
+
+export const parseListOrderStatus = (order: ListOrder) => {
+  const totalChunks = order.metadata.chunkSummary.total;
+  const successChunks = order.metadata.chunkSummary.success;
+  const deadline = Number(order.order.witness.deadline) * 1000;
+
+  if (successChunks === totalChunks) return OrderStatus.Completed;
+  if (deadline < Date.now()) return OrderStatus.Expired;
+  if (order.metadata.status.includes('canceled')) return OrderStatus.Canceled;
+
+  return OrderStatus.Open;
+
+};
+
+export const parseOrderStatus = (order: Order) => {
+  const totalChunks = order.metadata.expectedChunks;
+  const successChunks = order.metadata.chunks.filter(
+    (chunk) => chunk.status === "success",
+  ).length;
+  const deadline = Number(order.order.witness.deadline) * 1000;
+
+  if (successChunks === totalChunks) return OrderStatus.Completed;
+  if (deadline < Date.now()) return OrderStatus.Expired;
+  if (order.metadata.status.includes('canceled')) return OrderStatus.Canceled;
+
+  return OrderStatus.Open;
+
 };

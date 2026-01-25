@@ -13,7 +13,14 @@ import { useOrderChunks } from "@/lib/hooks/twap-hooks";
 import { useFormatNumber } from "@/lib/hooks/use-number-format";
 import { ParsedOrderChunk } from "@/lib/types";
 import { toMoment } from "@/lib/utils/utils";
-import { ArrowRight, CheckCircle2, Clock, ExternalLink, Layers, XCircle } from "lucide-react";
+import {
+  ArrowRight,
+  CheckCircle2,
+  Clock,
+  ExternalLink,
+  Layers,
+  XCircle,
+} from "lucide-react";
 
 import React from "react";
 
@@ -45,7 +52,9 @@ export function OrderChunks({ hash }: { hash: string }) {
             <p className="text-sm text-muted-foreground">
               {successChunks.length} of {chunks.length} chunks filled
               {failedChunks.length > 0 && (
-                <span className="text-red-500 ml-2">({failedChunks.length} failed)</span>
+                <span className="text-red-500 ml-2">
+                  ({failedChunks.length} failed)
+                </span>
               )}
             </p>
           </DialogHeader>
@@ -60,35 +69,35 @@ export function OrderChunks({ hash }: { hash: string }) {
   );
 }
 
-const ChunkCard = ({ chunk, index }: { chunk: ParsedOrderChunk; index: number }) => {
+const ChunkCard = ({
+  chunk,
+  index,
+}: {
+  chunk: ParsedOrderChunk;
+  index: number;
+}) => {
   const feesFormatted = useFormatNumber({
     value: chunk.feesUsd,
     decimalScale: 2,
   });
-  
+
   const isSuccess = chunk.txHash && chunk.txHash !== "0x";
-  
+
+  if (!isSuccess) return null;
+
   return (
     <div className="flex flex-col gap-3 p-4 bg-card rounded-lg border border-border hover:border-primary/30 transition-colors">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <span className="flex items-center justify-center w-7 h-7 rounded-full bg-primary/10 text-primary text-xs font-bold">
-            {chunk.index + 1}
+          <span className="text-sm font-medium text-foreground">
+            Chunk #{chunk.index}
           </span>
-          <span className="text-sm font-medium text-foreground">Chunk #{chunk.index + 1}</span>
         </div>
-        {isSuccess ? (
-          <div className="flex items-center gap-1.5 px-2 py-1 bg-green-500/10 border border-green-500/20 rounded-full">
-            <CheckCircle2 className="w-3 h-3 text-green-500" />
-            <span className="text-xs text-green-500">Filled</span>
-          </div>
-        ) : (
-          <div className="flex items-center gap-1.5 px-2 py-1 bg-muted border border-border rounded-full">
-            <Clock className="w-3 h-3 text-muted-foreground" />
-            <span className="text-xs text-muted-foreground">Pending</span>
-          </div>
-        )}
+        <div className="flex items-center gap-1.5 px-2 py-1 bg-green-500/10 border border-green-500/20 rounded-full">
+          <CheckCircle2 className="w-3 h-3 text-green-500" />
+          <span className="text-xs text-green-500">Filled</span>
+        </div>
       </div>
 
       {/* Swap Flow */}
@@ -131,7 +140,6 @@ const ChunkCard = ({ chunk, index }: { chunk: ParsedOrderChunk; index: number })
         {chunk.txHash && (
           <div className="flex items-center gap-1">
             <Address address={chunk.txHash} chainId={chunk.chainId || 0} />
-            <ExternalLink className="w-3 h-3 text-muted-foreground" />
           </div>
         )}
       </div>

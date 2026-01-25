@@ -3,6 +3,7 @@
 import { Address, TokenAddress } from "@/components/token-address";
 import { TokenAmount } from "@/components/token-amount";
 import { TransactionDisplay } from "@/components/transaction-display";
+import { ROUTES } from "@/lib/routes";
 
 import {
   useOrder,
@@ -18,6 +19,7 @@ import {
   abbreviate,
   formatDuration,
   getOrderProgress,
+  parseOrderStatus,
   shortenAddress,
   toMoment,
 } from "@/lib/utils/utils";
@@ -38,6 +40,7 @@ import {
 } from "lucide-react";
 import { Network } from "@/components/ui/network";
 import { Partner } from "@/components/ui/partner";
+import { OrderStatusBadge } from "../order-status-badge";
 
 type ContextType = {
   order: Order;
@@ -82,7 +85,7 @@ export function OrderView({ hash }: { hash: string }) {
       value={{ order, isLoading, srcToken, dstToken, partner, chainId, config }}
     >
       <TransactionDisplay.Container>
-        <TransactionDisplay.ContainerHeader />
+        <TransactionDisplay.ContainerHeader backHref={ROUTES.TWAP.ROOT} />
         <OrderHeader />
         <TransactionDisplay.Grid>
           <BaseInformation />
@@ -96,8 +99,7 @@ export function OrderView({ hash }: { hash: string }) {
 
 const OrderHeader = () => {
   const { order, srcToken, dstToken } = usePageContext();
-  const status = order.metadata.displayOnlyStatus;
-  const progress = getOrderProgress(order);
+  const status = parseOrderStatus(order);
 
   return (
     <TransactionDisplay.Hero>
@@ -105,8 +107,7 @@ const OrderHeader = () => {
         {/* Status & Type Badges */}
         <div className="flex items-center justify-between flex-wrap gap-2">
           <div className="flex items-center gap-2">
-            <TransactionDisplay.StatusBadge status={status} />
-            <TransactionDisplay.Badge icon={RefreshCw}>TWAP Order</TransactionDisplay.Badge>
+            <OrderStatusBadge status={status} statusOnly />
             <TransactionDisplay.Badge variant="muted">{order.metadata.orderType}</TransactionDisplay.Badge>
           </div>
           <TransactionDisplay.Timestamp date={toMoment(order.timestamp).toDate()} />
@@ -118,9 +119,6 @@ const OrderHeader = () => {
             fromSymbol={srcToken?.symbol}
             toSymbol={dstToken?.symbol}
           />
-          <div className="ml-auto">
-            <TransactionDisplay.ProgressBar progress={progress} showInline />
-          </div>
         </div>
       </div>
     </TransactionDisplay.Hero>
