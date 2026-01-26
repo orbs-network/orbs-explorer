@@ -1,7 +1,10 @@
+import { LiquidityHubTable } from "@/components/liquidity-hub/table";
+import { Page } from "@/components/page";
+
 export default function LiquidityHubPage() {
   return (
-    <div>
-      <h1>Liquidity Hub</h1>
-    </div>
+    <Page>
+      <LiquidityHubTable />
+    </Page>
   );
 }
