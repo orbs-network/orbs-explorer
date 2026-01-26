@@ -39,12 +39,11 @@ export function VirtualTable<T>({
   headerLabels: {
     text: string;
     className?: string;
-    width?: string;
   }[];
   desktopRows: {
     Component: React.ComponentType<{ item: T }>;
     className?: string;
-    width?: string;
+    text: string;
   }[];
 }) {
   const isMobile = useMobile();
@@ -66,7 +65,7 @@ export function VirtualTable<T>({
   }
 
   return (
-    <div className="flex flex-col">
+    <div className="flex flex-col max-w-[1400px] mx-auto mb-20">
       <div className="sticky top-0 z-30 bg-background border-b border-border">
         <div className="flex items-center justify-between px-3 py-2">
           <div className="flex items-center gap-2">
@@ -120,12 +119,10 @@ export function VirtualTable<T>({
             fixedHeaderContent={() => (
               <TableRow className="hover:bg-transparent cursor-default bg-muted/30">
                 {map(headerLabels, (label, index) => {
-                  const width = label.width || desktopRows[index]?.width;
                   return (
                     <TableHead
                       className={cn(label.className)}
                       key={label.text}
-                      style={width ? { width } : undefined}
                     >
                       {label.text}
                     </TableHead>
@@ -141,7 +138,6 @@ export function VirtualTable<T>({
                 <TableCell
                   key={_index}
                   className={cn(row.className)}
-                  style={row.width ? { width: row.width } : undefined}
                   // optional: keep per-cell click
                   onClick={() => onSelect?.(tableItem)}
                 >
@@ -255,7 +251,7 @@ const MobileTable = <T,>({
           totalCount={tableItems.length}
           overscan={50}
           rangeChanged={(range) => {
-            if (range.endIndex >= tableItems.length - 5 && onEndReached) {
+            if (range.endIndex >= tableItems.length - 5 && !isFetchingNextPage && onEndReached) {
               onEndReached();
             }
           }}

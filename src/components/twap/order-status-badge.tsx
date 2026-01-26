@@ -3,8 +3,8 @@ import { CheckCircle2, Clock, XCircle, PlayCircle, RefreshCw, AlertCircle } from
 import { cn } from "@/lib/utils";
 import { OrderStatus } from "@orbs-network/spot-ui";
 
-const getStatusConfig = (status: OrderStatus) => {
-  if (status === OrderStatus.Completed) {
+const getStatusConfig = (status: string) => {
+  if (status === "completed") {
     return {
       icon: CheckCircle2,
       label: "Completed",
@@ -13,7 +13,7 @@ const getStatusConfig = (status: OrderStatus) => {
       border: "border-green-500/20",
     };
   }
-  if (status === OrderStatus.Canceled) {
+  if (status === "canceled") {
     return {
       icon: XCircle,
       label: "Canceled",
@@ -22,7 +22,7 @@ const getStatusConfig = (status: OrderStatus) => {
       border: "border-red-500/20",
     };
   }
-  if (status === OrderStatus.Expired) {
+  if (status === "expired") {
     return {
       icon: Clock,
       label: "Expired",
@@ -32,7 +32,7 @@ const getStatusConfig = (status: OrderStatus) => {
     };
   }
 
-  if (status === OrderStatus.Open) {
+  if (status === "open") {
     return {
       icon: PlayCircle,
       label: "In Progress",
@@ -41,9 +41,27 @@ const getStatusConfig = (status: OrderStatus) => {
       border: "border-blue-500/20",
     };
   }
+  if (status === "failed") {
+    return {
+      icon: XCircle,
+      label: "Failed",
+      color: "text-red-500",
+      bg: "bg-red-500/10",
+      border: "border-red-500/20",
+    };
+  }
+  if (status === "partially_completed") {
+    return {
+      icon: CheckCircle2,
+      label: "Partially Completed",
+      color: "text-yellow-500",
+      bg: "bg-green-500/10",
+      border: "border-green-500/20",
+    };
+  }
   return {
     icon: RefreshCw,
-    label: "Processing",
+    label: status.replace("_", " ").charAt(0).toUpperCase() + status.replace("_", " ").slice(1),
     color: "text-primary",
     bg: "bg-primary/10",
     border: "border-primary/20",
@@ -58,7 +76,7 @@ export const OrderStatusBadge = ({
 }: {
   totalTrades?: number;
   filledTrades?: number;
-  status: OrderStatus;
+  status: string;
   statusOnly?: boolean;
 }) => {
   const config = useMemo(() => getStatusConfig(status), [status]);

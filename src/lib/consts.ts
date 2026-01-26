@@ -14,7 +14,7 @@ export enum URL_QUERY_KEYS {
   TIMESTAMP = "timestamp",
   ORDER_TYPE = "order_type",
   SESSION_ID = "session_id",
-  SWAP_STATUS = "swap_status",
+  STATUS = "status",
 }
 
 export const FILTER_KEY_NAMES = {
@@ -31,7 +31,7 @@ export const FILTER_KEY_NAMES = {
   [URL_QUERY_KEYS.PARTNER_ID]: "Partner",
   [URL_QUERY_KEYS.ORDER_TYPE]: "Order Type",
   [URL_QUERY_KEYS.SESSION_ID]: "Session ID",
-  [URL_QUERY_KEYS.SWAP_STATUS]: "Swap Status",
+  [URL_QUERY_KEYS.STATUS]: "Status",
 };
 
 export const REACT_QUERY_KEYS = {

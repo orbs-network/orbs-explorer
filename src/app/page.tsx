@@ -25,7 +25,7 @@ export default function Home() {
 
           {/* Main heading */}
           <div className="text-center space-y-4">
-            <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-white tracking-tight">
+            <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-foreground tracking-tight">
               Explore Orbs
               <span className="text-primary"> Transactions</span>
             </h1>
@@ -57,8 +57,8 @@ export default function Home() {
                 <div className="p-3 rounded-lg bg-primary/10 text-primary">
                   <Layers className="w-6 h-6" />
                 </div>
-                <div className="flex-1">
-                  <h3 className="text-lg font-semibold text-white mb-2">
+                <Link href={ROUTES.LIQUIDITY_HUB.ROOT} className="flex-1">
+                  <h3 className="text-lg font-semibold text-foreground mb-2">
                     Liquidity Hub
                   </h3>
                   <p className="text-sm text-muted-foreground mb-4">
@@ -66,10 +66,10 @@ export default function Home() {
                     swap execution and MEV protection.
                   </p>
                   <div className="flex items-center gap-1 text-sm text-primary group-hover:gap-2 transition-all duration-300">
-                    <span>Learn more</span>
+                    <span>Explore Liquidity Hub</span>
                     <ArrowRight className="w-4 h-4" />
                   </div>
-                </div>
+                </Link>
               </div>
             </div>
 
@@ -83,7 +83,7 @@ export default function Home() {
                   <RefreshCw className="w-6 h-6" />
                 </div>
                 <div className="flex-1">
-                  <h3 className="text-lg font-semibold text-white mb-2">
+                  <h3 className="text-lg font-semibold text-foreground mb-2">
                     TWAP Orders
                   </h3>
                   <p className="text-sm text-muted-foreground mb-4">

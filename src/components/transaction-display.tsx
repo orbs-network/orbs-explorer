@@ -24,6 +24,8 @@ import { AuthComponent } from "@/app/providers/auth-provider";
 import { useRouter } from "next/navigation";
 import { Spinner } from "./ui/spinner";
 import { OrderStatus } from "@orbs-network/spot-ui";
+import { useToken, useTokenLogo } from "@/lib/hooks/use-token";
+import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 
 export const Row = ({
   label,
@@ -41,31 +43,30 @@ export const Row = ({
   return (
     <div
       className={
-        "flex flex-col justify-between w-full border-b border-border/50 pb-3 pt-1 flex-wrap gap-2 md:flex-row md:items-center last:border-b-0 last:pb-0"  
+        "flex flex-col justify-between w-full border-b border-border/50 pb-3 pt-1 flex-wrap gap-2 md:flex-row md:items-center last:border-b-0 last:pb-0"
       }
     >
       <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide flex flex-row gap-2 items-center">
         <div className="flex flex-col gap-1">
-       <div className="flex flex-row gap-2 items-center">
-       {`${label}`}
-        {tooltip && (
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <InfoIcon className="w-3.5 h-3.5 text-muted-foreground/50 hover:text-muted-foreground cursor-help transition-colors" />
-              </TooltipTrigger>
-              <TooltipContent>{tooltip}</TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-        )}
-       </div>
-        {description && (
-          <span className="text-[11px] text-muted-foreground/70 font-normal lowercase">
-            {description}
-          </span>
-        )}
+          <div className="flex flex-row gap-2 items-center">
+            {`${label}`}
+            {tooltip && (
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <InfoIcon className="w-3.5 h-3.5 text-muted-foreground/50 hover:text-muted-foreground cursor-help transition-colors" />
+                  </TooltipTrigger>
+                  <TooltipContent>{tooltip}</TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            )}
+          </div>
+          {description && (
+            <span className="text-[11px] text-muted-foreground/70 font-normal lowercase">
+              {description}
+            </span>
+          )}
         </div>
-        
       </div>
       <div
         className={cn(
@@ -90,7 +91,9 @@ const TransactionDisplay = ({
 }) => {
   return (
     <Card className="border-border bg-card/50 backdrop-blur-sm">
-      {header && <CardHeader className="border-b border-border">{header}</CardHeader>}
+      {header && (
+        <CardHeader className="border-b border-border">{header}</CardHeader>
+      )}
       <CardContent className="flex flex-col gap-4 pt-6">{children}</CardContent>
     </Card>
   );
@@ -108,7 +111,6 @@ const BackButton = ({ onClick }: { onClick: () => void }) => {
   );
 };
 
-
 const Grid = ({ children }: { children: ReactNode }) => {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">{children}</div>
@@ -123,11 +125,19 @@ const Container = ({ children }: { children: ReactNode }) => {
   );
 };
 
-const ContainerHeader = ({ children, backHref }: { children?: ReactNode; backHref?: string }) => {
+const ContainerHeader = ({
+  children,
+  backHref,
+}: {
+  children?: ReactNode;
+  backHref?: string;
+}) => {
   const router = useRouter();
   return (
     <div className="flex flex-row justify-between items-center w-full mb-2">
-      <BackButton onClick={() => backHref ? router.push(backHref) : router.back()} />
+      <BackButton
+        onClick={() => (backHref ? router.push(backHref) : router.back())}
+      />
       {children}
     </div>
   );
@@ -196,15 +206,24 @@ const SectionCard = ({
 };
 
 // Hero header with gradient background (for swap/order headers)
-const Hero = ({ children, className }: { children: ReactNode; className?: string }) => {
+const Hero = ({
+  children,
+  className,
+}: {
+  children: ReactNode;
+  className?: string;
+}) => {
   return (
-    <div className={cn("bg-gradient-to-r from-primary/10 via-primary/5 to-transparent border border-border rounded-xl p-6 mb-2", className)}>
+    <div
+      className={cn(
+        "bg-gradient-to-r from-primary/10 via-primary/5 to-transparent border border-border rounded-xl p-6 mb-2",
+        className,
+      )}
+    >
       {children}
     </div>
   );
 };
-
-
 
 // Badge component
 const Badge = ({
@@ -221,7 +240,12 @@ const Badge = ({
     muted: "bg-muted border-border text-muted-foreground",
   };
   return (
-    <div className={cn("flex items-center gap-1.5 px-3 py-1 rounded-full border", styles[variant])}>
+    <div
+      className={cn(
+        "flex items-center gap-1.5 px-3 py-1 rounded-full border",
+        styles[variant],
+      )}
+    >
       {Icon && <Icon className="w-3.5 h-3.5" />}
       <span className="text-xs font-medium">{children}</span>
     </div>
@@ -230,18 +254,32 @@ const Badge = ({
 
 // Token swap direction display
 const SwapDirection = ({
-  fromSymbol,
-  toSymbol,
+  fromAddress,
+  toAddress,
+  chainId,
 }: {
-  fromSymbol?: string;
-  toSymbol?: string;
+  fromAddress?: string;
+  toAddress?: string;
+  chainId?: number;
 }) => {
+  const fromToken = useToken(fromAddress, chainId).data;
+  const toToken = useToken(toAddress, chainId).data;
+  const fromTokenLogo = useTokenLogo(fromAddress, chainId).data;
+  const toTokenLogo = useTokenLogo(toAddress, chainId).data;
   return (
     <div className="flex items-center gap-4 flex-wrap">
       <div className="flex items-center gap-3 bg-card/50 rounded-lg px-4 py-3 border border-border min-w-[140px]">
-        <div className="flex flex-col">
-          <span className="text-xs text-muted-foreground uppercase tracking-wide">From</span>
-          <span className="text-lg font-bold text-foreground">{fromSymbol || "..."}</span>
+        <div className="flex flex-col gap-2">
+          <span className="text-xs text-muted-foreground uppercase tracking-wide">
+            From
+          </span>
+          <div className="flex items-center gap-2">
+            <Avatar className="w-6 h-6">
+              <AvatarImage src={fromTokenLogo} />
+              <AvatarFallback> {fromToken?.symbol?.slice(0, 2)}</AvatarFallback>
+            </Avatar>
+            <span className="text-sm font-medium text-foreground">{fromToken?.symbol}</span>
+          </div>
         </div>
       </div>
 
@@ -250,9 +288,17 @@ const SwapDirection = ({
       </div>
 
       <div className="flex items-center gap-3 bg-card/50 rounded-lg px-4 py-3 border border-border min-w-[140px]">
-        <div className="flex flex-col">
-          <span className="text-xs text-muted-foreground uppercase tracking-wide">To</span>
-          <span className="text-lg font-bold text-foreground">{toSymbol || "..."}</span>
+        <div className="flex flex-col gap-2">
+          <span className="text-xs text-muted-foreground uppercase tracking-wide">
+            To
+          </span>
+          <div className="flex items-center gap-2">
+            <Avatar className="w-6 h-6">
+              <AvatarImage src={toTokenLogo} />
+              <AvatarFallback>{toToken?.symbol?.slice(0, 2)}</AvatarFallback>
+            </Avatar>
+            <span className="text-sm font-medium text-foreground">{toToken?.symbol}</span>
+          </div>
         </div>
       </div>
     </div>
@@ -292,7 +338,7 @@ const ProgressBar = ({
         <span className="text-sm text-muted-foreground">{label}</span>
         <span className="text-sm font-bold text-foreground">{progress}%</span>
       </div>
-      <div className="w-full h-3 bg-muted rounded-full overflow-hidden">
+      <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
         <div
           className="h-full bg-gradient-to-r from-primary to-primary/70 rounded-full transition-all duration-500"
           style={{ width: `${progress}%` }}
@@ -303,7 +349,13 @@ const ProgressBar = ({
 };
 
 // Timestamp display
-const Timestamp = ({ date, showRelative = true }: { date: string | number | Date; showRelative?: boolean }) => {
+const Timestamp = ({
+  date,
+  showRelative = true,
+}: {
+  date: string | number | Date;
+  showRelative?: boolean;
+}) => {
   const moment = require("moment");
   const formatted = moment(date).format("lll");
   const relative = moment(date).fromNow();
@@ -312,7 +364,9 @@ const Timestamp = ({ date, showRelative = true }: { date: string | number | Date
     <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
       <Clock className="w-3.5 h-3.5" />
       <span>{formatted}</span>
-      {showRelative && <span className="text-muted-foreground/60">({relative})</span>}
+      {showRelative && (
+        <span className="text-muted-foreground/60">({relative})</span>
+      )}
     </div>
   );
 };
@@ -340,7 +394,6 @@ const InfoBox = ({
     </div>
   );
 };
-
 
 TransactionDisplay.SectionItem = Row;
 TransactionDisplay.Grid = Grid;

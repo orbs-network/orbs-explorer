@@ -9,33 +9,26 @@ const OrderIdFilter = () => {
   return (
     <QueryFilters.BadgeWithInput
       queryKey={URL_QUERY_KEYS.HASH}
-      label="Hash"
-      placeholder="Hash"
+      label="Order ID"
+      placeholder="Order ID"
       modifyDisplayValue={shortenAddress}
     />
   );
 };
 
-const statusOptions = [
-  { label: "Open", value: OrderStatus.Open.toLowerCase() },
-  { label: "Completed", value: OrderStatus.Completed.toLowerCase() },
-  { label: "Expired", value: OrderStatus.Expired.toLowerCase() },
-  { label: "Canceled", value: OrderStatus.Canceled.toLowerCase() },
-];
 
-const StatusFilter = () => {
-  return (
-    <QueryFilters.Badge
-      queryKey={URL_QUERY_KEYS.ORDER_STATUS}
-      label="Status"
-      options={statusOptions}
-    />
-  );
-};
-
-const orderTypeOptions = [
+const TYPE_OPTIONS = [
   { label: "Limit", value: "limit" },
   { label: "Market", value: "market" },
+  { label: "Trigger Price", value: "trigger_price" },
+];
+
+
+const STATUS_OPTIONS = [
+  { label: "Open", value: "open" },
+  { label: "Completed", value: "completed" },
+  { label: "Failed", value: "failed" },
+  { label: "Partially Completed", value: "partially_completed" },
 ];
 
 const OrderTypeFilter = () => {
@@ -43,18 +36,31 @@ const OrderTypeFilter = () => {
     <QueryFilters.Badge
       queryKey={URL_QUERY_KEYS.ORDER_TYPE}
       label="Order Type"
-      options={orderTypeOptions}
+      options={TYPE_OPTIONS}
       singleSelect
+    />
+  );
+};
+const SwapStatusFilter = () => {
+  return (
+    <QueryFilters.Badge
+      queryKey={URL_QUERY_KEYS.STATUS}
+      label="Swap Status"
+      options={STATUS_OPTIONS}
     />
   );
 };
 
 export const OrdersFilter = () => {
   return (
-    <QueryFilters>
+    <QueryFilters filters={{
+      userFilter: true,
+      partnerIdFilter: true,
+      chainIdFilter: true,
+    }}>
       <OrderIdFilter />
-      <StatusFilter />
-      <OrderTypeFilter />
+      {/* <OrderTypeFilter /> */}
+      {/* <SwapStatusFilter /> */}
     </QueryFilters>
   );
 };

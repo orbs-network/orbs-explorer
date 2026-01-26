@@ -64,10 +64,10 @@ export function Network({
       <Avatar className="w-4 h-4 border border-border">
         <AvatarImage src={network.logoUrl} />
         <AvatarFallback className="text-[8px] bg-muted">
-          {network.name?.slice(0, 2)}
+          {network.shortname?.slice(0, 2)}
         </AvatarFallback>
       </Avatar>
-      <span className="text-sm font-medium text-foreground">{network.name}</span>
+      <span className="text-sm font-medium text-foreground">{network.shortname}</span>
       {showChainId && network.id && (
         <span className="text-xs text-muted-foreground font-mono">
           #{network.id}

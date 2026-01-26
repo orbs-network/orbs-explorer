@@ -3,7 +3,6 @@
 import { Address, TokenAddress } from "@/components/token-address";
 import { TokenAmount } from "@/components/token-amount";
 import { TransactionDisplay } from "@/components/transaction-display";
-import { ROUTES } from "@/lib/routes";
 
 import {
   useOrder,
@@ -25,12 +24,16 @@ import {
 } from "@/lib/utils/utils";
 
 import moment from "moment";
-import { createContext, useContext, useMemo } from "react";
+import { createContext, useContext, useMemo, useState } from "react";
 import { Copy } from "../../ui/copy";
 import { Avatar, AvatarFallback, AvatarImage } from "../../ui/avatar";
 import { OrderChunks } from "./chunks";
 import {
+  AlertTriangle,
   Clock,
+  Code,
+  Maximize2,
+  Minimize2,
   Receipt,
   RefreshCw,
   Settings,
@@ -41,6 +44,17 @@ import {
 import { Network } from "@/components/ui/network";
 import { Partner } from "@/components/ui/partner";
 import { OrderStatusBadge } from "../order-status-badge";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import dynamic from "next/dynamic";
+
+const ReactJson = dynamic(() => import("react-json-view"), { ssr: false });
 
 type ContextType = {
   order: Order;
@@ -85,8 +99,9 @@ export function OrderView({ hash }: { hash: string }) {
       value={{ order, isLoading, srcToken, dstToken, partner, chainId, config }}
     >
       <TransactionDisplay.Container>
-        <TransactionDisplay.ContainerHeader backHref={ROUTES.TWAP.ROOT} />
+        <TransactionDisplay.ContainerHeader />
         <OrderHeader />
+        <FailureReason />
         <TransactionDisplay.Grid>
           <BaseInformation />
           <OrderConfig />
@@ -98,8 +113,7 @@ export function OrderView({ hash }: { hash: string }) {
 }
 
 const OrderHeader = () => {
-  const { order, srcToken, dstToken } = usePageContext();
-  const status = parseOrderStatus(order);
+  const { order, srcToken, dstToken, chainId } = usePageContext();
 
   return (
     <TransactionDisplay.Hero>
@@ -107,21 +121,109 @@ const OrderHeader = () => {
         {/* Status & Type Badges */}
         <div className="flex items-center justify-between flex-wrap gap-2">
           <div className="flex items-center gap-2">
-            <OrderStatusBadge status={status} statusOnly />
+            <OrderStatusBadge status={order.metadata.status} statusOnly />
             <TransactionDisplay.Badge variant="muted">{order.metadata.orderType}</TransactionDisplay.Badge>
           </div>
-          <TransactionDisplay.Timestamp date={toMoment(order.timestamp).toDate()} />
+          <div className="flex items-center gap-2">
+            <RawOrderButton />
+            <TransactionDisplay.Timestamp date={toMoment(order.timestamp).toDate()} />
+          </div>
         </div>
 
         {/* Swap Visual with Progress */}
         <div className="flex items-center gap-4 flex-wrap">
           <TransactionDisplay.SwapDirection
-            fromSymbol={srcToken?.symbol}
-            toSymbol={dstToken?.symbol}
+            fromAddress={order.order.witness.input.token}
+            toAddress={order.order.witness.output.token}
+            chainId={chainId}
           />
         </div>
       </div>
     </TransactionDisplay.Hero>
+  );
+};
+
+const RawOrderButton = () => {
+  const { order } = usePageContext();
+  const [open, setOpen] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button variant="outline" size="sm" className="gap-1.5">
+          <Code className="w-3.5 h-3.5" />
+          Raw Order
+        </Button>
+      </DialogTrigger>
+      <DialogContent
+        className={
+          isFullscreen
+            ? "!max-w-[95vw] !w-[95vw] !max-h-[95vh] !h-[95vh] overflow-hidden flex flex-col"
+            : "!max-w-5xl !w-[90vw] !max-h-[80vh] overflow-hidden flex flex-col"
+        }
+      >
+        <DialogHeader className="flex flex-row items-center justify-between pr-8">
+          <DialogTitle>Raw Order Data</DialogTitle>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8"
+            onClick={() => setIsFullscreen(!isFullscreen)}
+          >
+            {isFullscreen ? (
+              <Minimize2 className="h-4 w-4" />
+            ) : (
+              <Maximize2 className="h-4 w-4" />
+            )}
+          </Button>
+        </DialogHeader>
+        <div className="flex-1 overflow-auto rounded-lg bg-[#1e1e1e] p-4">
+          <ReactJson
+            src={order}
+            theme="monokai"
+            collapsed={2}
+            displayDataTypes={false}
+            enableClipboard
+            style={{ backgroundColor: "transparent" }}
+          />
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
+const FailureReason = () => {
+  const { order } = usePageContext();
+  
+  const status = order.metadata.status?.toLowerCase();
+  const isFailed = status === "failed" || status === "expired" || status === "canceled";
+  
+  if (!isFailed) return null;
+
+  // Get the failure description from metadata
+  const description = order.metadata.description;
+  const displayOnlyStatus = order.metadata.displayOnlyStatus;
+  // Check for failed chunks to get more details
+
+
+  return (
+    <div className="rounded-lg border border-red-500/30 bg-red-500/5 p-4">
+      <div className="flex items-start gap-3">
+        <div className="p-2 rounded-full bg-red-500/10">
+          <AlertTriangle className="w-5 h-5 text-red-500" />
+        </div>
+        <div className="flex-1 space-y-2">
+          <h3 className="text-sm font-semibold text-red-500">
+           Order Failed
+          </h3>
+          {description && (
+            <p className="text-sm text-muted-foreground capitalize">{description}</p>
+          )}
+
+        </div>
+      </div>
+    </div>
   );
 };
 
@@ -154,6 +256,12 @@ const BaseInformation = () => {
           address={order.order.witness.output.token}
           chainId={chainId}
         />
+      </TransactionDisplay.SectionItem>
+      <TransactionDisplay.SectionItem label="Swapper">
+        <div className="flex items-center gap-2">
+          <Wallet className="w-3.5 h-3.5 text-muted-foreground" />
+          <Address address={order.order.witness.swapper} chainId={chainId} />
+        </div>
       </TransactionDisplay.SectionItem>
     </TransactionDisplay.SectionCard>
   );
@@ -248,16 +356,6 @@ const ExecutionDetails = () => {
             <ExecutionRate />
           </div>
         </TransactionDisplay.InfoBox>
-      </div>
-
-      {/* Swapper */}
-      <div className="mt-4 pt-4 border-t border-border">
-        <TransactionDisplay.SectionItem label="Swapper Address">
-          <div className="flex items-center gap-2">
-            <Wallet className="w-3.5 h-3.5 text-muted-foreground" />
-            <Address address={order.order.witness.swapper} chainId={chainId} />
-          </div>
-        </TransactionDisplay.SectionItem>
       </div>
     </TransactionDisplay.SectionCard>
   );

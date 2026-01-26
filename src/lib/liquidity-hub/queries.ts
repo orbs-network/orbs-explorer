@@ -36,7 +36,7 @@ export const useLHSwaps = () => {
       session_id,
       hash,
       timestamp,
-      swap_status,
+      status,
     },
   } = useQueryFilterParams();
 
@@ -53,7 +53,7 @@ export const useLHSwaps = () => {
       session_id,
       hash,
       timestamp,
-      swap_status,
+      status,
     ],
     queryFn: async ({ signal, pageParam }) => {
       const data = elasticQueries.getSwaps({
@@ -68,7 +68,7 @@ export const useLHSwaps = () => {
         feeOutAmountUsd: fee_out_amount_usd,
         sessionId: session_id,
         txHash: hash ? [hash] : undefined,
-        status: swap_status as "success" | "failed",
+        status: status as "success" | "failed",
       });
 
       const swaps = await fetchElastic<LiquidityHubSwap>(

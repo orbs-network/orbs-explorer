@@ -13,7 +13,7 @@ import { map } from "lodash";
 import { ROUTES } from "@/lib/routes";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip";
 import { ListOrder } from "@/lib/types";
-import { useTwapPartner } from "@/lib/hooks/twap-hooks";
+import { useTwapPartnerByAdapter, useTwapPartnerById } from "@/lib/hooks/twap-hooks";
 import { Partner } from "../ui/partner";
 import { OrdersFilter } from "./filter";
 import { useToken } from "@/lib/hooks/use-token";
@@ -46,7 +46,7 @@ const Status = ({ item }: { item: ListOrder }) => {
     <OrderStatusBadge
       totalTrades={item.metadata.expectedChunks}
       filledTrades={item.metadata.chunkSummary.success}
-      status={parseListOrderStatus(item)}
+      status={item.metadata.status}
     />
   );
 };
@@ -60,7 +60,7 @@ const OrderTypeComponent = ({ item }: { item: ListOrder }) => {
 };
 
 const PartnerCell = ({ item }: { item: ListOrder }) => {
-  const dex = useTwapPartner(item.exchangeAdapter);
+  const dex = useTwapPartnerByAdapter(item.exchangeAdapter);
   const network = useNetwork(dex?.chainId);
 
   return (
@@ -82,14 +82,13 @@ const TxHash = ({ item }: { item: ListOrder }) => {
       </TooltipTrigger>
       <TooltipContent side="bottom" className="flex items-center gap-2">
         <span className="text-xs font-mono">{item.hash}</span>
-        <Copy className="w-3 h-3 text-muted-foreground" />
       </TooltipContent>
     </Tooltip>
   );
 };
 
 const TokenPair = ({ item }: { item: ListOrder }) => {
-  const {chainId} = useTwapPartner(item.exchangeAdapter);
+  const {chainId} = useTwapPartnerByAdapter(item.exchangeAdapter);
   const srcToken = useToken(item.inputToken, chainId).data;
   const dstToken = useToken(item.outputToken, chainId).data;
   return (
@@ -105,43 +104,35 @@ const desktopRows = [
   {
     Component: TxHash,
     text: "Tx Hash",
-    width: "15%",
   },
   {
     Component: PartnerCell,
     text: "Partner",
-    width: "20%",
   },
   {
     Component: OrderTypeComponent,
     text: "Type",
-    width: "12%",
   },
   {
     Component: Timestamp,
     text: "Timestamp",
-    width: "22%",
   },
   {
     Component: TradeUSDValue,
     text: "USD",
-    width: "11%",
   },
   {
     Component: TokenPair,
     text: "Token Pair",
-    width: "20%",
   },
   {
     Component: Status,
     text: "Status",
-    width: "20%",
   },
 ];
 
 const headerLabels = map(desktopRows, (row) => ({
   text: row.text,
-  width: row.width,
 }));
 
 export function TwapOrdersTable() {

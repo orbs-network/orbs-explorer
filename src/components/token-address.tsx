@@ -90,8 +90,10 @@ export const TokenAddress = ({
           {token?.symbol || "..."}
         </a>
       </TooltipTrigger>
-      <TooltipContent className="flex flex-row gap-2 items-center">
-        {address}
+      <TooltipContent className="flex flex-col gap-1 items-start">
+        <span className="text-sm font-mono">{token?.name || "..."}</span>
+        <div className="flex flex-row gap-2 items-center">
+        <span className="text-sm font-mono">{address}</span>
         <Copy
           className="w-3.5 h-3.5 cursor-pointer hover:text-primary transition-colors"
           onClick={(e) => {
@@ -99,6 +101,7 @@ export const TokenAddress = ({
             copy(address || "");
           }}
         />
+        </div>
       </TooltipContent>
     </Tooltip>
   );

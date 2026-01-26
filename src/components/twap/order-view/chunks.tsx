@@ -17,17 +17,15 @@ import {
   ArrowRight,
   CheckCircle2,
   Clock,
-  ExternalLink,
   Layers,
-  XCircle,
 } from "lucide-react";
 
 import React from "react";
 
 export function OrderChunks({ hash }: { hash: string }) {
-  const { chunks, successChunks, failedChunks } = useOrderChunks(hash);
+  const { expectedChunks, successChunks, failedChunks} = useOrderChunks(hash);
 
-  if (!chunks) return null;
+  if (!expectedChunks) return null;
 
   return (
     <TransactionDisplay.SectionItem label="Fills">
@@ -36,9 +34,9 @@ export function OrderChunks({ hash }: { hash: string }) {
           <Button variant="outline" size="sm" className="gap-2">
             <Layers className="w-4 h-4" />
             <span className="font-mono">
-              {successChunks.length} / {chunks.length}
+              {successChunks.length} / {expectedChunks}
             </span>
-            {successChunks.length === chunks.length && chunks.length > 0 && (
+            {successChunks.length === expectedChunks && expectedChunks > 0 && (
               <CheckCircle2 className="w-3.5 h-3.5 text-green-500" />
             )}
           </Button>
@@ -50,7 +48,7 @@ export function OrderChunks({ hash }: { hash: string }) {
               Order Fills
             </DialogTitle>
             <p className="text-sm text-muted-foreground">
-              {successChunks.length} of {chunks.length} chunks filled
+              {successChunks.length} of {expectedChunks} chunks filled
               {failedChunks.length > 0 && (
                 <span className="text-red-500 ml-2">
                   ({failedChunks.length} failed)
@@ -59,7 +57,7 @@ export function OrderChunks({ hash }: { hash: string }) {
             </p>
           </DialogHeader>
           <div className="flex flex-col gap-3">
-            {chunks.map((chunk, index) => (
+            {successChunks.map((chunk, index) => (
               <ChunkCard key={chunk.txHash} chunk={chunk} index={index} />
             ))}
           </div>

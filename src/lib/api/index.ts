@@ -6,6 +6,8 @@ type Filters = {
   account?: string;
   chainIds?: number[];
   hash?: string;
+  status?: string;
+  exchange?: string;
 };
 
 const SINK_PROD_URL = "https://order-sink.orbs.network";
@@ -17,7 +19,9 @@ const handleFilters = (filters: Filters) => {
     : "";
   const swapper = filters.account ? `&swapper=${filters.account}` : "";
   const hash = filters.hash ? `&hash=${filters.hash}` : "";
-  return `${chainQuery}${swapper}${hash}`;
+  const status = filters.status ? `&status=${filters.status}` : "";
+  const exchange = filters.exchange ? `&exchange=${filters.exchange}` : "";
+  return `${chainQuery}${swapper}${hash}${status}${exchange}`;
 };
 
 const getOrders = async ({

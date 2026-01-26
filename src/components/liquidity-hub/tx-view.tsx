@@ -37,7 +37,6 @@ import { toast } from "sonner";
 
 import { TransactionDisplay } from "@/components/transaction-display";
 import { Address, TokenAddress } from "@/components/token-address";
-import { ROUTES } from "@/lib/routes";
 import {
   createContext,
   useCallback,
@@ -89,7 +88,7 @@ export function LiquidityHubTxView({
 }) {
   const content = (
     <TransactionDisplay.Container>
-      {!isPreview && <TransactionDisplay.ContainerHeader backHref={ROUTES.LIQUIDITY_HUB.ROOT} />}
+      {!isPreview && <TransactionDisplay.ContainerHeader />}
       <State isPreview={isPreview} identifier={identifier} />
     </TransactionDisplay.Container>
   );
@@ -286,7 +285,7 @@ const SwapHeader = () => {
         {/* Status Badge */}
         <div className="flex items-center justify-between flex-wrap gap-2">
           <div className="flex items-center gap-2">
-            <TransactionDisplay.StatusBadge status="completed" />
+            {/* <TransactionDisplay.StatusBadge status="completed" /> */}
             <TransactionDisplay.Badge>Liquidity Hub</TransactionDisplay.Badge>
           </div>
           <TransactionDisplay.Timestamp date={swap.timestamp} />
@@ -294,8 +293,10 @@ const SwapHeader = () => {
 
         {/* Swap Visual */}
         <TransactionDisplay.SwapDirection
-          fromSymbol={tokenIn?.symbol}
-          toSymbol={tokenOut?.symbol}
+          fromAddress={swap.tokenInAddress}
+          toAddress={swap.tokenOutAddress}
+          chainId={swap.chainId}
+
         />
       </div>
     </TransactionDisplay.Hero>

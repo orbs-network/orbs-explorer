@@ -22,14 +22,9 @@ export function SearchInput({
 
   const onSearch = useCallback(() => {
     if (!value) return;
-    try {
-      onSubmit ? onSubmit(value) : search(value);
-    } catch (error) {
-      toast.error("Invalid input", {
-        description: (error as Error).message,
-      });
-    }
-  }, [value, search]);
+;
+    onSubmit ? onSubmit(value) : search(value);
+  }, [value, search, onSubmit]);
 
   const onKeyDown = useCallback(
     (e: any) => {
@@ -55,9 +50,9 @@ export function SearchInput({
         <button
           disabled={!value}
           onClick={onSearch}
-          className="outline-none border-none bg-slate-500/50 rounded-lg hover:bg-slate-500/70 transition-all duration-300 flex items-center justify-center cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed w-[40px] h-[33px]"
+          className="outline-none border-none bg-primary/80 rounded-lg hover:bg-primary transition-all duration-300 flex items-center justify-center cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed w-[40px] h-[33px]"
         >
-          {isPending ? <Spinner size={16} /> : <ArrowUp size={16} color="white" />}
+          {isPending ? <Spinner size={16} /> : <ArrowUp size={16} className="text-primary-foreground" />}
         </button>
       </div>
     </>

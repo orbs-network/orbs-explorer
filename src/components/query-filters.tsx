@@ -49,10 +49,12 @@ import {
   QueryFilterParams,
   useQueryFilterParams,
 } from "@/lib/hooks/use-query-filter-params";
+import { Avatar, AvatarImage, AvatarFallback } from "./ui/avatar";
 
 type FilterOption = {
   label: string;
   value: string;
+  logo?: string;
 };
 
 type FilterContextType = {
@@ -155,13 +157,17 @@ const BadgesFilter = ({
               onClick={() => onSelect(option)}
               className={cn(
                 "inline-flex items-center px-3 py-1.5 rounded-lg text-sm font-medium transition-all duration-200 cursor-pointer",
-                "border",
+                "border gap-2",
                 selected
                   ? "bg-primary/20 border-primary/50 text-primary"
                   : "bg-muted/50 border-border text-muted-foreground hover:bg-muted hover:text-foreground hover:border-border"
               )}
             >
-              {option.label}
+             <span className="text-sm font-medium capitalize">{option.label}</span>
+             {option.logo &&  <Avatar className="w-4 h-4">
+                <AvatarImage src={option.logo} />
+                <AvatarFallback>{option.label.charAt(0)}</AvatarFallback>
+              </Avatar>}
             </button>
           );
         })}
@@ -352,11 +358,12 @@ const TokensFilter = () => {
   );
 };
 
-const ChainIdFilter = () => {
+const ChainsFilter = () => {
   const options = useMemo(() => {
     return map(networks, (network) => ({
       label: network.shortname,
       value: network.id.toString(),
+      logo: network.logoUrl,
     }));
   }, []);
 
@@ -365,15 +372,17 @@ const ChainIdFilter = () => {
       queryKey={URL_QUERY_KEYS.CHAIN_ID}
       label="Chains"
       options={options}
+      singleSelect={true}
     />
   );
 };
 
-const PartnerIdFilter = () => {
+const PartnersFilter = () => {
   const options = useMemo(() => {
     return map(PARTNERS, (partner) => ({
       label: partner.name,
       value: partner.id,
+      logo: partner.logo,
     }));
   }, []);
 
@@ -382,6 +391,7 @@ const PartnerIdFilter = () => {
       queryKey={URL_QUERY_KEYS.PARTNER_ID}
       label="Partners"
       options={options}
+      singleSelect={true}
     />
   );
 };
@@ -404,6 +414,7 @@ const FilterModalButtons = () => {
 
   return (
     <div className="flex gap-2">
+      <DrawerClose>
       <Button
         variant="outline"
         className="gap-2 cursor-pointer"
@@ -412,6 +423,7 @@ const FilterModalButtons = () => {
         <RotateCcw className="w-4 h-4" />
         Reset All
       </Button>
+      </DrawerClose>
       <DrawerClose asChild>
         <Button
           variant="default"
@@ -528,22 +540,13 @@ export const QueryFilters = ({
           <div className="flex-1 overflow-y-auto p-4">
             <div className="flex flex-col gap-4">
             {children}
-              {!filters ? (
-                <>
-                  <TokensFilter />
-                  <UserFilter />
-                  <ChainIdFilter />
-                  <PartnerIdFilter />
+            <>
+                  {filters?.userFilter && <UserFilter />}
+                  {filters?.minDollarValueFilter && <MinDollarValueFilter />}
+                  {filters?.chainIdFilter && <ChainsFilter />}
+                  {filters?.partnerIdFilter && <PartnersFilter />}
+                  {filters?.tokensFilter && <TokensFilter />}
                 </>
-              ) : (
-                <>
-                  {filters.userFilter && <UserFilter />}
-                  {filters.minDollarValueFilter && <MinDollarValueFilter />}
-                  {filters.chainIdFilter && <ChainIdFilter />}
-                  {filters.partnerIdFilter && <PartnerIdFilter />}
-                  {filters.tokensFilter && <TokensFilter />}
-                </>
-              )}
              
             </div>
           </div>

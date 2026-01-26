@@ -19,18 +19,14 @@ export function useAppSearch() {
         getSpotOrder({ hash: value }),
         getLiquidityHubTx(value),
       ]);
-      console.log({ twapOrder, liquidityHubTx });
       if (twapOrder) {
         router.push(ROUTES.TWAP.ORDER(twapOrder.hash));
       } else if (liquidityHubTx) {
         router.push(ROUTES.LIQUIDITY_HUB.TX(liquidityHubTx.swap.txHash));
       }
-    },
-    onSuccess: () => {
-      toast.success("Transaction found");
-    },
-    onError: (error) => {
-      console.error(error);
+      else {
+        toast.error("Transaction not found");
+      }
     },
   });
 }

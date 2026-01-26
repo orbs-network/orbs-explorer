@@ -4,9 +4,14 @@ import { useQueryFilterParams } from "./use-query-filter-params";
 import { getSpotOrder, getSpotOrders } from "../api";
 import { useMemo } from "react";
 import { uniqBy } from "lodash";
+import { useTwapPartnerById } from "./twap-hooks";
+import { Partners } from "../types";
 
 export const useSpotOrdersPaginated = () => {
   const { query: queryParams } = useQueryFilterParams();
+  const partner = useTwapPartnerById(queryParams.partner_id?.[0]);
+
+  
 
   const query =  useInfiniteQuery({
     queryKey: [
@@ -14,6 +19,7 @@ export const useSpotOrdersPaginated = () => {
       queryParams.hash,
       queryParams.user,
       queryParams.chain_id?.map(Number),
+      partner?.config?.adapter,
     ],
     queryFn: async ({ signal, pageParam = 0 }) => {
       return getSpotOrders({
@@ -24,6 +30,7 @@ export const useSpotOrdersPaginated = () => {
           account: queryParams.user,
           chainIds: queryParams.chain_id?.map(Number),
           hash: queryParams.hash,
+          exchange: partner?.config?.adapter,
         },
       });
     },

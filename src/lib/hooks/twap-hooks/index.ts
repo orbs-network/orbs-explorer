@@ -28,7 +28,7 @@ const EMPTY_PARTNER = {
   config: null,
 };
 
-export const useTwapPartner = (adapter?: string) => {
+export const useTwapPartnerByAdapter = (adapter?: string) => {
   const { data: config } = useSpotConfig();
   return useMemo(() => {
     if (!adapter || !config) return EMPTY_PARTNER;
@@ -55,8 +55,36 @@ export const useTwapPartner = (adapter?: string) => {
   }, [adapter, config]);
 };
 
+
+export const useTwapPartnerById = (partnerId?: string) => {
+  const { data: config } = useSpotConfig();
+  return useMemo(() => {
+    if (!partnerId || !config) return EMPTY_PARTNER;
+    const target = partnerId.toLowerCase();
+
+    for (const [chainId, chainConfig] of Object.entries(config)) {
+      if (!chainConfig?.dex) continue;
+
+      for (const [partner, dexConfig] of Object.entries(chainConfig.dex)) {
+        if (
+          typeof dexConfig === "object" &&
+          partner.toLowerCase() === target
+        ) {
+          return {
+            chainId: Number(chainId),
+            partner: getPartner(partner),
+            config: dexConfig,
+          };
+        }
+      }
+    }
+
+    return EMPTY_PARTNER;
+  }, [partnerId, config]);
+};
+
 export const useOrderFilledAmounts = (order?: Order) => {
-  const dex = useTwapPartner(order?.order.witness.exchange.adapter);
+  const dex = useTwapPartnerByAdapter(order?.order.witness.exchange.adapter);
   const srcToken = useToken(
     order?.order.witness.input.token,
     dex?.chainId,
@@ -84,7 +112,7 @@ export const useOrderFilledAmounts = (order?: Order) => {
 };
 
 export const useOrderExecutionRate = (order?: Order) => {
-  const dex = useTwapPartner(order?.order.witness.exchange.adapter);
+  const dex = useTwapPartnerByAdapter(order?.order.witness.exchange.adapter);
   const srcToken = useToken(
     order?.order.witness.input.token,
     dex?.chainId,
@@ -104,7 +132,7 @@ export const useOrderExecutionRate = (order?: Order) => {
 };
 
 export const useOrderLimitPriceRate = (order?: Order) => {
-  const dex = useTwapPartner(order?.order.witness.exchange.adapter);
+  const dex = useTwapPartnerByAdapter(order?.order.witness.exchange.adapter);
   const srcToken = useToken(
     order?.order.witness.input.token,
     dex?.chainId,
@@ -125,7 +153,7 @@ export const useOrderLimitPriceRate = (order?: Order) => {
 
 export const useOrder = (hash?: string) => {
   const { data: order, isLoading } = useSpotOrderQuery(hash);
-  const { partner, chainId, config } = useTwapPartner(
+  const { partner, chainId, config } = useTwapPartnerByAdapter(
     order?.order.witness.exchange.adapter,
   );
   const srcToken = useToken(order?.order.witness.input.token, chainId).data;
@@ -172,7 +200,7 @@ export const useOrderChunks = (hash?: string) => {
   }, [order, srcToken, dstToken, chainId]);
 
   return {
-    chunks,
+    expectedChunks: order?.metadata.expectedChunks,
     successChunks: chunks.filter((chunk) => chunk.status === "success"),
     failedChunks: chunks.filter((chunk) => chunk.status === "failed"),
   };
