@@ -1,5 +1,6 @@
 "use client";
 
+import { Suspense } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   QueryParamAdapter,
@@ -35,12 +36,20 @@ function NextAdapterComponent({
   return <>{children(adapter)}</>;
 }
 
-export function RouterProvider({ children }: { children: React.ReactNode }) {
+function RouterProviderInner({ children }: { children: React.ReactNode }) {
   return (
     <QueryParamProvider
       adapter={NextAdapterComponent as QueryParamAdapterComponent}
     >
       {children}
     </QueryParamProvider>
+  );
+}
+
+export function RouterProvider({ children }: { children: React.ReactNode }) {
+  return (
+    <Suspense fallback={null}>
+      <RouterProviderInner>{children}</RouterProviderInner>
+    </Suspense>
   );
 }

@@ -58,6 +58,8 @@ export interface ListOrder {
     expectedChunks: number;
     orderType: "Market Order" | string;
     status: "completed" | "failed" | string;
+    srcToken?: Token;
+    dstToken?: Token;
   };
   order: {
     witness: {

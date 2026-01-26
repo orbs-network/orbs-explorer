@@ -51,7 +51,7 @@ import {
 } from "@/lib/hooks/use-query-filter-params";
 import { Avatar, AvatarImage, AvatarFallback } from "./ui/avatar";
 
-type FilterOption = {
+export type FilterOption = {
   label: string;
   value: string;
   logo?: string;
