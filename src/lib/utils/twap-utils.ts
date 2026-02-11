@@ -4,21 +4,9 @@ import { URL_QUERY_KEYS } from "../consts";
 import { isValidWalletAddress, isNumeric } from "./utils";
 import { isHash } from "viem";
 import moment from "moment";
-import { OrderType } from "@orbs-network/spot-ui";
 
-export const parseOrderType = (orderType?: OrderType) => {
- switch (orderType) {
-  case OrderType.LIMIT:
-    return 'Limit'
-  case OrderType.TRIGGER_PRICE_LIMIT:
-    return 'Trigger Price Limit'
-  case OrderType.TRIGGER_PRICE_MARKET:
-    return 'Trigger Price Market'
-  case OrderType.TWAP_LIMIT:
-    return 'TWAP Limit'
-  default:
-    return 'Twap Market'
- }
+export const parseOrderType = (orderType?: string) => {
+return orderType
 };
 
 

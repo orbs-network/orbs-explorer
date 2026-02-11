@@ -1,14 +1,16 @@
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 import moment from "moment";
-import { networks, OrderStatus } from "@orbs-network/spot-ui";
 import { FILTER_KEY_NAMES, ROUTES, URL_QUERY_KEYS } from "../consts";
 import { useQueryFilterParams } from "../hooks/use-query-filter-params";
 import { map } from "lodash";
-import { formatUnits, parseUnits } from "viem";
+import { formatUnits, parseUnits, zeroAddress } from "viem";
 import BN from "bignumber.js";
 import { ListOrder, Order, Token } from "../types";
 import { PARTNERS } from "../partners";
+import * as chains from "viem/chains";
+import { chainLogosByChainId, wTokensByChainId } from "../chain";
+
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -131,7 +133,7 @@ export const toAmountWei = (amount?: string, decimals?: number) => {
 
 export const getChain = (chainId?: number) => {
   if (!chainId) return undefined;
-  return Object.values(networks).find((network) => network.id === chainId);
+  return Object.values(chains).find((chain) => chain.id === chainId);
 };
 
 export const getOrderProgress = (order: Order) => {
@@ -239,9 +241,8 @@ export const getPartnersById = (ids?: string[]) => {
 
 export const getWrappedNativeCurrency = (chainId?: number) => {
   if (!chainId) return undefined;
- const chain = getChain(chainId);
- if (!chain) return undefined;
- return chain.wToken;
+
+ return wTokensByChainId[chainId as keyof typeof wTokensByChainId];
 };
 
 
@@ -250,11 +251,11 @@ export const parseListOrderStatus = (order: ListOrder) => {
   const successChunks = order.metadata.chunkSummary.success;
   const deadline = Number(order.order.witness.deadline) * 1000;
 
-  if (successChunks === totalChunks) return OrderStatus.Completed;
-  if (deadline < Date.now()) return OrderStatus.Expired;
-  if (order.metadata.status.includes('canceled')) return OrderStatus.Canceled;
+  if (successChunks === totalChunks) return "completed";
+  if (deadline < Date.now()) return "expired";
+  if (order.metadata.status.includes('canceled')) return "canceled";
 
-  return OrderStatus.Open;
+  return "open";
 
 };
 
@@ -265,10 +266,33 @@ export const parseOrderStatus = (order: Order) => {
   ).length;
   const deadline = Number(order.order.witness.deadline) * 1000;
 
-  if (successChunks === totalChunks) return OrderStatus.Completed;
-  if (deadline < Date.now()) return OrderStatus.Expired;
-  if (order.metadata.status.includes('canceled')) return OrderStatus.Canceled;
+  if (successChunks === totalChunks) return "completed";
+  if (deadline < Date.now()) return "expired";
+  if (order.metadata.status.includes('canceled')) return "canceled";
 
-  return OrderStatus.Open;
+  return "open";
 
+};
+
+
+export const eqIgnoreCase = (a: string, b: string) => {
+  return a.toLowerCase() === b.toLowerCase();
+};
+
+export const isNativeAddress = (address: string) => {
+  return eqIgnoreCase(address, zeroAddress);
+};
+
+export const getChainLogo = (chainId?: number) => {
+  if (!chainId) return undefined;
+  return chainLogosByChainId[chainId as keyof typeof chainLogosByChainId];
+};
+
+export const getChains = () => {
+  return Object.values(chains).map((chain) => ({
+    id: chain.id,
+    name: chain.name,
+    nativeCurrency: chain.nativeCurrency,
+    logoUrl: getChainLogo(chain.id),
+  }));
 };

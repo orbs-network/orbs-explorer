@@ -1,7 +1,7 @@
 import * as chains from "viem/chains";
 import BN from "bignumber.js";
 import { zeroAddress } from "viem";
-import { isNativeAddress } from "@orbs-network/spot-ui";
+import { isNativeAddress } from "@/lib/utils/utils";
 import { getWrappedNativeCurrency } from "../utils/utils";
 
 const chainIdToName: { [key: number]: string } = {

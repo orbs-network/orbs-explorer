@@ -7,11 +7,11 @@ import { Input } from "@/components/ui/input";
 import { URL_QUERY_KEYS } from "@/lib/consts";
 import {
   cn,
+  getChains,
   isValidWalletAddress,
   parseAppliedFilters,
   shortenAddress,
 } from "@/lib/utils/utils";
-import { networks } from "@orbs-network/spot-ui";
 import { map, size } from "lodash";
 import {
   Check,
@@ -360,11 +360,11 @@ const TokensFilter = () => {
 
 const ChainsFilter = () => {
   const options = useMemo(() => {
-    return map(networks, (network) => ({
-      label: network.shortname,
-      value: network.id.toString(),
-      logo: network.logoUrl,
-    }));
+  return getChains().map((chain) => ({
+    label: chain.name,
+    value: chain.id.toString(),
+    logo: chain.logoUrl,
+  }));
   }, []);
 
   return (

@@ -24,18 +24,6 @@ const coingekoChainToName = {
 };
 
 
-export const useTokenLogo = (address?: string, chainId?: number) => {
-  return useQuery({
-    queryKey: ["useTokenLogo", address, chainId],
-    queryFn: async () => {
-      const chainName = coingekoChainToName[chainId! as keyof typeof coingekoChainToName];
-      if (!chainName) return null;
-      return getTokenLogo(address!, chainId!)
-    },
-    enabled: !!address && !!chainId,
-  });
-}
-
 
 export const useToken = (
   address?: string,

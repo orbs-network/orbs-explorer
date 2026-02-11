@@ -1,6 +1,6 @@
 "use client";
 
-import { ORBS_LOGO } from "@orbs-network/spot-ui";
+import { ORBS_LOGO } from "@/lib/consts";
 import { ROUTES } from "@/lib/routes";
 import Link from "next/link";
 import { usePathname } from "next/navigation";

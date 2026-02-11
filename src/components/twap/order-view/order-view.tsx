@@ -122,11 +122,15 @@ const OrderHeader = () => {
         <div className="flex items-center justify-between flex-wrap gap-2">
           <div className="flex items-center gap-2">
             <OrderStatusBadge status={order.metadata.status} statusOnly />
-            <TransactionDisplay.Badge variant="muted">{order.metadata.orderType}</TransactionDisplay.Badge>
+            <TransactionDisplay.Badge variant="muted">
+              {order.metadata.orderType}
+            </TransactionDisplay.Badge>
           </div>
           <div className="flex items-center gap-2">
             <RawOrderButton />
-            <TransactionDisplay.Timestamp date={toMoment(order.timestamp).toDate()} />
+            <TransactionDisplay.Timestamp
+              date={toMoment(order.timestamp).toDate()}
+            />
           </div>
         </div>
 
@@ -195,17 +199,17 @@ const RawOrderButton = () => {
 
 const FailureReason = () => {
   const { order } = usePageContext();
-  
+
   const status = order.metadata.status?.toLowerCase();
-  const isFailed = status === "failed" || status === "expired" || status === "canceled";
-  
+  const isFailed =
+    status === "failed" || status === "expired" || status === "canceled";
+
   if (!isFailed) return null;
 
   // Get the failure description from metadata
   const description = order.metadata.description;
   const displayOnlyStatus = order.metadata.displayOnlyStatus;
   // Check for failed chunks to get more details
-
 
   return (
     <div className="rounded-lg border border-red-500/30 bg-red-500/5 p-4">
@@ -214,13 +218,12 @@ const FailureReason = () => {
           <AlertTriangle className="w-5 h-5 text-red-500" />
         </div>
         <div className="flex-1 space-y-2">
-          <h3 className="text-sm font-semibold text-red-500">
-           Order Failed
-          </h3>
+          <h3 className="text-sm font-semibold text-red-500">Order Failed</h3>
           {description && (
-            <p className="text-sm text-muted-foreground capitalize">{description}</p>
+            <p className="text-sm text-muted-foreground capitalize">
+              {description}
+            </p>
           )}
-
         </div>
       </div>
     </div>
@@ -281,7 +284,9 @@ const OrderConfig = () => {
       <TransactionDisplay.SectionItem label="Deadline">
         <div className="flex items-center gap-2">
           <Timer className="w-3.5 h-3.5 text-muted-foreground" />
-          <span>{moment(Number(order.order.witness.deadline) * 1000).format("lll")}</span>
+          <span>
+            {moment(Number(order.order.witness.deadline) * 1000).format("lll")}
+          </span>
         </div>
       </TransactionDisplay.SectionItem>
       <TransactionDisplay.SectionItem label="Total In Amount">
@@ -299,6 +304,17 @@ const OrderConfig = () => {
           chainId={chainId}
         />
       </TransactionDisplay.SectionItem>
+
+      {order.order.witness.output.stop && (
+        <TransactionDisplay.SectionItem label="Trigger Price">
+          <TokenAmount
+            amountRaw={order.order.witness.output.stop}
+            address={order.order.witness.output.token}
+            chainId={chainId}
+            usd=""
+          />
+        </TransactionDisplay.SectionItem>
+      )}
       <SrcChunkAmount />
       <TransactionDisplay.SectionItem label="Fill Delay">
         <span className="px-2 py-0.5 bg-muted rounded text-sm font-mono">
@@ -332,7 +348,10 @@ const ExecutionDetails = () => {
   return (
     <TransactionDisplay.SectionCard title="Execution Details" icon={TrendingUp}>
       {/* Progress Bar */}
-      <TransactionDisplay.ProgressBar progress={progress} label="Execution Progress" />
+      <TransactionDisplay.ProgressBar
+        progress={progress}
+        label="Execution Progress"
+      />
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
         {/* Filled Amounts */}

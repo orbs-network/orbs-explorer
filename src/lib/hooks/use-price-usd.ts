@@ -4,7 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 
 export const usePriceUsd = (address?: string, chainId?: number) => {
   return useQuery({
-    queryKey: ["usePriceUsd", chainId],
+    queryKey: ["usePriceUsd", chainId, address],
     queryFn: async () => {
         const res = await getUSDPrice([address!], chainId!);
         return res[address!] || 0;

@@ -13,8 +13,8 @@ import { ROUTES } from "@/lib/routes";
 import { VirtualTable } from "../virtual-table";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip";
 import { Partner } from "../ui/partner";
-import { LHSwapsFilter } from "./filter";
 import { SwapStatusBadge } from "./status-badge";
+import { QueryFilters } from "../query-filters";
 
 // ============================================================================
 // Cell Components
@@ -55,7 +55,7 @@ const PartnerCell = ({ item }: { item: LiquidityHubSwap }) => {
     <Partner
       data={partner}
       variant="with-subtitle"
-      subtitle={network?.shortname}
+      subtitle={network?.name}
     />
   );
 };
@@ -147,7 +147,7 @@ export function LiquidityHubTable() {
       onSelect={handleSelect}
       onMobileRowClick={handleSelect}
       title="Liquidity Hub Swaps"
-      headerAction={<LHSwapsFilter />}
+      headerAction={<QueryFilters />}
     />
   );
 }

@@ -16,7 +16,6 @@ import {
   useLHSwap,
   useTransfers,
 } from "@/lib/liquidity-hub";
-import { eqIgnoreCase } from "@orbs-network/spot-ui";
 import {
   Dialog,
   DialogClose,
@@ -62,6 +61,7 @@ import {
   Receipt,
   Wallet,
 } from "lucide-react";
+import { eqIgnoreCase } from "@/lib/utils/utils";
 
 interface ContextType extends SwapQueryResponse {
   isPreview?: boolean;

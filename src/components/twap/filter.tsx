@@ -2,7 +2,6 @@
 
 import { URL_QUERY_KEYS } from "@/lib/consts";
 import { QueryFilters } from "@/components/query-filters";
-import { OrderStatus } from "@orbs-network/spot-ui";
 import { shortenAddress } from "@/lib/utils/utils";
 
 const OrderIdFilter = () => {

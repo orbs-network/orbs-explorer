@@ -2,6 +2,7 @@ import { useNetwork } from "@/lib/hooks/use-network";
 import React from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "./avatar";
 import { cn } from "@/lib/utils";
+import { getChainLogo } from "@/lib/utils/utils";
 
 type NetworkData = {
   name?: string;
@@ -33,7 +34,7 @@ export function Network({
   if (variant === "inline") {
     return (
       <span className={cn("text-xs text-muted-foreground", className)}>
-        {network.shortname || network.name}
+        {network.name}
       </span>
     );
   }
@@ -42,13 +43,13 @@ export function Network({
     return (
       <div className={cn("flex flex-row gap-1.5 items-center", className)}>
         <Avatar className="w-4 h-4 border border-border">
-          <AvatarImage src={network.logoUrl} />
+          <AvatarImage src={getChainLogo(network.id)} />
           <AvatarFallback className="text-[8px] bg-muted">
             {network.name?.slice(0, 2)}
           </AvatarFallback>
         </Avatar>
         <span className="text-sm text-foreground">
-          {network.shortname || network.name}
+          {network.name}
         </span>
       </div>
     );
@@ -62,12 +63,12 @@ export function Network({
       )}
     >
       <Avatar className="w-4 h-4 border border-border">
-        <AvatarImage src={network.logoUrl} />
+        <AvatarImage src={getChainLogo(network.id)} />
         <AvatarFallback className="text-[8px] bg-muted">
-          {network.shortname?.slice(0, 2)}
+          {network.name?.slice(0, 2)}
         </AvatarFallback>
       </Avatar>
-      <span className="text-sm font-medium text-foreground">{network.shortname}</span>
+      <span className="text-sm font-medium text-foreground">{network.name}</span>
       {showChainId && network.id && (
         <span className="text-xs text-muted-foreground font-mono">
           #{network.id}

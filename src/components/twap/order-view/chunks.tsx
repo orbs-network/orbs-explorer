@@ -14,6 +14,7 @@ import { useFormatNumber } from "@/lib/hooks/use-number-format";
 import { ParsedOrderChunk } from "@/lib/types";
 import { toMoment } from "@/lib/utils/utils";
 import {
+  ArrowDown,
   ArrowRight,
   CheckCircle2,
   Clock,
@@ -99,8 +100,8 @@ const ChunkCard = ({
       </div>
 
       {/* Swap Flow */}
-      <div className="flex items-center gap-3 flex-wrap">
-        <div className="flex items-center gap-2 px-3 py-2 bg-muted/50 rounded-md">
+      <div className="flex items-center gap-3 flex-wrap flex-col">
+        <div className="flex items-center gap-2 px-3 py-2 bg-muted/50 rounded-md w-full">
           <span className="text-xs text-muted-foreground uppercase">Sell</span>
           <TokenAmount
             amountRaw={chunk.inAmountRaw}
@@ -109,8 +110,8 @@ const ChunkCard = ({
             usd=""
           />
         </div>
-        <ArrowRight className="w-4 h-4 text-primary" />
-        <div className="flex items-center gap-2 px-3 py-2 bg-muted/50 rounded-md">
+        <ArrowDown className="w-4 h-4 text-primary" />
+        <div className="flex items-center gap-2 px-3 py-2 bg-muted/50 rounded-md w-full">
           <span className="text-xs text-muted-foreground uppercase">Buy</span>
           <TokenAmount
             amountRaw={chunk.outAmountRaw}

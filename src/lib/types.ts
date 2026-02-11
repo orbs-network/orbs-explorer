@@ -20,6 +20,8 @@ export enum Partners {
   Blackhole = "blackhole",
   Yowie = "yowie",
   Nami = "nami",
+  Kodiak = "kodiak",
+  Pangolin = "pangolin",
 }
 
 export type Partner = {
@@ -30,10 +32,11 @@ export type Partner = {
 };
 
 export type Token = {
-  name: string;
+  name?: string;
   symbol: string;
   decimals: number;
   address: string;
+  logoUrl?: string;
 };
 
 export interface ListOrder {

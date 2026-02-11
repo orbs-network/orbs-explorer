@@ -1,7 +1,6 @@
 import { useMemo } from "react";
 import { CheckCircle2, Clock, XCircle, PlayCircle, RefreshCw, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { OrderStatus } from "@orbs-network/spot-ui";
 
 const getStatusConfig = (status: string) => {
   if (status === "completed") {

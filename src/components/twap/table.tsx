@@ -67,7 +67,7 @@ const PartnerCell = ({ item }: { item: ListOrder }) => {
     <Partner
       data={dex?.partner || undefined}
       variant="with-subtitle"
-      subtitle={network?.shortname}
+      subtitle={network?.name}
     />
   );
 };

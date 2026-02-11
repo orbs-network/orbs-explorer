@@ -20,11 +20,9 @@ import {
   TooltipProvider,
 } from "./ui/tooltip";
 import { Card, CardContent, CardHeader } from "./ui/card";
-import { AuthComponent } from "@/app/providers/auth-provider";
 import { useRouter } from "next/navigation";
 import { Spinner } from "./ui/spinner";
-import { OrderStatus } from "@orbs-network/spot-ui";
-import { useToken, useTokenLogo } from "@/lib/hooks/use-token";
+import { useToken } from "@/lib/hooks/use-token";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 
 export const Row = ({
@@ -264,8 +262,7 @@ const SwapDirection = ({
 }) => {
   const fromToken = useToken(fromAddress, chainId).data;
   const toToken = useToken(toAddress, chainId).data;
-  const fromTokenLogo = useTokenLogo(fromAddress, chainId).data;
-  const toTokenLogo = useTokenLogo(toAddress, chainId).data;
+
   return (
     <div className="flex items-center gap-4 flex-wrap">
       <div className="flex items-center gap-3 bg-card/50 rounded-lg px-4 py-3 border border-border min-w-[140px]">
@@ -274,10 +271,7 @@ const SwapDirection = ({
             From
           </span>
           <div className="flex items-center gap-2">
-            <Avatar className="w-6 h-6">
-              <AvatarImage src={fromTokenLogo} />
-              <AvatarFallback> {fromToken?.symbol?.slice(0, 2)}</AvatarFallback>
-            </Avatar>
+
             <span className="text-sm font-medium text-foreground">{fromToken?.symbol}</span>
           </div>
         </div>
@@ -293,10 +287,7 @@ const SwapDirection = ({
             To
           </span>
           <div className="flex items-center gap-2">
-            <Avatar className="w-6 h-6">
-              <AvatarImage src={toTokenLogo} />
-              <AvatarFallback>{toToken?.symbol?.slice(0, 2)}</AvatarFallback>
-            </Avatar>
+          
             <span className="text-sm font-medium text-foreground">{toToken?.symbol}</span>
           </div>
         </div>

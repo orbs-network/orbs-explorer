@@ -123,4 +123,16 @@ export const PARTNERS: Partner[] = [
     logo: "https://assets.coingecko.com/coins/images/28205/standard/Sei_Logo_-_Transparent.png",
     name: "Nami",
   },
+  {
+    id: Partners.Kodiak,
+    website: "https://kodiak.fi/",
+    logo: "https://s2.coinmarketcap.com/static/img/coins/128x128/39166.png",
+    name: "Kodiak",
+  },
+  {
+    id: Partners.Pangolin,
+    website: "https://pangolin.fi/",
+    logo: "https://s2.coinmarketcap.com/static/img/coins/128x128/8422.png",
+    name: "Pangolin",
+  },
 ];

@@ -3,7 +3,7 @@ import { Token } from "@/lib/types";
 import { getChain } from "@/lib/utils/utils";
 import { NextResponse } from "next/server";
 import { erc20Abi } from "viem";
-import { isNativeAddress } from "@orbs-network/spot-ui";
+  import { isNativeAddress } from "@/lib/utils/utils";
 
 const cache = new Map<number, Map<string, Token>>();
 const normalizeAddress = (addr: string) => addr.toLowerCase();
@@ -24,7 +24,7 @@ export async function POST(request: Request) {
   const publicClient = getPublicClient(chainId);
   if (!publicClient) throw new Error("Public client not found");
 
-  const nativeToken = getChain(chainId)?.native;
+  const nativeToken = getChain(chainId)?.nativeCurrency;
 
   const output = new Array<Token | null>(addresses.length).fill(null);
   const toFetch: { address: string; outIndex: number }[] = [];

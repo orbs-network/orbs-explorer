@@ -3,7 +3,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
 import { Copy, ExternalLink } from "lucide-react";
 import { useCopy } from "@/lib/hooks/use-copy";
 import { useNetwork } from "@/lib/hooks/use-network";
-import { useToken, useTokenLogo } from "@/lib/hooks/use-token";
+import { useToken } from "@/lib/hooks/use-token";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { isHash } from "viem";
 
@@ -18,7 +18,7 @@ export function Address({
   className?: string;
   children?: React.ReactNode;
 }) {
-  const explorer = useNetwork(chainId)?.explorer;
+  const explorer = useNetwork(chainId)?.blockExplorers?.default.url;
   const copy = useCopy();
   const type = isHash(address || "") ? "tx" : "address";
 
@@ -76,7 +76,7 @@ export const TokenAddress = ({
   address?: string;
 }) => {
   const token = useToken(address, chainId).data;
-  const explorer = useNetwork(chainId)?.explorer;
+  const explorer = useNetwork(chainId)?.blockExplorers?.default.url;
   const copy = useCopy();
 
   return (

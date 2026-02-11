@@ -10,8 +10,8 @@ type Filters = {
   exchange?: string;
 };
 
-const SINK_PROD_URL = "https://order-sink.orbs.network";
-const SINK_DEV_URL = "https://order-sink-dev.orbs.network";
+const SINK_API_URL = "https://order-sink.orbs.network";
+// const SINK_API_URL = "https://order-sink-dev.orbs.network";
 
 const handleFilters = (filters: Filters) => {
   const chainQuery = filters.chainIds
@@ -40,7 +40,7 @@ const getOrders = async ({
 
     const response = await axios.get(
       `
-    ${SINK_DEV_URL}/orders?view=list&page=${page}&limit=${limit}${filtersQuery}`,
+    ${SINK_API_URL}/orders?view=list&page=${page}&limit=${limit}${filtersQuery}`,
       {
         signal,
       },
@@ -108,12 +108,9 @@ export const getSpotOrder = async ({
     return response.data.orders[0] as Order;
   };
 
-  const [devResponse, prodResponse] = await Promise.all([
-    getOrder(SINK_DEV_URL),
-    getOrder(SINK_PROD_URL),
-  ]);
+  const response = await getOrder(SINK_API_URL);
 
-  return devResponse ?? prodResponse;
+  return response;
 };
 
 export const getSpotConfig = async () => {

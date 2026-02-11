@@ -67,3 +67,7 @@ export const LIQUIDITY_HUB_ELASTIC_CLIENT_URL = `${ELASTIC_ENDPOINT}/orbs-liquid
 export const DEFAULT_SESSIONS_TIME_RANGE = "30m";
 
 export const TX_TRACE_SERVER = "https://utils.orbs.network/tx-trace";
+
+
+export const ORBS_LOGO =
+  "https://raw.githubusercontent.com/orbs-network/twap-ui/master/logo/orbslogo.svg";
