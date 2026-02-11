@@ -12,14 +12,12 @@ import { useToWeiAmount } from "../use-to-wei-amount";
 import { useSpotOrderQuery } from "../use-spot-orders";
 import { PARTNERS } from "../../partners";
 import { useSpotConfig } from "../use-twap-config";
+import { getOrderLogsUI } from "@/lib/api";
+import { REACT_QUERY_KEYS } from "@/lib/consts";
+import { useQuery } from "@tanstack/react-query";
 
-const getPartner = (_partner: string) => {
-  let partner = _partner;
-  if (partner === "spooky") {
-    partner = Partners.Spookyswap;
-  }
-
-  return PARTNERS.find((item) => item.id.toLowerCase() === partner);
+const getPartner = (partner: string) => {
+  return PARTNERS.find((item) => item.identifiers.some(i => i.toLowerCase() === partner.toLowerCase()));
 };
 
 const EMPTY_PARTNER = {
@@ -204,4 +202,16 @@ export const useOrderChunks = (hash?: string) => {
     successChunks: chunks.filter((chunk) => chunk.status === "success"),
     failedChunks: chunks.filter((chunk) => chunk.status === "failed"),
   };
+};
+
+
+
+export const useOrderClientLogs = (hash?: string) => {
+  return useQuery({
+    queryKey: [REACT_QUERY_KEYS.orderClientLogs, hash],
+    queryFn: async () => {
+      return getOrderLogsUI(hash as string);
+    },
+    enabled: !!hash,
+  });
 };

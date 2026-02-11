@@ -21,6 +21,7 @@ const NAV_LINKS = [
   { href: ROUTES.HOME, label: "Home" },
   { href: ROUTES.TWAP.ROOT, label: "TWAP" },
   { href: ROUTES.LIQUIDITY_HUB.ROOT, label: "Liquidity Hub" },
+  { href: ROUTES.ORDERS_DASHBOARD, label: "Orders Dashboard" },
 ];
 
 function ThemeToggle() {

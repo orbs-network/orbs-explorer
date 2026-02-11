@@ -90,7 +90,7 @@ export const TokenAddress = ({
           {token?.symbol || "..."}
         </a>
       </TooltipTrigger>
-      <TooltipContent className="flex flex-col gap-1 items-start">
+      <TooltipContent className="flex flex-col gap-1 items-start" side="bottom">
         <span className="text-sm font-mono">{token?.name || "..."}</span>
         <div className="flex flex-row gap-2 items-center">
         <span className="text-sm font-mono">{address}</span>

@@ -29,6 +29,7 @@ export type Partner = {
   website: string;
   logo: string;
   name: string;
+  identifiers: string[];
 };
 
 export type Token = {

@@ -4,5 +4,5 @@ import { getPartnersById } from '../utils/utils';
 
 export function usePartner(id?: string) {
 
-  return useMemo(() => id ? getPartnersById([id])?.[0] : undefined, [id]);
+  return useMemo(() => id ? getPartnersById(id.split(','))?.[0] : undefined, [id]);
 }

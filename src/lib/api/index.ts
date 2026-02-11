@@ -1,6 +1,8 @@
 import axios from "axios";
 import _, { flatten } from "lodash";
 import { ListOrder, Order } from "../types";
+import { queryInitialData } from "../liquidity-hub/elastic-queries/main";
+import { TWAP_ELASTIC_CLIENT_URL } from "../consts";
 
 type Filters = {
   account?: string;
@@ -59,6 +61,93 @@ const getOrders = async ({
   }
 
   return callback();
+};
+
+export type OrdersPageResponse = {
+  orders: ListOrder[];
+  total: number;
+};
+
+export const getOrdersPageWithFilters = async ({
+  signal,
+  page = 0,
+  limit = 400,
+  filters,
+}: {
+  signal?: AbortSignal;
+  page?: number;
+  limit?: number;
+  filters: Filters;
+}): Promise<OrdersPageResponse> => {
+  const filtersQuery = handleFilters(filters);
+  const response = await axios.get(
+    `${SINK_API_URL}/orders?view=list&page=${page}&limit=${limit}${filtersQuery}`,
+    { signal }
+  );
+  const orders = (response.data.orders ?? []) as ListOrder[];
+  const total = orders.length;
+  return { orders, total };
+};
+
+/**
+ * Fetches all orders for a given exchange adapter with pagination.
+ * Uses the `exchange` filter param (adapter address).
+ */
+export const getAllOrdersForExchange = async ({
+  exchange: adapter,
+  signal,
+  limit = 400,
+}: {
+  exchange: string;
+  signal?: AbortSignal;
+  limit?: number;
+}): Promise<ListOrder[]> => {
+  const all: ListOrder[] = [];
+  let page = 0;
+  let totalFetched = 0;
+  let totalFromApi: number | null = null;
+
+  while (true) {
+    const { orders, total } = await getOrdersPageWithFilters({
+      signal,
+      page,
+      limit,
+      filters: { exchange: adapter },
+    });
+
+    if (totalFromApi === null) totalFromApi = total;
+    all.push(...orders);
+    totalFetched += orders.length;
+
+    if (orders.length < limit || (totalFromApi !== null && totalFetched >= totalFromApi)) {
+      break;
+    }
+    page += 1;
+  }
+
+  return all.sort(
+    (a, b) =>
+      new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+  );
+};
+
+export const getOrdersListPage = async ({
+  signal,
+  page = 0,
+  limit = 400,
+}: {
+  signal?: AbortSignal;
+  page?: number;
+  limit?: number;
+}): Promise<{ orders: ListOrder[]; total?: number }> => {
+  const response = await axios.get(
+    `${SINK_API_URL}/orders?view=list&page=${page}&limit=${limit}`,
+    { signal }
+  );
+  return {
+    orders: (response.data.orders ?? []) as ListOrder[],
+    total: response.data.total,
+  };
 };
 
 export const getSpotOrders = async ({
@@ -160,4 +249,44 @@ export const fetchElastic = async <T>(
   return normalizeSessions(
     response.data.hits?.hits.map((hit: any) => hit.fields),
   );
+};
+
+
+
+export const getOrderLogs = (hash: string) => {
+  return {
+    ...queryInitialData,
+    query: {
+      bool: {
+        filter: [
+          {
+            bool: {
+              should: [
+                { term: { "orderHash.keyword": hash } },
+
+              ],
+              minimum_should_match: 1, // ensures at least one condition must match
+            },
+          },
+        ],
+      },
+    },
+    sort: [
+      {
+        timestamp: {
+          order: "desc",
+        },
+      },
+    ],
+  };
+};
+
+
+export const getOrderLogsUI = async (hash: string, signal?: AbortSignal) => {
+  const response = await fetchElastic<any>(
+    TWAP_ELASTIC_CLIENT_URL,
+    getOrderLogs(hash),
+    signal,
+  );
+  return normalizeSessions(response);
 };

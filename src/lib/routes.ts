@@ -13,4 +13,5 @@ export const ROUTES = {
     ROOT: "/liquidity-hub",
     TX: (identifier: string) => `/liquidity-hub/tx/${identifier}`,
   },
+  ORDERS_DASHBOARD: "/orders-dashboard",
 } as const;

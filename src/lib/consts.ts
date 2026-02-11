@@ -40,6 +40,7 @@ export const REACT_QUERY_KEYS = {
   spotOrder: "spotOrder",
   spotOrders: "spotOrders",
   configs: "configs",
+  orderClientLogs: "orderClientLogs",
 };
 
 export const ROUTES = {
@@ -71,3 +72,4 @@ export const TX_TRACE_SERVER = "https://utils.orbs.network/tx-trace";
 
 export const ORBS_LOGO =
   "https://raw.githubusercontent.com/orbs-network/twap-ui/master/logo/orbslogo.svg";
+

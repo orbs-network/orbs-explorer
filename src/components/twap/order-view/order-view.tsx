@@ -6,6 +6,7 @@ import { TransactionDisplay } from "@/components/transaction-display";
 
 import {
   useOrder,
+  useOrderClientLogs,
   useOrderExecutionRate,
   useOrderFilledAmounts,
   useOrderLimitPriceRate,
@@ -74,7 +75,9 @@ const usePageContext = () => {
 export function OrderView({ hash }: { hash: string }) {
   const { order, isLoading, srcToken, dstToken, partner, chainId, config } =
     useOrder(hash);
-
+  const { data: clientLogs } = useOrderClientLogs(hash);
+  console.log({clientLogs});
+  
   if (isLoading) {
     return (
       <TransactionDisplay.Container>
@@ -128,6 +131,7 @@ const OrderHeader = () => {
           </div>
           <div className="flex items-center gap-2">
             <RawOrderButton />
+            <ClientLogsButton />
             <TransactionDisplay.Timestamp
               date={toMoment(order.timestamp).toDate()}
             />
@@ -185,6 +189,58 @@ const RawOrderButton = () => {
         <div className="flex-1 overflow-auto rounded-lg bg-[#1e1e1e] p-4">
           <ReactJson
             src={order}
+            theme="monokai"
+            collapsed={2}
+            displayDataTypes={false}
+            enableClipboard
+            style={{ backgroundColor: "transparent" }}
+          />
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
+
+const ClientLogsButton = () => {
+  const { order } = usePageContext();
+  const { data: clientLogs } = useOrderClientLogs(order.hash);
+  const [open, setOpen] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button variant="outline" size="sm" className="gap-1.5">
+          <Code className="w-3.5 h-3.5" />
+          Client Logs
+        </Button>
+      </DialogTrigger>
+      <DialogContent
+        className={
+          isFullscreen
+            ? "!max-w-[95vw] !w-[95vw] !max-h-[95vh] !h-[95vh] overflow-hidden flex flex-col"
+            : "!max-w-5xl !w-[90vw] !max-h-[80vh] overflow-hidden flex flex-col"
+        }
+      >
+        <DialogHeader className="flex flex-row items-center justify-between pr-8">
+          <DialogTitle>Client Logs</DialogTitle>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8"
+            onClick={() => setIsFullscreen(!isFullscreen)}
+          >
+            {isFullscreen ? (
+              <Minimize2 className="h-4 w-4" />
+            ) : (
+              <Maximize2 className="h-4 w-4" />
+            )}
+          </Button>
+        </DialogHeader>
+        <div className="flex-1 overflow-auto rounded-lg bg-[#1e1e1e] p-4">
+          <ReactJson
+            src={clientLogs || {}}
             theme="monokai"
             collapsed={2}
             displayDataTypes={false}

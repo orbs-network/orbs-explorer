@@ -4,6 +4,8 @@ import _ from "lodash";
 import { Token } from "../types";
 import * as chains from 'viem/chains'
 import { getTokenLogo } from "../api";
+import { getChain, isNativeAddress } from "../utils/utils";
+import { zeroAddress } from "viem";
 
 const coingekoChainToName = {
   [chains.flare.id]: "flare-network",
@@ -33,6 +35,17 @@ export const useToken = (
   return  useQuery({
     queryKey: ["useToken", address, chainId],
     queryFn: async () => {
+
+      if(isNativeAddress(address!)) {
+        const nativeToken = getChain(chainId)?.nativeCurrency;
+        return {
+          address: zeroAddress,
+          decimals: nativeToken?.decimals,
+          name: nativeToken?.name,
+          symbol: nativeToken?.symbol,
+        } as Token;
+      }
+
       const response = await fetch("/api/tokens", {
         method: "POST",
         body: JSON.stringify({ addresses: [address], chainId }),

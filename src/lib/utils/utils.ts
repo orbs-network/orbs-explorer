@@ -236,7 +236,8 @@ export function formatDuration(seconds: number): string {
 
 export const getPartnersById = (ids?: string[]) => {
   if (!ids) return undefined;
-  return PARTNERS.filter((p) => ids.map(id => id.toLowerCase()).includes(p.id.toLowerCase()));
+  
+  return PARTNERS.filter((p) => ids.some(id => p.identifiers.some(i => i.toLowerCase() === id.toLowerCase())));
 };
 
 export const getWrappedNativeCurrency = (chainId?: number) => {
@@ -288,11 +289,30 @@ export const getChainLogo = (chainId?: number) => {
   return chainLogosByChainId[chainId as keyof typeof chainLogosByChainId];
 };
 
+const SUPPORTED_CHAINS = [
+  chains.mainnet.id,
+  chains.bsc.id,
+  chains.polygon.id,
+  chains.base.id,
+  chains.fantom.id,
+  chains.avalanche.id,
+  chains.arbitrum.id,
+  chains.berachain.id,
+  chains.flare.id,
+  chains.sonic.id,
+  chains.cronoszkEVM.id,
+  chains.katana.id,
+  chains.sei.id,
+  chains.monad.id,
+] as number[];
+
 export const getChains = () => {
-  return Object.values(chains).map((chain) => ({
+  const chainsData = Object.values(chains).map((chain) => ({
     id: chain.id,
     name: chain.name,
     nativeCurrency: chain.nativeCurrency,
     logoUrl: getChainLogo(chain.id),
   }));
+
+  return chainsData.filter((chain) => SUPPORTED_CHAINS.includes(chain.id));
 };
