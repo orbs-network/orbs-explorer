@@ -85,15 +85,15 @@ export const TokenAddress = ({
         <a
           href={`${explorer}/address/${address}`}
           target="_blank"
-          className="inline-flex items-center gap-1 px-2 py-0.5 bg-primary/10 text-primary text-sm font-medium rounded hover:bg-primary/20 transition-colors"
+          className="inline-flex items-center gap-1 px-2 py-0.5 bg-primary/10 text-primary text-[12px] font-medium rounded hover:bg-primary/20 transition-colors"
         >
           {token?.symbol || "..."}
         </a>
       </TooltipTrigger>
       <TooltipContent className="flex flex-col gap-1 items-start" side="bottom">
-        <span className="text-sm font-mono">{token?.name || "..."}</span>
+        <span className="text-[12px] font-mono">{token?.name || "..."}</span>
         <div className="flex flex-row gap-2 items-center">
-        <span className="text-sm font-mono">{address}</span>
+        <span className="text-[12px] font-mono">{address}</span>
         <Copy
           className="w-3.5 h-3.5 cursor-pointer hover:text-primary transition-colors"
           onClick={(e) => {

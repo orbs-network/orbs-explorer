@@ -17,65 +17,6 @@ import { useSpotOrderQuery } from "./use-spot-orders";
 import { useToken } from "../use-token";
 import { Order, OrderChunk, ParsedOrderChunk, Token } from "@/lib/types";
 
-export type GetOrderChunksContext = {
-  srcToken?: Token;
-  dstToken?: Token;
-  chainId?: number;
-};
-
-export type OrderChunksResult = {
-  expectedChunks: number | undefined;
-  successChunks: ParsedOrderChunk[];
-  failedChunks: ParsedOrderChunk[];
-  pendingChunks: ParsedOrderChunk[];
-  chunks: ParsedOrderChunk[];
-};
-
-/**
- * Pure function: computes parsed chunks and grouped lists from order.
- */
-export function getOrderChunks(
-  order: Order | undefined,
-  context: GetOrderChunksContext,
-): OrderChunksResult {
-  const { srcToken, dstToken, chainId } = context;
-  const chunkList = order?.metadata.chunks;
-  const srcDecimals = srcToken?.decimals;
-  const dstDecimals = dstToken?.decimals;
-
-  const chunks: ParsedOrderChunk[] =
-    chunkList
-      ?.map((chunk: OrderChunk) => {
-        const description = chunk.description?.trim() || undefined;
-        return {
-          inAmountRaw: chunk.inAmount ?? "0",
-          inAmountFormatted: toAmountUI(chunk.inAmount ?? "0", srcDecimals),
-          outAmountRaw: chunk.outAmount ?? "0",
-          outAmountFormatted: toAmountUI(chunk.outAmount ?? "0", dstDecimals),
-          feesUsd: chunk.displayOnlyFee?.replace("$", "") || "0",
-          status: chunk.status,
-          dueTime: chunk.displayOnlyDueTime,
-          createdAt: chunk.timestamp,
-          txHash: chunk.txHash ?? "",
-          index: chunk.index,
-          inToken: chunk.inToken ?? "",
-          outToken: chunk.outToken ?? "",
-          chainId,
-          description,
-        };
-      })
-      .sort((a, b) => a.index - b.index) ?? [];
-
-  return {
-    expectedChunks: order?.metadata.expectedChunks,
-    successChunks: chunks.filter((c) => c.status === "success"),
-    failedChunks: chunks.filter((c) => c.status === "failed"),
-    pendingChunks: chunks.filter(
-      (c) => c.status !== "success" && c.status !== "failed",
-    ),
-    chunks,
-  };
-}
 
 const parseValue = (value: string | undefined, decimals?: number) => {
   return {
@@ -108,7 +49,6 @@ export const useSpotOrder = (hash?: string) => {
     const deadline = BN(order?.order.witness.deadline || 0)
       .multipliedBy(1000)
       .toFixed();
-    const totalInAmount = order?.order.witness.input.maxAmount || "0";
     const minOutAmount = order?.order.witness.output.limit || "0";
 
     return {
@@ -127,15 +67,16 @@ export const useSpotOrder = (hash?: string) => {
       createdAt: toMoment(order?.timestamp),
       expiration: moment(Number(deadline)),
       epoch: order?.order.witness.epoch || 0,
-      chunks: getOrderChunks(order, { srcToken, dstToken, chainId }),
-      totalInAmount: parseValue(totalInAmount, srcToken?.decimals),
+      totalInAmount: parseValue(order?.order.witness.input.maxAmount || "0", srcToken?.decimals),
       triggerPrice: parseValue(triggerPrice, dstToken?.decimals),
       limitPrice: parseValue(limitPrice, dstToken?.decimals),
       minOutAmount: parseValue(minOutAmount, dstToken?.decimals),
       dstFilledAmount,
       srcFilledAmount,
       executionRate: parseValue(executionRate, dstToken?.decimals),
+      chunkAmount: parseValue(order?.order.witness.input.amount, srcToken?.decimals),
       feeUsd,
+      totalChunks: order?.metadata.expectedChunks || 0,
     };
   }, [isLoading, srcToken, dstToken, chainId, partner, config, order]);
 };

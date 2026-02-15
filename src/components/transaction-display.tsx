@@ -24,6 +24,7 @@ import { useRouter } from "next/navigation";
 import { Spinner } from "./ui/spinner";
 import { useToken } from "@/lib/hooks/use-token";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
+import { TokenAddress } from "./token-address";
 
 export const Row = ({
   label,
@@ -31,12 +32,14 @@ export const Row = ({
   tooltip,
   description,
   className,
+  missingValue = false,
 }: {
   label: string;
   children?: ReactNode;
   tooltip?: string;
   className?: string;
   description?: string;
+  missingValue?: boolean;
 }) => {
   return (
     <div
@@ -72,7 +75,7 @@ export const Row = ({
           className,
         )}
       >
-        {children}
+        {missingValue ? <span className="text-muted-foreground/50">-</span> : children}
       </div>
     </div>
   );
@@ -267,12 +270,12 @@ const SwapDirection = ({
     <div className="flex items-center gap-4 flex-wrap">
       <div className="flex items-center gap-3 bg-card/50 rounded-lg px-4 py-3 border border-border min-w-[140px]">
         <div className="flex flex-col gap-2">
-          <span className="text-xs text-muted-foreground uppercase tracking-wide">
+          <span className="text-xs text-muted-foreground tracking-wide">
             From
           </span>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2"> 
 
-            <span className="text-sm font-medium text-foreground">{fromToken?.symbol}</span>
+            <TokenAddress address={fromAddress} chainId={chainId} />
           </div>
         </div>
       </div>
@@ -283,12 +286,12 @@ const SwapDirection = ({
 
       <div className="flex items-center gap-3 bg-card/50 rounded-lg px-4 py-3 border border-border min-w-[140px]">
         <div className="flex flex-col gap-2">
-          <span className="text-xs text-muted-foreground uppercase tracking-wide">
+          <span className="text-xs text-muted-foreground tracking-wide">
             To
           </span>
           <div className="flex items-center gap-2">
           
-            <span className="text-sm font-medium text-foreground">{toToken?.symbol}</span>
+            <TokenAddress address={toAddress} chainId={chainId} />
           </div>
         </div>
       </div>

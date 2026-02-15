@@ -21,13 +21,14 @@ import {
   Layers,
   Loader2,
 } from "lucide-react";
+import { useSpotOrderChunks } from "@/lib/hooks/twap-hooks/use-spot-order-chunks";
+import { useOrderViewContext } from "./use-order-view-context";
 
-import React from "react";
-import { getOrderChunks } from "@/lib/hooks/twap-hooks/use-spot-order";
-
-export function OrderChunks({ expectedChunks, successChunks, failedChunks, pendingChunks }: { expectedChunks: number, successChunks: ParsedOrderChunk[], failedChunks: ParsedOrderChunk[], pendingChunks: ParsedOrderChunk[] }) {
-  if (!expectedChunks) return null;
-
+export function OrderChunks() {
+  const { hash } = useOrderViewContext();
+  const { chunks, isLoading } = useSpotOrderChunks(hash);
+  if (isLoading || !chunks) return null;
+  const { successChunks, failedChunks, pendingChunks, expectedChunks } = chunks;
   return (
     <TransactionDisplay.SectionItem label="Fills">
       <Dialog>
@@ -64,7 +65,11 @@ export function OrderChunks({ expectedChunks, successChunks, failedChunks, pendi
           </DialogHeader>
           <div className="flex flex-col gap-3">
             {successChunks.map((chunk, index) => (
-              <ChunkCard key={`success-${chunk.index}`} chunk={chunk} index={index} />
+              <ChunkCard
+                key={`success-${chunk.index}`}
+                chunk={chunk}
+                index={index}
+              />
             ))}
             {pendingChunks.map((chunk) => (
               <ChunkCardPendingOrFailed

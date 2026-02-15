@@ -1,7 +1,7 @@
 "use client";
 
 import { Address, TokenAddress } from "@/components/token-address";
-import { TokenAmount } from "@/components/token-amount";
+import { TokenAmount, TokenAmountFormatted } from "@/components/token-amount";
 import { TransactionDisplay } from "@/components/transaction-display";
 import { useFormatNumber } from "@/lib/hooks/use-number-format";
 import {
@@ -42,29 +42,12 @@ import {
 import { Network } from "@/components/ui/network";
 import { Partner } from "@/components/ui/partner";
 import { OrderStatusBadge } from "../order-status-badge";
-import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import dynamic from "next/dynamic";
-import { maxUint256 } from "viem";
+
 import { useSpotOrder } from "@/lib/hooks/twap-hooks/use-spot-order";
-import { useSpotOrderUiLogs } from "@/lib/hooks/twap-hooks/use-spot-order-ui-logs";
-
-const ReactJson = dynamic(() => import("react-json-view"), { ssr: false });
-
-type OrderContextType = ReturnType<typeof useSpotOrder> & {
-  order: Order;
-};
-
-const Context = createContext<OrderContextType>({} as OrderContextType);
-const usePageContext = () => {
-  return useContext(Context);
-};
+import { OrderViewContext } from "./context";
+import { useOrderViewContext } from "./use-order-view-context";
+import { SpotOrderUiLogs } from "./ui-logs";
+import { OriginalOrder } from "./original-order";
 
 export function OrderView({ hash }: { hash: string }) {
   const orderPayload = useSpotOrder(hash);
@@ -89,7 +72,7 @@ export function OrderView({ hash }: { hash: string }) {
   }
 
   return (
-    <Context.Provider
+    <OrderViewContext.Provider
       value={{ ...orderPayload, order: orderPayload.originalOrder! }}
     >
       <TransactionDisplay.Container>
@@ -102,13 +85,44 @@ export function OrderView({ hash }: { hash: string }) {
         </TransactionDisplay.Grid>
         <ExecutionDetails />
       </TransactionDisplay.Container>
-    </Context.Provider>
+    </OrderViewContext.Provider>
   );
 }
 
+const PriceRate = ({ rate, srcToken, chainId, dstToken }: { rate: string, srcToken: Token | undefined, chainId: number | undefined, dstToken: Token | undefined }) => {
+  return (
+    <div className="flex items-center gap-1 text-[12px]">
+      <span className="text-secondary-foreground font-mono">
+        {"1"}
+      </span>
+      <TokenAddress address={srcToken?.address} chainId={chainId} />
+      <span className="text-secondary-foreground font-mono font-bold">
+        {"="}
+      </span>
+      <TokenAmountFormatted amount={rate} token={dstToken} chainId={chainId} />
+    </div>
+  );
+};
+
+
+const LimitPrice = () => {
+  const { srcToken, dstToken, limitPrice, chainId } = useOrderViewContext();
+
+  return (
+    <TransactionDisplay.SectionItem label="Limit Price" missingValue={!limitPrice.formatted}>
+      <PriceRate rate={limitPrice.formatted} srcToken={srcToken} chainId={chainId} dstToken={dstToken} />
+    </TransactionDisplay.SectionItem>
+  );
+};
+
+
+
+
+
+
 const OrderHeader = () => {
   const { type, createdAt, status, srcToken, dstToken, chainId } =
-    usePageContext();
+    useOrderViewContext();
 
   return (
     <TransactionDisplay.Hero>
@@ -122,14 +136,15 @@ const OrderHeader = () => {
             </TransactionDisplay.Badge>
           </div>
           <div className="flex items-center gap-2">
-            <RawOrderButton />
-            <ClientLogsButton />
-            <TransactionDisplay.Timestamp date={createdAt.toDate()} />
+            <OriginalOrder />
+            <SpotOrderUiLogs />
+           
           </div>
         </div>
-
+        <OrderHash />
         {/* Swap Visual with Progress */}
         <div className="flex items-center gap-4 flex-wrap">
+          
           <TransactionDisplay.SwapDirection
             fromAddress={srcToken?.address}
             toAddress={dstToken?.address}
@@ -141,109 +156,8 @@ const OrderHeader = () => {
   );
 };
 
-const RawOrderButton = () => {
-  const { originalOrder } = usePageContext();
-  const [open, setOpen] = useState(false);
-  const [isFullscreen, setIsFullscreen] = useState(false);
-
-  return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button variant="outline" size="sm" className="gap-1.5">
-          <Code className="w-3.5 h-3.5" />
-          Raw Order
-        </Button>
-      </DialogTrigger>
-      <DialogContent
-        className={
-          isFullscreen
-            ? "!max-w-[95vw] !w-[95vw] !max-h-[95vh] !h-[95vh] overflow-hidden flex flex-col"
-            : "!max-w-5xl !w-[90vw] !max-h-[80vh] overflow-hidden flex flex-col"
-        }
-      >
-        <DialogHeader className="flex flex-row items-center justify-between pr-8">
-          <DialogTitle>Raw Order Data</DialogTitle>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8"
-            onClick={() => setIsFullscreen(!isFullscreen)}
-          >
-            {isFullscreen ? (
-              <Minimize2 className="h-4 w-4" />
-            ) : (
-              <Maximize2 className="h-4 w-4" />
-            )}
-          </Button>
-        </DialogHeader>
-        <div className="flex-1 overflow-auto rounded-lg bg-[#1e1e1e] p-4">
-          <ReactJson
-            src={originalOrder!}
-            theme="monokai"
-            collapsed={2}
-            displayDataTypes={false}
-            enableClipboard
-            style={{ backgroundColor: "transparent" }}
-          />
-        </div>
-      </DialogContent>
-    </Dialog>
-  );
-};
-
-const ClientLogsButton = () => {
-  const { originalOrder } = usePageContext();
-  const { data: clientLogs } = useSpotOrderUiLogs(originalOrder?.hash);
-  const [open, setOpen] = useState(false);
-  const [isFullscreen, setIsFullscreen] = useState(false);
-
-  return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button variant="outline" size="sm" className="gap-1.5">
-          <Code className="w-3.5 h-3.5" />
-          Client Logs
-        </Button>
-      </DialogTrigger>
-      <DialogContent
-        className={
-          isFullscreen
-            ? "!max-w-[95vw] !w-[95vw] !max-h-[95vh] !h-[95vh] overflow-hidden flex flex-col"
-            : "!max-w-5xl !w-[90vw] !max-h-[80vh] overflow-hidden flex flex-col"
-        }
-      >
-        <DialogHeader className="flex flex-row items-center justify-between pr-8">
-          <DialogTitle>Client Logs</DialogTitle>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8"
-            onClick={() => setIsFullscreen(!isFullscreen)}
-          >
-            {isFullscreen ? (
-              <Minimize2 className="h-4 w-4" />
-            ) : (
-              <Maximize2 className="h-4 w-4" />
-            )}
-          </Button>
-        </DialogHeader>
-        <div className="flex-1 overflow-auto rounded-lg bg-[#1e1e1e] p-4">
-          <ReactJson
-            src={clientLogs || {}}
-            theme="monokai"
-            collapsed={2}
-            displayDataTypes={false}
-            enableClipboard
-            style={{ backgroundColor: "transparent" }}
-          />
-        </div>
-      </DialogContent>
-    </Dialog>
-  );
-};
-
 const FailureReason = () => {
-  const { originalOrder, status, description } = usePageContext();
+  const {status, description } = useOrderViewContext();
 
   const isFailed =
     status === "failed" || status === "expired" || status === "canceled";
@@ -269,39 +183,66 @@ const FailureReason = () => {
   );
 };
 
-const BaseInformation = () => {
-  const { hash, chainId, partner, srcToken, dstToken, swapper } =
-    usePageContext();
-
+const OrderHash = () => {
+  const { hash } = useOrderViewContext();
   return (
-    <TransactionDisplay.SectionCard title="Order Details" icon={Receipt}>
-      <TransactionDisplay.SectionItem label="Order Hash">
-        <Copy text={shortenAddress(hash!)} value={hash!} tooltip={hash} />
-      </TransactionDisplay.SectionItem>
-      <TransactionDisplay.SectionItem label="Network">
-        <Network chainId={chainId || 0} />
-      </TransactionDisplay.SectionItem>
-      <TransactionDisplay.SectionItem label="Partner">
-        <Partner data={partner || undefined} />
-      </TransactionDisplay.SectionItem>
-      <TransactionDisplay.SectionItem label="In Token">
-        <TokenAddress address={srcToken?.address} chainId={chainId} />
-      </TransactionDisplay.SectionItem>
-      <TransactionDisplay.SectionItem label="Out Token">
-        <TokenAddress address={dstToken?.address} chainId={chainId} />
-      </TransactionDisplay.SectionItem>
-      <TransactionDisplay.SectionItem label="Swapper">
-        <div className="flex items-center gap-2">
-          <Wallet className="w-3.5 h-3.5 text-muted-foreground" />
-          <Address address={swapper} chainId={chainId} />
-        </div>
-      </TransactionDisplay.SectionItem>
-    </TransactionDisplay.SectionCard>
+    <div className="flex items-center gap-2">
+      <span className="text-muted-foreground">ID:</span> <Copy text={shortenAddress(hash!)} value={hash!} tooltip={hash} />
+    </div>
   );
 };
 
+const NetworkSection = () => {
+  const { chainId } = useOrderViewContext();
+  return (
+    <TransactionDisplay.SectionItem label="Network">
+      <Network chainId={chainId || 0} />
+    </TransactionDisplay.SectionItem>
+  );
+};
+
+const PartnerSection = () => {
+  const { partner } = useOrderViewContext();
+  return (
+    <TransactionDisplay.SectionItem label="Partner">
+      <Partner data={partner || undefined} />
+    </TransactionDisplay.SectionItem>
+  );
+};
+
+const InTokenSection = () => {
+  const { srcToken, chainId } = useOrderViewContext();
+  return (
+    <TransactionDisplay.SectionItem label="In Token">
+      <TokenAddress address={srcToken?.address} chainId={chainId} />
+    </TransactionDisplay.SectionItem>
+  );
+};
+
+const OutTokenSection = () => {
+  const { dstToken, chainId } = useOrderViewContext();
+  return (
+    <TransactionDisplay.SectionItem label="Out Token">
+      <TokenAddress address={dstToken?.address} chainId={chainId} />
+    </TransactionDisplay.SectionItem>
+  );
+};
+
+const SwapperSection = () => {
+  const { swapper, chainId } = useOrderViewContext();
+  return (
+    <TransactionDisplay.SectionItem label="Swapper">
+      <div className="flex items-center gap-2">
+        <Wallet className="w-3.5 h-3.5 text-muted-foreground" />
+        <Address address={swapper} chainId={chainId} />
+      </div>
+    </TransactionDisplay.SectionItem>
+  );
+};
+
+
 const TriggerPrice = () => {
-  const { type, chainId, triggerPrice, dstToken } = usePageContext();
+  const { type, chainId, triggerPrice, dstToken } = useOrderViewContext();
   if (type !== SpotOrderType.TAKE_PROFIT) return null;
   return (
     <TransactionDisplay.SectionItem label="Trigger Price">
@@ -315,74 +256,37 @@ const TriggerPrice = () => {
   );
 };
 
-const OrderConfig = () => {
-  const {
-    createdAt,
-    expiration,
-    chainId,
-    totalInAmount,
-    srcToken,
-    minOutAmount,
-    dstToken,
-    epoch,
-    chunks,
-  } = usePageContext();
-
+const CreatedAtSection = () => {
+  const { createdAt } = useOrderViewContext();
   return (
-    <TransactionDisplay.SectionCard title="Order Configuration" icon={Settings}>
-      <TransactionDisplay.SectionItem label="Created">
-        <div className="flex items-center gap-2">
-          <Clock className="w-3.5 h-3.5 text-muted-foreground" />
-          <span>{createdAt.format("lll")}</span>
-        </div>
-      </TransactionDisplay.SectionItem>
-      <TransactionDisplay.SectionItem label="Deadline">
-        <div className="flex items-center gap-2">
-          <Timer className="w-3.5 h-3.5 text-muted-foreground" />
-          <span>{expiration.format("lll")}</span>
-        </div>
-      </TransactionDisplay.SectionItem>
-      <TransactionDisplay.SectionItem label="Total In Amount">
-        <TokenAmount
-          amountRaw={totalInAmount.raw}
-          address={srcToken?.address}
-          chainId={chainId}
-          usd=""
-        />
-      </TransactionDisplay.SectionItem>
-      <TransactionDisplay.SectionItem label="Min Out Amount">
-        <TokenAmount
-          amountRaw={minOutAmount.raw}
-          address={dstToken?.address}
-          chainId={chainId}
-        />
-      </TransactionDisplay.SectionItem>
-
-      <TriggerPrice />
-      <SrcChunkAmount />
-      <TransactionDisplay.SectionItem label="Fill Delay">
-        <span className="px-2 py-0.5 bg-muted rounded text-sm font-mono">
-          {formatDuration(epoch)}
-        </span>
-      </TransactionDisplay.SectionItem>
-      <OrderChunks
-        expectedChunks={chunks.expectedChunks || 0}
-        successChunks={chunks.successChunks}
-        failedChunks={chunks.failedChunks}
-        pendingChunks={chunks.pendingChunks}
-      />
-    </TransactionDisplay.SectionCard>
+    <TransactionDisplay.SectionItem label="Created At">
+      <div className="flex items-center gap-2">
+        <Clock className="w-3.5 h-3.5 text-muted-foreground" />
+        <span className="text-[13px] font-mono">{createdAt.format("lll")}</span>
+      </div>
+    </TransactionDisplay.SectionItem>
   );
 };
 
-const SrcChunkAmount = () => {
-  const { order, chainId } = usePageContext();
-
+const DeadlineSection = () => {
+    const { expiration } = useOrderViewContext();
   return (
-    <TransactionDisplay.SectionItem label="Src Chunk Amount">
+    <TransactionDisplay.SectionItem label="Deadline">
+      <div className="flex items-center gap-2">
+        <Timer className="w-3.5 h-3.5 text-muted-foreground" />
+        <span className="text-[13px] font-mono">{expiration.format("lll")}</span>
+      </div>
+    </TransactionDisplay.SectionItem>
+  );
+};
+
+const InAmountSection = () => {
+  const { chainId, totalInAmount, srcToken } = useOrderViewContext();
+  return (
+    <TransactionDisplay.SectionItem label="In Amount">
       <TokenAmount
-        amountRaw={order?.order.witness.input.maxAmount}
-        address={order.order.witness.input.token}
+        amountRaw={totalInAmount.raw}
+        address={srcToken?.address}
         chainId={chainId}
         usd=""
       />
@@ -390,8 +294,49 @@ const SrcChunkAmount = () => {
   );
 };
 
+const MinOutAmountSection = () => {
+  const { chainId, minOutAmount, dstToken } = useOrderViewContext();
+  return (
+    <TransactionDisplay.SectionItem label="Min Out Amount">
+      <TokenAmount
+        amountRaw={minOutAmount.raw}
+        address={dstToken?.address}
+        chainId={chainId}
+      />
+    </TransactionDisplay.SectionItem>
+  );
+};
+
+const FillDelaySection = () => {
+  const { epoch } = useOrderViewContext();
+  return (
+    <TransactionDisplay.SectionItem label="Fill Delay">
+      <span className="px-2 py-0.5 bg-muted rounded text-sm font-mono">
+        {formatDuration(epoch)}
+      </span>
+    </TransactionDisplay.SectionItem>
+  );
+};
+
+
+const SrcChunkAmount = () => {
+  const { chainId, chunkAmount, srcToken, totalChunks } = useOrderViewContext();
+
+  if (totalChunks === 1) return null;
+
+  return (
+    <TransactionDisplay.SectionItem label="Chunk Amount">
+      <TokenAmount
+        amountRaw={chunkAmount.raw}
+        address={srcToken?.address}
+        chainId={chainId}
+      />
+    </TransactionDisplay.SectionItem>
+  );
+};
+
 const ExecutionDetails = () => {
-  const { order, chainId } = usePageContext();
+  const { order, chainId } = useOrderViewContext();
   const progress = getOrderProgress(order);
 
   return (
@@ -430,7 +375,7 @@ const ExecutionDetails = () => {
 };
 
 const FilledFee = () => {
-  const { feeUsd } = usePageContext();
+  const { feeUsd } = useOrderViewContext();
 
   return (
     <TransactionDisplay.SectionItem label="Fee">
@@ -440,7 +385,7 @@ const FilledFee = () => {
 };
 
 const FilledDstAmount = () => {
-  const { order, chainId, dstFilledAmount } = usePageContext();
+  const { order, chainId, dstFilledAmount } = useOrderViewContext();
   return (
     <TransactionDisplay.SectionItem label="Out Filled Amount">
       <TokenAmount
@@ -453,7 +398,7 @@ const FilledDstAmount = () => {
   );
 };
 const FilledSrcAmount = () => {
-  const { order, chainId, srcFilledAmount } = usePageContext();
+  const { order, chainId, srcFilledAmount } = useOrderViewContext();
   return (
     <TransactionDisplay.SectionItem label="In Filled Amount">
       <TokenAmount
@@ -467,52 +412,51 @@ const FilledSrcAmount = () => {
 };
 
 const ExecutionRate = () => {
-  const { order, srcToken, chainId, executionRate } = usePageContext();
+  const { srcToken, chainId, executionRate, dstToken } = useOrderViewContext();
 
-  const content = useMemo(() => {
-    if (!executionRate.raw) return <>-</>;
-
-    return (
-      <>
-        <span className="text-secondary-foreground font-mono text-sm mr-2">
-          {"1 "}
-        </span>
-        <TokenAddress
-          address={order.order.witness.output.token}
-          chainId={chainId}
-        />
-        <span className="text-secondary-foreground font-mono text-sm ml-2 font-bold">
-          {" = "}
-        </span>
-        <TokenAmount
-          className="ml-2"
-          amountRaw={executionRate.raw}
-          address={order.order.witness.output.token}
-          chainId={chainId}
-          usd=""
-        />
-      </>
-    );
-  }, [executionRate.raw]);
 
   return (
-    <TransactionDisplay.SectionItem label="Execution Rate">
-      {content}
+    <TransactionDisplay.SectionItem label="Execution Rate" missingValue={!executionRate.formatted}>
+      <PriceRate 
+        rate={executionRate.formatted}
+        srcToken={srcToken}
+        chainId={chainId}
+        dstToken={dstToken}
+      />
     </TransactionDisplay.SectionItem>
   );
 };
 
-const LimitPrice = () => {
-  const { order, srcToken, dstToken, limitPrice } = usePageContext();
 
-  const limitPriceRateF = useFormatNumber({ value: limitPrice.formatted });
-  if (!limitPrice.formatted) return null;
 
+const BaseInformation = () => {
   return (
-    <TransactionDisplay.SectionItem label="Limit Price">
-      {!limitPrice.formatted
-        ? "-"
-        : `1 ${srcToken?.symbol} = ${limitPriceRateF} ${dstToken?.symbol}`}
-    </TransactionDisplay.SectionItem>
+    <TransactionDisplay.SectionCard title="Order Details" icon={Receipt}>
+       <CreatedAtSection />
+       <DeadlineSection />
+    
+      <NetworkSection />
+      <PartnerSection />
+      <InAmountSection />
+      <SrcChunkAmount />
+      <MinOutAmountSection />
+      <TriggerPrice />
+      <FillDelaySection />
+      <OrderChunks />
+      <LimitPrice />
+      <SwapperSection />
+
+    </TransactionDisplay.SectionCard>
   );
 };
+
+
+
+const OrderConfig = () => {
+  return (
+    <TransactionDisplay.SectionCard title="Order Configuration" icon={Settings}>
+  
+    </TransactionDisplay.SectionCard>
+  );
+};
+

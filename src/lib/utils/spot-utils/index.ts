@@ -6,15 +6,6 @@ import { isHash, maxUint256 } from "viem";
 import moment from "moment";
 import BN from "bignumber.js";
 
-export const validateOrderIdentifier = (value: string): boolean => {
-  const val = value.split(",");
-  for (const v of val) {
-    if (!isValidWalletAddress(v) && !isHash(v) && !isNumeric(v)) {
-      return false;
-    }
-  }
-  return true;
-};
 
 export const resolveOrderIdentifier = (identifier: string) => {
   const parsedIdentifiers = identifier.split(",");
