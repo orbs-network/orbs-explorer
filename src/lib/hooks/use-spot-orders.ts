@@ -5,21 +5,22 @@ import { getSpotOrder, getSpotOrders } from "../api";
 import { useMemo } from "react";
 import { uniqBy } from "lodash";
 import { useTwapPartnerById } from "./twap-hooks";
+import { useTwapSinkApiUrl } from "./use-twap-sink-url";
 import { Partners } from "../types";
 
 export const useSpotOrdersPaginated = () => {
   const { query: queryParams } = useQueryFilterParams();
   const partner = useTwapPartnerById(queryParams.partner_id?.[0]);
+  const sinkApiUrl = useTwapSinkApiUrl();
 
-  
-
-  const query =  useInfiniteQuery({
+  const query = useInfiniteQuery({
     queryKey: [
       REACT_QUERY_KEYS.spotPaginatedOrders,
       queryParams.hash,
       queryParams.user,
       queryParams.chain_id?.map(Number),
       partner?.config?.adapter,
+      sinkApiUrl,
     ],
     queryFn: async ({ signal, pageParam = 0 }) => {
       return getSpotOrders({
@@ -32,6 +33,7 @@ export const useSpotOrdersPaginated = () => {
           hash: queryParams.hash,
           exchange: partner?.config?.adapter,
         },
+        sinkApiUrl,
       });
     },
     initialPageParam: 0,
@@ -52,13 +54,14 @@ export const useSpotOrdersPaginated = () => {
 };
 
 export const useSpotOrderQuery = (hash?: string) => {
-
+  const sinkApiUrl = useTwapSinkApiUrl();
   return useQuery({
-    queryKey: [REACT_QUERY_KEYS.spotOrder, hash],
+    queryKey: [REACT_QUERY_KEYS.spotOrder, hash, sinkApiUrl],
     queryFn: async ({ signal }) => {
       return getSpotOrder({
         signal,
         hash: hash as string,
+        sinkApiUrl,
       });
     },
     enabled: !!hash,

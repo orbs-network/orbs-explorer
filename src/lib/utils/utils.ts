@@ -210,6 +210,8 @@ export const toMoment = (timestamp?: string) => {
 };
 
 export function formatDuration(seconds: number): string {
+  console.log({seconds});
+  
   const format = (value: number, unit: string) => {
     const v = Number.isInteger(value) ? value : value.toFixed(1);
     return `${v}${unit}`;

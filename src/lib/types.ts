@@ -234,3 +234,13 @@ export type ParsedOrderChunk = {
   outToken: string;
   chainId?: number
 }
+
+export enum SpotOrderType {
+  TAKE_PROFIT = "take_profit",
+  STOP_LOSS_MARKET = "stop_loss_market",
+  STOP_LOSS_LIMIT = "stop_loss_limit",
+  LIMIT = "limit",
+  TWAP_MARKET = "twap_market",
+  TWAP_LIMIT = "twap_limit",
+}
+

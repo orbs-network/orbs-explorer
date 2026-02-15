@@ -12,8 +12,12 @@ type Filters = {
   exchange?: string;
 };
 
-const SINK_API_URL = "https://order-sink.orbs.network";
-// const SINK_API_URL = "https://order-sink-dev.orbs.network";
+export const SINK_API_URLS = {
+  prod: "https://order-sink.orbs.network",
+  dev: "https://order-sink-dev.orbs.network",
+} as const;
+
+const SINK_API_URL = SINK_API_URLS.prod;
 
 const handleFilters = (filters: Filters) => {
   const chainQuery = filters.chainIds
@@ -31,18 +35,19 @@ const getOrders = async ({
   page,
   limit,
   filters,
+  baseUrl = SINK_API_URL,
 }: {
   signal?: AbortSignal;
   page?: number;
   limit?: number;
   filters: Filters;
+  baseUrl?: string;
 }) => {
   const callback = async (chainId?: number): Promise<ListOrder[]> => {
     const filtersQuery = handleFilters(filters);
 
     const response = await axios.get(
-      `
-    ${SINK_API_URL}/orders?view=list&page=${page}&limit=${limit}${filtersQuery}`,
+      `${baseUrl}/orders?view=list&page=${page}&limit=${limit}${filtersQuery}`,
       {
         signal,
       },
@@ -155,11 +160,13 @@ export const getSpotOrders = async ({
   page,
   limit = 3_00,
   filters,
+  sinkApiUrl,
 }: {
   signal?: AbortSignal;
   page?: number;
   limit?: number;
   filters: Filters;
+  sinkApiUrl?: string;
 }): Promise<ListOrder[]> => {
   try {
     const orders = await getOrders({
@@ -167,6 +174,7 @@ export const getSpotOrders = async ({
       page,
       limit,
       filters,
+      baseUrl: sinkApiUrl ?? SINK_API_URL,
     });
 
     return orders.sort(
@@ -182,24 +190,15 @@ export const getSpotOrders = async ({
 export const getSpotOrder = async ({
   signal,
   hash,
+  sinkApiUrl,
 }: {
   signal?: AbortSignal;
   hash: string;
+  sinkApiUrl?: string;
 }): Promise<Order | undefined> => {
-
-  const getOrder = async (url: string) => {
-    const response = await axios.get(
-      `${url}/orders?hash=${hash}`,
-      {
-        signal,
-      },
-    );
-    return response.data.orders[0] as Order;
-  };
-
-  const response = await getOrder(SINK_API_URL);
-
-  return response;
+  const url = sinkApiUrl ?? SINK_API_URL;
+  const response = await axios.get(`${url}/orders?hash=${hash}`, { signal });
+  return response.data.orders[0] as Order;
 };
 
 export const getSpotConfig = async () => {

@@ -24,6 +24,7 @@ export const useQueryFilterParams = () => {
       [URL_QUERY_KEYS.ORDER_TYPE]: StringParam,
       [URL_QUERY_KEYS.SESSION_ID]: ArrayParam,
       [URL_QUERY_KEYS.STATUS]: StringParam,
+      [URL_QUERY_KEYS.TWAP_SINK_ENV]: StringParam,
     },
     {
       updateType: "pushIn",
@@ -70,6 +71,9 @@ export const useQueryFilterParams = () => {
           | string[]
           | undefined,
         [URL_QUERY_KEYS.STATUS]: query[URL_QUERY_KEYS.STATUS] as
+          | string
+          | undefined,
+        [URL_QUERY_KEYS.TWAP_SINK_ENV]: query[URL_QUERY_KEYS.TWAP_SINK_ENV] as
           | string
           | undefined,
       },

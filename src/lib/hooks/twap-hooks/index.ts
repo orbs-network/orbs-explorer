@@ -6,6 +6,7 @@ import {
   getOrderFilledAmounts,
   getOrderLimitPriceRate,
   toAmountUI,
+  toMoment,
 } from "../../utils/utils";
 import { useToUiAmount } from "../use-to-ui-amount";
 import { useToWeiAmount } from "../use-to-wei-amount";
@@ -15,9 +16,14 @@ import { useSpotConfig } from "../use-twap-config";
 import { getOrderLogsUI } from "@/lib/api";
 import { REACT_QUERY_KEYS } from "@/lib/consts";
 import { useQuery } from "@tanstack/react-query";
+import BN from "bignumber.js";
+import { maxUint256 } from "viem";
+import { getSpotOrderLimitPrice, getSpotOrderTriggerPrice, getSpotOrderType } from "@/lib/utils/twap-utils";
 
 const getPartner = (partner: string) => {
-  return PARTNERS.find((item) => item.identifiers.some(i => i.toLowerCase() === partner.toLowerCase()));
+  return PARTNERS.find((item) =>
+    item.identifiers.some((i) => i.toLowerCase() === partner.toLowerCase()),
+  );
 };
 
 const EMPTY_PARTNER = {
@@ -53,7 +59,6 @@ export const useTwapPartnerByAdapter = (adapter?: string) => {
   }, [adapter, config]);
 };
 
-
 export const useTwapPartnerById = (partnerId?: string) => {
   const { data: config } = useSpotConfig();
   return useMemo(() => {
@@ -64,10 +69,7 @@ export const useTwapPartnerById = (partnerId?: string) => {
       if (!chainConfig?.dex) continue;
 
       for (const [partner, dexConfig] of Object.entries(chainConfig.dex)) {
-        if (
-          typeof dexConfig === "object" &&
-          partner.toLowerCase() === target
-        ) {
+        if (typeof dexConfig === "object" && partner.toLowerCase() === target) {
           return {
             chainId: Number(chainId),
             partner: getPartner(partner),
@@ -149,62 +151,6 @@ export const useOrderLimitPriceRate = (order?: Order) => {
   };
 };
 
-export const useOrder = (hash?: string) => {
-  const { data: order, isLoading } = useSpotOrderQuery(hash);
-  const { partner, chainId, config } = useTwapPartnerByAdapter(
-    order?.order.witness.exchange.adapter,
-  );
-  const srcToken = useToken(order?.order.witness.input.token, chainId).data;
-  const dstToken = useToken(order?.order.witness.output.token, chainId).data;
-
-  return useMemo(() => {
-    return {
-      order,
-      isLoading,
-      srcToken,
-      dstToken,
-      partner,
-      chainId,
-      config,
-    };
-  }, [order, isLoading, srcToken, dstToken, partner, chainId, config]);
-};
-
-export const useOrderChunks = (hash?: string) => {
-  const { order, srcToken, dstToken, chainId } = useOrder(hash);
-  const chunks =  useMemo((): ParsedOrderChunk[] => {
-    const chunks = order?.metadata.chunks;
-
-    return chunks
-      ?.map((chunk) => {
-        return {
-          inAmountRaw: chunk.inAmount,
-          inAmountFormatted: toAmountUI(chunk.inAmount, srcToken?.decimals),
-          outAmountRaw: chunk.outAmount,
-          outAmountFormatted: toAmountUI(chunk.outAmount, dstToken?.decimals),
-          feesUsd: chunk.displayOnlyFee?.replace("$", "") || "0",
-          status: chunk.status,
-          dueTime: chunk.displayOnlyDueTime,
-          createdAt: chunk.timestamp,
-          txHash: chunk.txHash,
-          index: chunk.index,
-          inToken: chunk.inToken,
-          outToken: chunk.outToken,
-          chainId: chainId,
-
-        };
-      })
-      .sort((a, b) => a.index - b.index) ?? [];
-  }, [order, srcToken, dstToken, chainId]);
-
-  return {
-    expectedChunks: order?.metadata.expectedChunks,
-    successChunks: chunks.filter((chunk) => chunk.status === "success"),
-    failedChunks: chunks.filter((chunk) => chunk.status === "failed"),
-  };
-};
-
-
 
 export const useOrderClientLogs = (hash?: string) => {
   return useQuery({
@@ -214,4 +160,95 @@ export const useOrderClientLogs = (hash?: string) => {
     },
     enabled: !!hash,
   });
+};
+
+
+
+
+export const useOrder = (hash?: string) => {
+  const { data: order, isLoading } = useSpotOrderQuery(hash);
+  const { chainId, partner, config } = useTwapPartnerByAdapter(
+    order?.order.witness.exchange.adapter,
+  );
+  const srcToken = useToken(order?.order.witness.input.token, chainId).data;
+  const dstToken = useToken(order?.order.witness.output.token, chainId).data;
+
+  return useMemo(() => {
+    const triggerPrice  = getSpotOrderTriggerPrice(order)
+    const limitPrice = getSpotOrderLimitPrice(order)
+    const deadline = BN(order?.order.witness.deadline || 0).multipliedBy(1000).toString();
+    const totalInAmount = order?.order.witness.input.maxAmount || '0'
+    const minOutAmount = order?.order.witness.output.limit || '0'
+    return {
+      originalOrder: order, 
+      hash: order?.hash,
+      swapper: order?.order.witness.swapper,
+      isLoading,
+      srcToken,
+      dstToken,
+      partner,
+      chainId,
+      config,
+      type: getSpotOrderType(order),
+      description: order?.metadata.description,
+      status: order?.metadata.status.toLowerCase(),
+      createdAt: toMoment(order?.timestamp),
+      expiration: toMoment(deadline),
+      epoch: order?.order.witness.epoch || 0,
+      totalInAmount: {
+        raw: totalInAmount,
+        formatted: toAmountUI(totalInAmount, srcToken?.decimals),
+      },
+      triggerPrice: {
+        raw: triggerPrice,
+        formatted: toAmountUI(triggerPrice, dstToken?.decimals),
+      },
+      limitPrice: {
+        raw: limitPrice,
+        formatted: toAmountUI(limitPrice, dstToken?.decimals),
+      },
+      minOutAmount: {
+        raw: minOutAmount,
+        formatted: toAmountUI(minOutAmount, dstToken?.decimals),
+      },
+    };
+  }, [isLoading, srcToken, dstToken, chainId, partner, config, order]);
+};
+
+
+
+
+export const useOrderChunks = (hash?: string) => {
+  const { order, srcToken, dstToken, chainId } = useOrder(hash);
+  const chunks = useMemo((): ParsedOrderChunk[] => {
+    const chunks = order?.metadata.chunks;
+
+    return (
+      chunks
+        ?.map((chunk) => {
+          return {
+            inAmountRaw: chunk.inAmount,
+            inAmountFormatted: toAmountUI(chunk.inAmount, srcToken?.decimals),
+            outAmountRaw: chunk.outAmount,
+            outAmountFormatted: toAmountUI(chunk.outAmount, dstToken?.decimals),
+            feesUsd: chunk.displayOnlyFee?.replace("$", "") || "0",
+            status: chunk.status,
+            dueTime: chunk.displayOnlyDueTime,
+            createdAt: chunk.timestamp,
+            txHash: chunk.txHash,
+            index: chunk.index,
+            inToken: chunk.inToken,
+            outToken: chunk.outToken,
+            chainId: chainId,
+          };
+        })
+        .sort((a, b) => a.index - b.index) ?? []
+    );
+  }, [order, srcToken, dstToken, chainId]);
+
+  return {
+    expectedChunks: order?.metadata.expectedChunks,
+    successChunks: chunks.filter((chunk) => chunk.status === "success"),
+    failedChunks: chunks.filter((chunk) => chunk.status === "failed"),
+  };
 };

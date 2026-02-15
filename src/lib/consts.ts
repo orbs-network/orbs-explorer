@@ -15,6 +15,7 @@ export enum URL_QUERY_KEYS {
   ORDER_TYPE = "order_type",
   SESSION_ID = "session_id",
   STATUS = "status",
+  TWAP_SINK_ENV = "twap_sink_env",
 }
 
 export const FILTER_KEY_NAMES = {

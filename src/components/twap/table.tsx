@@ -16,6 +16,7 @@ import { ListOrder } from "@/lib/types";
 import { useTwapPartnerByAdapter, useTwapPartnerById } from "@/lib/hooks/twap-hooks";
 import { Partner } from "../ui/partner";
 import { OrdersFilter } from "./filter";
+import { TwapSinkEnvSelect } from "./sink-env-select";
 import { useToken } from "@/lib/hooks/use-token";
 
 const Timestamp = ({ item }: { item: ListOrder }) => {
@@ -142,7 +143,8 @@ export function TwapOrdersTable() {
 
   const onSelect = useCallback(
     (order: ListOrder) => {
-      push(ROUTES.TWAP.ORDER(order.hash));
+      const search = typeof window !== "undefined" ? window.location.search : "";
+      push(`${ROUTES.TWAP.ORDER(order.hash)}${search}`);
     },
     [push],
   );
@@ -157,7 +159,12 @@ export function TwapOrdersTable() {
       desktopRows={desktopRows}
       onSelect={onSelect}
       title="TWAP Orders"
-      headerAction={<OrdersFilter />}
+      headerAction={
+        <div className="flex items-center gap-2">
+          <TwapSinkEnvSelect />
+          <OrdersFilter />
+        </div>
+      }
     />
   );
 }
