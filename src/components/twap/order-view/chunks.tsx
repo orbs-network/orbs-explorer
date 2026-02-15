@@ -20,6 +20,7 @@ import {
   AlertCircle,
   Layers,
   Loader2,
+  ArrowRight,
 } from "lucide-react";
 import { useSpotOrderChunks } from "@/lib/hooks/twap-hooks/use-spot-order-chunks";
 import { useOrderViewContext } from "./use-order-view-context";
@@ -173,9 +174,9 @@ const ChunkCard = ({
       </div>
 
       {/* Swap Flow */}
-      <div className="flex items-center gap-3 flex-wrap flex-col">
-        <div className="flex items-center gap-2 px-3 py-2 bg-muted/50 rounded-md w-full">
-          <span className="text-xs text-muted-foreground uppercase">Sell</span>
+      <div className="flex items-center gap-3 flex-wrap flex-row">
+        <div className="flex items-center gap-2 px-3 py-2 bg-muted/50 rounded-md">
+          <span className="text-xs text-muted-foreground">Sell</span>
           <TokenAmount
             amountRaw={chunk.inAmountRaw}
             address={chunk.inToken}
@@ -183,9 +184,9 @@ const ChunkCard = ({
             usd=""
           />
         </div>
-        <ArrowDown className="w-4 h-4 text-primary" />
-        <div className="flex items-center gap-2 px-3 py-2 bg-muted/50 rounded-md w-full">
-          <span className="text-xs text-muted-foreground uppercase">Buy</span>
+        <ArrowRight className="w-4 h-4 text-primary" />
+        <div className="flex items-center gap-2 px-3 py-2 bg-muted/50 rounded-md">
+          <span className="text-xs text-muted-foreground">Buy</span>
           <TokenAmount
             amountRaw={chunk.outAmountRaw}
             address={chunk.outToken}

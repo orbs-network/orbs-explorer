@@ -232,3 +232,22 @@ export const getOrderExecutionRate = (
   return BN(dstFilledAmountFormatted).div(srcFilledAmountFormatted).toFixed()
 };
 
+
+
+export const getMinAmount = (order?: Order) => {
+  const isTakeProfit = getSpotOrderIsTakeProfit(order);
+  if (isTakeProfit) {
+    return "0";
+  }
+  return order?.order.witness.output.limit || "0";
+};
+
+export const parseOrderType = (type: SpotOrderType) => {
+  if (type === SpotOrderType.TAKE_PROFIT) return "Take Profit";
+  if (type === SpotOrderType.LIMIT) return "Limit";
+  if (type === SpotOrderType.STOP_LOSS_LIMIT) return "Stop Loss Limit";
+  if (type === SpotOrderType.TWAP_LIMIT) return "TWAP Limit";
+  if (type === SpotOrderType.STOP_LOSS_MARKET) return "Stop Loss Market";
+  if (type === SpotOrderType.TWAP_MARKET) return "TWAP Market";
+  return type;
+};

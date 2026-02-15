@@ -4,6 +4,7 @@ import {
   getSpotOrderType,
   getOrderExecutionRate,
   getOrderFilledAmounts,
+  getMinAmount,
 } from "@/lib/utils/spot-utils";
 import {
   toMoment,
@@ -21,7 +22,7 @@ import { Order, OrderChunk, ParsedOrderChunk, Token } from "@/lib/types";
 const parseValue = (value: string | undefined, decimals?: number) => {
   return {
     raw: value,
-    formatted: toAmountUI(value, decimals),
+    formatted: toAmountUI(value, decimals) || "0",
   };
 };
 
@@ -40,7 +41,7 @@ export const useSpotOrder = (hash?: string) => {
     const { srcFilledAmount: srcFilledAmountRaw, dstFilledAmount: dstFilledAmountRaw, feeUsd } =
       getOrderFilledAmounts(order);
 
-
+    const minOutAmount = getMinAmount(order);
       const srcFilledAmount = parseValue(srcFilledAmountRaw, srcToken?.decimals);
       const dstFilledAmount = parseValue(dstFilledAmountRaw, dstToken?.decimals);
       const executionRate =
@@ -49,7 +50,6 @@ export const useSpotOrder = (hash?: string) => {
     const deadline = BN(order?.order.witness.deadline || 0)
       .multipliedBy(1000)
       .toFixed();
-    const minOutAmount = order?.order.witness.output.limit || "0";
 
     return {
       originalOrder: order,
