@@ -69,7 +69,6 @@ export function OrderChunks() {
               <ChunkCard
                 key={`success-${chunk.index}`}
                 chunk={chunk}
-                index={index}
               />
             ))}
             {pendingChunks.map((chunk) => (
@@ -100,7 +99,22 @@ const ChunkCardPendingOrFailed = ({
   chunk: ParsedOrderChunk;
   variant: "pending" | "failed";
 }) => {
-  const readableDescription = formatChunkDescription(chunk.description);
+  const { srcToken, dstToken, chainId, chunkAmount, minOutAmountPerChunk } =
+    useOrderViewContext();
+  const readableDescription = formatChunkDescription(
+    chunk.description,
+    dstToken?.symbol,
+  );
+  const inTokenAddress = chunk.inToken || srcToken?.address || "";
+  const outTokenAddress = chunk.outToken || dstToken?.address || "";
+  const inAmountRaw =
+    chunk.inAmountRaw && chunk.inAmountRaw !== "0"
+      ? chunk.inAmountRaw
+      : chunkAmount?.raw ?? "0";
+  const outAmountRaw =
+    chunk.outAmountRaw && chunk.outAmountRaw !== "0"
+      ? chunk.outAmountRaw
+      : minOutAmountPerChunk?.raw ?? "0";
 
   return (
     <div className="flex flex-col gap-3 p-4 bg-card rounded-lg border border-border hover:border-primary/30 transition-colors">
@@ -129,6 +143,29 @@ const ChunkCardPendingOrFailed = ({
           </span>
         </div>
       </div>
+      {(inTokenAddress || outTokenAddress) && (
+        <div className="flex items-center gap-3 flex-wrap flex-row">
+          <div className="flex items-center gap-2 px-3 py-2 bg-muted/50 rounded-md">
+            <span className="text-xs text-muted-foreground">Sell</span>
+            <TokenAmount
+              amountRaw={inAmountRaw}
+              address={inTokenAddress}
+              chainId={chunk.chainId ?? chainId ?? 0}
+              usd=""
+            />
+          </div>
+          <ArrowRight className="w-4 h-4 text-primary" />
+          <div className="flex items-center gap-2 px-3 py-2 bg-muted/50 rounded-md">
+            <span className="text-xs text-muted-foreground">Buy</span>
+            <TokenAmount
+              amountRaw={outAmountRaw}
+              address={outTokenAddress}
+              chainId={chunk.chainId ?? chainId ?? 0}
+              usd=""
+            />
+          </div>
+        </div>
+      )}
       <p className="text-sm text-muted-foreground leading-relaxed">
         {readableDescription}
       </p>
@@ -144,10 +181,8 @@ const ChunkCardPendingOrFailed = ({
 
 const ChunkCard = ({
   chunk,
-  index,
 }: {
   chunk: ParsedOrderChunk;
-  index: number;
 }) => {
   const feesFormatted = useFormatNumber({
     value: chunk.feesUsd,

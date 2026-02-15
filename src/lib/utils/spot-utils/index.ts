@@ -136,19 +136,33 @@ const KNOWN_CHUNK_ERRORS: { signature: string; name: string; description: string
 /**
  * Turns API chunk description into human-readable text for failed/pending chunks.
  * Handles known patterns (e.g. price condition), known Solidity errors, and falls back to cleaned raw text.
+ * When outputTokenSymbol is provided, appends it to price/amount numbers in limit and trigger messages.
  */
-export function formatChunkDescription(description: string | undefined): string {
+export function formatChunkDescription(
+  description: string | undefined,
+  outputTokenSymbol?: string,
+): string {
   if (!description?.trim()) return "No details available.";
 
   const d = description.trim();
+  const sym = outputTokenSymbol?.trim() ? ` ${outputTokenSymbol}` : "";
+
+  // Trigger price not met: current output 384.976754 > trigger 345.030400 - 89.62%
+  const triggerMatch = d.match(
+    /Trigger price not met,\s*current output\s+([\d.]+)\s*>\s*trigger\s+([\d.]+)\s*-\s*([\d.]+)%/i,
+  );
+  if (triggerMatch) {
+    const [, current, trigger, pct] = triggerMatch;
+    return `Trigger price not met, current output ${current}${sym} > trigger ${trigger}${sym} - ${pct}%`;
+  }
 
   // Price can't meet condition: expected 16.47, got 15.90 (raw1 vs. raw2) - 96.54%
   const priceMatch = d.match(
-    /Price can't meet condition:\s*expected\s+([\d.]+),\s*got\s+([\d.]+)\s*\([^)]+\)\s*-\s*([\d.]+)%/i
+    /Price can't meet condition:\s*expected\s+([\d.]+),\s*got\s+([\d.]+)\s*\([^)]+\)\s*-\s*([\d.]+)%/i,
   );
   if (priceMatch) {
     const [, expected, got, pct] = priceMatch;
-    return `Limit price not met: current price ${got} is below your limit ${expected} — ${pct}% of target. This chunk will fill when the market reaches your limit price.`;
+    return `Limit price not met: current price ${got}${sym} is below your limit ${expected}${sym} — ${pct}% of target. This chunk will fill when the market reaches your limit price.`;
   }
 
   // Known Solidity errors: match by name or full signature, then apply human-readable description

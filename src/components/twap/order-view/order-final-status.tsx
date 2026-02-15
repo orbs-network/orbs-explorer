@@ -3,9 +3,9 @@ import { useOrderViewContext } from "./use-order-view-context";
 import { AlertTriangle, CheckCircle } from "lucide-react";
 
 const OrderFailureReason = () => {
-    const { description } = useOrderViewContext();
+    const { description, dstToken } = useOrderViewContext();
   
-    const readableDescription = formatChunkDescription(description);
+    const readableDescription = formatChunkDescription(description, dstToken?.symbol);
   
     return (
       <div className="rounded-lg border border-red-500/30 bg-red-500/5 p-4">
@@ -27,9 +27,9 @@ const OrderFailureReason = () => {
   };
 
    const OrderSuccessReason = () => {
-    const { description } = useOrderViewContext();
+    const { description, dstToken } = useOrderViewContext();
 
-    const readableDescription = formatChunkDescription(description);
+    const readableDescription = formatChunkDescription(description, dstToken?.symbol);
 
     return (
       <div className="rounded-lg border border-green-500/30 bg-green-500/5 p-4">

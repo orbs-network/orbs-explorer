@@ -19,7 +19,7 @@ import {
 
 import moment from "moment";
 import { Copy } from "../../ui/copy";
-import { OrderChunks } from "./chunks";
+import { OrderChunks } from "./order-chunks";
 import BN from "bignumber.js";
 import {
   AlertTriangle,
@@ -272,6 +272,7 @@ const MinOutAmountSection = () => {
 
 const FillDelaySection = () => {
   const { epoch } = useOrderViewContext();
+  if (BN(epoch).isZero()) return null;
   return (
     <TransactionDisplay.SectionItem label="Fill Delay" missingValue={BN(epoch).isZero()}>
       <span className="px-2 py-0.5 bg-muted rounded text-sm font-mono">
