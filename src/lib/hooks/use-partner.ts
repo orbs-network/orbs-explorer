@@ -1,8 +1,7 @@
 import React, { useMemo } from 'react'
-import { PARTNERS } from '../partners';
-import { getPartnersById } from '../utils/utils';
+import { getPartner } from '../utils/utils';
 
 export function usePartner(id?: string) {
 
-  return useMemo(() => id ? getPartnersById(id.split(','))?.[0] : undefined, [id]);
+  return useMemo(() => id ? getPartner(id) : undefined, [id]);
 }

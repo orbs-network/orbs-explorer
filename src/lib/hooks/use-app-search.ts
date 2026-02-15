@@ -10,6 +10,7 @@ export function useAppSearch() {
   const router = useRouter();
   return useMutation({
     mutationFn: async (value: string) => {
+      
       if (!isHash(value)) {
         toast.error("Invalid order identifier");
         return;

@@ -98,26 +98,27 @@ export interface OrderMetadata {
 }
 
 export interface OrderChunk {
-  blockId: number;
+  blockId?: number;
   createdAt: string; // ISO-8601
+  description?: string; // human-readable reason when status is failed or pending
   displayOnlyDueTime: string; // ISO-8601
   displayOnlyFee?: string; // e.g. "$0.07"
-  epoch: string; // appears as string in sample
-  exchange: `0x${string}`;
-  executor: `0x${string}`;
-  extraTitle: string;
-  inAmount: string; // big integer as decimal string
-  inToken: `0x${string}`;
+  epoch?: string;
+  exchange?: `0x${string}`;
+  executor?: `0x${string}`;
+  extraTitle?: string;
+  inAmount?: string; // big integer as decimal string (missing when chunk not yet filled)
+  inToken?: `0x${string}`;
   index: number;
-  minOut: string; // big integer as decimal string
-  oraclePricingData: OraclePricingDatum[];
-  outAmount: string; // big integer as decimal string
-  outToken: `0x${string}`;
-  settled: boolean;
-  status: string; // e.g. "success"
-  swapper: `0x${string}`;
-  timestamp: string; // ISO-8601 (note: chunks also have a timestamp field)
-  txHash: `0x${string}`;
+  minOut?: string;
+  oraclePricingData?: OraclePricingDatum[];
+  outAmount?: string;
+  outToken?: `0x${string}`;
+  settled?: boolean;
+  status: string; // e.g. "success" | "failed" | "pending-price-check"
+  swapper?: `0x${string}`;
+  timestamp: string; // ISO-8601
+  txHash?: `0x${string}`;
 }
 
 export interface OraclePricingDatum {
@@ -232,7 +233,9 @@ export type ParsedOrderChunk = {
   index: number;
   inToken: string;
   outToken: string;
-  chainId?: number
+  chainId?: number;
+  /** Raw description from API; use formatChunkDescription() for display when status is failed or pending */
+  description?: string;
 }
 
 export enum SpotOrderType {

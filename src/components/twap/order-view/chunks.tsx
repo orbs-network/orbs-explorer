@@ -9,23 +9,23 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { useOrderChunks } from "@/lib/hooks/twap-hooks";
 import { useFormatNumber } from "@/lib/hooks/use-number-format";
 import { ParsedOrderChunk } from "@/lib/types";
 import { toMoment } from "@/lib/utils/utils";
+import { formatChunkDescription } from "@/lib/utils/spot-utils";
 import {
   ArrowDown,
-  ArrowRight,
   CheckCircle2,
   Clock,
+  AlertCircle,
   Layers,
+  Loader2,
 } from "lucide-react";
 
 import React from "react";
+import { getOrderChunks } from "@/lib/hooks/twap-hooks/use-spot-order";
 
-export function OrderChunks({ hash }: { hash: string }) {
-  const { expectedChunks, successChunks, failedChunks} = useOrderChunks(hash);
-
+export function OrderChunks({ expectedChunks, successChunks, failedChunks, pendingChunks }: { expectedChunks: number, successChunks: ParsedOrderChunk[], failedChunks: ParsedOrderChunk[], pendingChunks: ParsedOrderChunk[] }) {
   if (!expectedChunks) return null;
 
   return (
@@ -55,11 +55,30 @@ export function OrderChunks({ hash }: { hash: string }) {
                   ({failedChunks.length} failed)
                 </span>
               )}
+              {pendingChunks.length > 0 && (
+                <span className="text-amber-500 ml-2">
+                  ({pendingChunks.length} pending)
+                </span>
+              )}
             </p>
           </DialogHeader>
           <div className="flex flex-col gap-3">
             {successChunks.map((chunk, index) => (
-              <ChunkCard key={chunk.txHash} chunk={chunk} index={index} />
+              <ChunkCard key={`success-${chunk.index}`} chunk={chunk} index={index} />
+            ))}
+            {pendingChunks.map((chunk) => (
+              <ChunkCardPendingOrFailed
+                key={`pending-${chunk.index}`}
+                chunk={chunk}
+                variant="pending"
+              />
+            ))}
+            {failedChunks.map((chunk) => (
+              <ChunkCardPendingOrFailed
+                key={`failed-${chunk.index}`}
+                chunk={chunk}
+                variant="failed"
+              />
             ))}
           </div>
         </DialogContent>
@@ -67,6 +86,55 @@ export function OrderChunks({ hash }: { hash: string }) {
     </TransactionDisplay.SectionItem>
   );
 }
+
+const ChunkCardPendingOrFailed = ({
+  chunk,
+  variant,
+}: {
+  chunk: ParsedOrderChunk;
+  variant: "pending" | "failed";
+}) => {
+  const readableDescription = formatChunkDescription(chunk.description);
+
+  return (
+    <div className="flex flex-col gap-3 p-4 bg-card rounded-lg border border-border hover:border-primary/30 transition-colors">
+      <div className="flex items-center justify-between">
+        <span className="text-sm font-medium text-foreground">
+          Chunk #{chunk.index}
+        </span>
+        <div
+          className={`flex items-center gap-1.5 px-2 py-1 rounded-full border ${
+            variant === "failed"
+              ? "bg-red-500/10 border-red-500/20"
+              : "bg-amber-500/10 border-amber-500/20"
+          }`}
+        >
+          {variant === "failed" ? (
+            <AlertCircle className="w-3 h-3 text-red-500" />
+          ) : (
+            <Loader2 className="w-3 h-3 text-amber-500 animate-spin" />
+          )}
+          <span
+            className={`text-xs ${
+              variant === "failed" ? "text-red-500" : "text-amber-500"
+            }`}
+          >
+            {variant === "failed" ? "Failed" : "Pending"}
+          </span>
+        </div>
+      </div>
+      <p className="text-sm text-muted-foreground leading-relaxed">
+        {readableDescription}
+      </p>
+      {chunk.dueTime && (
+        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+          <Clock className="w-3 h-3" />
+          <span>Due: {toMoment(chunk.dueTime).format("lll")}</span>
+        </div>
+      )}
+    </div>
+  );
+};
 
 const ChunkCard = ({
   chunk,

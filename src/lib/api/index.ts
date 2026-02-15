@@ -196,6 +196,7 @@ export const getSpotOrder = async ({
   hash: string;
   sinkApiUrl?: string;
 }): Promise<Order | undefined> => {
+  
   const url = sinkApiUrl ?? SINK_API_URL;
   const response = await axios.get(`${url}/orders?hash=${hash}`, { signal });
   return response.data.orders[0] as Order;

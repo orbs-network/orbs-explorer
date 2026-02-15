@@ -8,12 +8,12 @@ import { OrderStatusBadge } from "./order-status-badge";
 import { useNetwork } from "@/lib/hooks/use-network";
 import { abbreviate, parseListOrderStatus, shortenAddress } from "@/lib/utils/utils";
 import { VirtualTable } from "../virtual-table";
-import { useSpotOrdersPaginated } from "@/lib/hooks/use-spot-orders";
+import { useSpotOrdersPaginated } from "@/lib/hooks/twap-hooks/use-spot-orders";
 import { map } from "lodash";
 import { ROUTES } from "@/lib/routes";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip";
 import { ListOrder } from "@/lib/types";
-import { useTwapPartnerByAdapter, useTwapPartnerById } from "@/lib/hooks/twap-hooks";
+import { useSpotPartner } from "@/lib/hooks/twap-hooks/use-spot-partner";
 import { Partner } from "../ui/partner";
 import { OrdersFilter } from "./filter";
 import { TwapSinkEnvSelect } from "./sink-env-select";
@@ -61,7 +61,7 @@ const OrderTypeComponent = ({ item }: { item: ListOrder }) => {
 };
 
 const PartnerCell = ({ item }: { item: ListOrder }) => {
-  const dex = useTwapPartnerByAdapter(item.exchangeAdapter);
+  const dex = useSpotPartner(item.exchangeAdapter);
   const network = useNetwork(dex?.chainId);
 
   return (
@@ -89,7 +89,7 @@ const TxHash = ({ item }: { item: ListOrder }) => {
 };
 
 const TokenPair = ({ item }: { item: ListOrder }) => {
-  const {chainId} = useTwapPartnerByAdapter(item.exchangeAdapter);
+  const {chainId} = useSpotPartner(item.exchangeAdapter);
   const srcToken = useToken(item.inputToken, chainId).data;
   const dstToken = useToken(item.outputToken, chainId).data;
   return (

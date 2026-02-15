@@ -146,58 +146,6 @@ export const getOrderProgress = (order: Order) => {
     .toNumber();
 };
 
-export const getOrderFilledAmounts = (order?: Order) => {
-  if (!order) return {
-    srcFilledAmount: '',
-    dstFilledAmount: '',
-    feeUsd: '',
-  };
-  const filledChunks = order.metadata.chunks.filter(
-    (chunk) => chunk.status === "success",
-  );
-  return {
-    srcFilledAmount: filledChunks
-      .reduce((acc, chunk) => acc.plus(chunk.inAmount), new BN(0))
-      .toFixed(0),
-    dstFilledAmount: filledChunks
-      .reduce((acc, chunk) => acc.plus(chunk.outAmount), new BN(0))
-      .toFixed(0),
-    feeUsd: filledChunks
-      .reduce(
-        (acc, chunk) => acc.plus(chunk.displayOnlyFee?.replace("$", "") || 0),
-        new BN(0),
-      )
-      .decimalPlaces(2)
-      .toString(),
-  };
-};
-
-export const getOrderExecutionRate = (
-  order: Order,
-  srcToken: Token,
-  dstToken: Token,
-) => {
-  const { srcFilledAmount, dstFilledAmount } = getOrderFilledAmounts(order);
-
-  if (!BN(srcFilledAmount || 0).gt(0) || !BN(dstFilledAmount || 0).gt(0))
-    return "";
-  const srcFilledAmountUi = toAmountUI(srcFilledAmount, srcToken.decimals);
-  const dstFilledAmountUi = toAmountUI(dstFilledAmount, dstToken.decimals);
-
-  return BN(dstFilledAmountUi).div(srcFilledAmountUi).toFixed()
-};
-
-export const getOrderLimitPriceRate = (
-  order: Order,
-  srcToken: Token,
-  dstToken: Token,
-) => {
-  const limit = order.order.witness.output.limit 
-  if (BN(limit || 0).isZero()) return "";
-  const srcBidAmountUi = toAmountUI(order.order.witness.input.amount, srcToken.decimals, );
-  const dstMinAmountUi = toAmountUI(limit, dstToken.decimals);
-  return BN(dstMinAmountUi).div(srcBidAmountUi).toFixed();
-};
 
 
 export const toMoment = (timestamp?: string) => {
@@ -210,7 +158,6 @@ export const toMoment = (timestamp?: string) => {
 };
 
 export function formatDuration(seconds: number): string {
-  console.log({seconds});
   
   const format = (value: number, unit: string) => {
     const v = Number.isInteger(value) ? value : value.toFixed(1);
@@ -236,10 +183,10 @@ export function formatDuration(seconds: number): string {
 }
 
 
-export const getPartnersById = (ids?: string[]) => {
-  if (!ids) return undefined;
+export const getPartner = (id?: string) => {
+  if (!id) return undefined;
   
-  return PARTNERS.filter((p) => ids.some(id => p.identifiers.some(i => i.toLowerCase() === id.toLowerCase())));
+  return PARTNERS.find((p) => p.identifiers.some(i => i.toLowerCase() === id.toLowerCase()));
 };
 
 export const getWrappedNativeCurrency = (chainId?: number) => {

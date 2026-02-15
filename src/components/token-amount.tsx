@@ -29,9 +29,6 @@ export const TokenAmount = ({
   const token = useToken(address, chainId).data;
   const amountFormatted = useToUiAmount(token?.decimals, amountRaw);
   const apiUsd = usePriceUsd(address, chainId).data;
-  
-  
-  
   const copy = useCopy();
 
   const formattedAmount = useMemo(
@@ -60,7 +57,7 @@ export const TokenAmount = ({
             {formattedAmount || "0"}
           </span>
         </TooltipTrigger>
-        <TooltipContent className="flex flex-row gap-2 items-center">
+        <TooltipContent side="bottom" className="flex flex-row gap-2 items-center">
           <span className="text-sm font-mono">{amountRaw || "0"}</span>
           <Copy
             className="w-3.5 h-3.5 cursor-pointer hover:text-primary transition-colors"
@@ -72,20 +69,9 @@ export const TokenAmount = ({
       <TokenAddress address={address} chainId={chainId} />
       
       {usdF && (
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <span className="text-xs text-muted-foreground font-mono px-1.5 py-0.5 bg-muted/50 rounded">
-              ${usdF}
-            </span>
-          </TooltipTrigger>
-          <TooltipContent className="flex flex-row gap-2 items-center">
-            <span className="text-sm font-mono">${abbreviate(usdValue, 7)}</span>
-            <Copy
-              className="w-3.5 h-3.5 cursor-pointer hover:text-primary transition-colors"
-              onClick={() => copy(usdF.toString())}
-            />
-          </TooltipContent>
-        </Tooltip>
+        <span className="text-xs text-muted-foreground font-mono px-1.5 py-0.5 bg-muted/50 rounded">
+        ${usdF}
+      </span>
       )}
     </div>
   );

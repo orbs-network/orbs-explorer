@@ -1,7 +1,7 @@
 import React from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "./avatar";
-import { usePartner } from "@/lib/hooks/use-partner";
 import { cn } from "@/lib/utils";
+import { usePartner } from "@/lib/hooks/use-partner";
 
 type PartnerData = {
   name?: string;
