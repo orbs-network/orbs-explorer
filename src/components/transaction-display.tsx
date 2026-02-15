@@ -47,7 +47,7 @@ export const Row = ({
         "flex flex-col justify-between w-full border-b border-border/50 pb-3 pt-1 flex-wrap gap-2 md:flex-row md:items-center last:border-b-0 last:pb-0"
       }
     >
-      <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide flex flex-row gap-2 items-center">
+      <div className="text-xs font-medium text-muted-foreground uppercase flex flex-row gap-2 items-center">
         <div className="flex flex-col gap-1">
           <div className="flex flex-row gap-2 items-center">
             {`${label}`}
@@ -114,7 +114,7 @@ const BackButton = ({ onClick }: { onClick: () => void }) => {
 
 const Grid = ({ children }: { children: ReactNode }) => {
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">{children}</div>
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">{children}</div>
   );
 };
 

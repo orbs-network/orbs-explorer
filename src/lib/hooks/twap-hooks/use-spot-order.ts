@@ -1,10 +1,12 @@
 import {
-  getSpotOrderTriggerPrice,
+  getSpotOrderTriggerPricePerChunk,
   getSpotOrderLimitPrice,
   getSpotOrderType,
   getOrderExecutionRate,
   getOrderFilledAmounts,
-  getMinAmount,
+  getMinAmountPerChunk,
+  getOrderLimitPriceRate,
+  getOrderTriggerPriceRate,
 } from "@/lib/utils/spot-utils";
 import {
   toMoment,
@@ -35,22 +37,26 @@ export const useSpotOrder = (hash?: string) => {
   const dstToken = useToken(order?.order.witness.output.token, chainId).data;
 
   return useMemo(() => {
-    const triggerPrice = getSpotOrderTriggerPrice(order);
+    const expectedAmountOutPerChunk = parseValue(getSpotOrderTriggerPricePerChunk(order), dstToken?.decimals);
     const limitPrice = getSpotOrderLimitPrice(order);
  
     const { srcFilledAmount: srcFilledAmountRaw, dstFilledAmount: dstFilledAmountRaw, feeUsd } =
       getOrderFilledAmounts(order);
-
-    const minOutAmount = getMinAmount(order);
+    const chunkAmount = parseValue(order?.order.witness.input.amount, srcToken?.decimals);
+    const minOutAmountPerChunk = parseValue(getMinAmountPerChunk(order), dstToken?.decimals);
       const srcFilledAmount = parseValue(srcFilledAmountRaw, srcToken?.decimals);
       const dstFilledAmount = parseValue(dstFilledAmountRaw, dstToken?.decimals);
       const executionRate =
       getOrderExecutionRate(srcFilledAmount.formatted, dstFilledAmount.formatted);
-
+    const triggerPriceRate = getOrderTriggerPriceRate(chunkAmount.formatted, expectedAmountOutPerChunk.formatted);
+    const limitPriceRate = getOrderLimitPriceRate(chunkAmount.formatted, minOutAmountPerChunk.formatted);
     const deadline = BN(order?.order.witness.deadline || 0)
       .multipliedBy(1000)
       .toFixed();
 
+
+      const totalMinOutAmount = parseValue(BN(minOutAmountPerChunk.raw || 0).multipliedBy(order?.metadata.expectedChunks || 1).toFixed(), dstToken?.decimals);
+    const totalExpectedAmountOut = parseValue(BN(expectedAmountOutPerChunk.raw || 0).multipliedBy(order?.metadata.expectedChunks || 1).toFixed(), dstToken?.decimals);
     return {
       originalOrder: order,
       hash: order?.hash,
@@ -68,13 +74,17 @@ export const useSpotOrder = (hash?: string) => {
       expiration: moment(Number(deadline)),
       epoch: order?.order.witness.epoch || 0,
       totalInAmount: parseValue(order?.order.witness.input.maxAmount || "0", srcToken?.decimals),
-      triggerPrice: parseValue(triggerPrice, dstToken?.decimals),
+      expectedAmountOutPerChunk,
+      totalExpectedAmountOut,
       limitPrice: parseValue(limitPrice, dstToken?.decimals),
-      minOutAmount: parseValue(minOutAmount, dstToken?.decimals),
+      minOutAmountPerChunk,
+      totalMinOutAmount,
       dstFilledAmount,
       srcFilledAmount,
-      executionRate: parseValue(executionRate, dstToken?.decimals),
-      chunkAmount: parseValue(order?.order.witness.input.amount, srcToken?.decimals),
+      executionRate,
+      limitPriceRate,
+      triggerPriceRate,
+      chunkAmount,
       feeUsd,
       totalChunks: order?.metadata.expectedChunks || 0,
     };

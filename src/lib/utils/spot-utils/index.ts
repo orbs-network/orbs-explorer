@@ -91,7 +91,7 @@ export const getSpotOrderType = (order?: Order) => {
 };
 
 
-export const getSpotOrderTriggerPrice = (order?: Order) => {
+export const getSpotOrderTriggerPricePerChunk = (order?: Order) => {
   if (getSpotOrderIsTakeProfit(order)) {
     return order?.order.witness.output.limit || "0"; 
   }
@@ -234,7 +234,7 @@ export const getOrderExecutionRate = (
 
 
 
-export const getMinAmount = (order?: Order) => {
+export const getMinAmountPerChunk = (order?: Order) => {
   const isTakeProfit = getSpotOrderIsTakeProfit(order);
   if (isTakeProfit) {
     return "0";
@@ -250,4 +250,29 @@ export const parseOrderType = (type: SpotOrderType) => {
   if (type === SpotOrderType.STOP_LOSS_MARKET) return "Stop Loss Market";
   if (type === SpotOrderType.TWAP_MARKET) return "TWAP Market";
   return type;
+};
+
+export const getOrderLimitPriceRate = (
+  chunkAmountFormatted: string,
+  minOutAmountFormatted: string,
+) => {
+  if (!BN(chunkAmountFormatted || 0).gt(0) || !BN(minOutAmountFormatted || 0).gt(0))
+    return "";
+  return BN(minOutAmountFormatted).div(chunkAmountFormatted).toString();
+};
+
+
+
+export const getOrderTriggerPriceRate = (
+  chunkAmountFormatted: string,
+  triggerPriceFormatted: string,
+) => {
+  console.log('chunkAmountFormatted', chunkAmountFormatted);
+  console.log('triggerPriceFormatted', triggerPriceFormatted);
+  
+  if (BN(chunkAmountFormatted || 0).lte(0) || BN(triggerPriceFormatted || 0).lte(0))
+    return "";
+  const rate = BN(triggerPriceFormatted).div(chunkAmountFormatted).toString();
+  console.log('rate', rate);
+  return rate;
 };

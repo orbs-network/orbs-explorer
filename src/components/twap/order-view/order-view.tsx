@@ -108,23 +108,6 @@ const PriceRate = ({
   );
 };
 
-const LimitPrice = () => {
-  const { srcToken, dstToken, limitPrice, chainId } = useOrderViewContext();
-
-  return (
-    <TransactionDisplay.SectionItem
-      label="Limit Price"
-      missingValue={BN(limitPrice.formatted).isZero()}
-    >
-      <PriceRate
-        rate={limitPrice.formatted}
-        srcToken={srcToken}
-        chainId={chainId}
-        dstToken={dstToken}
-      />
-    </TransactionDisplay.SectionItem>
-  );
-};
 
 const OrderHeader = () => {
   const { type, status, srcToken, dstToken, chainId } =
@@ -219,16 +202,15 @@ const SwapperSection = () => {
   );
 };
 
-const TriggerPrice = () => {
-  const { type, chainId, triggerPrice, dstToken } = useOrderViewContext();
-  if (type !== SpotOrderType.TAKE_PROFIT) return null;
+const ExpectedAmountOut = () => {
+  const { type, chainId, totalExpectedAmountOut, dstToken } = useOrderViewContext();
+  if (type === SpotOrderType.TAKE_PROFIT) return null;
   return (
-    <TransactionDisplay.SectionItem label="Trigger Price">
-      <TokenAmount
-        amountRaw={triggerPrice.raw}
-        address={dstToken?.address}
+    <TransactionDisplay.SectionItem label="Expected Amount Out">
+      <TokenAmountFormatted
+        amount={totalExpectedAmountOut.formatted}
+        token={dstToken}
         chainId={chainId}
-        usd=""
       />
     </TransactionDisplay.SectionItem>
   );
@@ -275,12 +257,13 @@ const InAmountSection = () => {
 };
 
 const MinOutAmountSection = () => {
-  const { chainId, minOutAmount, dstToken } = useOrderViewContext();
+  const { chainId, totalMinOutAmount, dstToken } = useOrderViewContext();
+  if (BN(totalMinOutAmount.formatted).isZero()) return null;
   return (
-    <TransactionDisplay.SectionItem label="Min Out Amount" missingValue={BN(minOutAmount.formatted).isZero()}>
-      <TokenAmount
-        amountRaw={minOutAmount.raw}
-        address={dstToken?.address}
+    <TransactionDisplay.SectionItem label="Min Out Amount">
+      <TokenAmountFormatted
+        amount={totalMinOutAmount.formatted}
+        token={dstToken}
         chainId={chainId}
       />
     </TransactionDisplay.SectionItem>
@@ -339,6 +322,19 @@ const FilledDstAmount = () => {
     </TransactionDisplay.SectionItem>
   );
 };
+
+
+const OrderTypeSection = () => {
+  const { type } = useOrderViewContext();
+  return (
+    <TransactionDisplay.SectionItem label="Order Type">
+      <span className="text-sm font-mono">
+      {parseOrderType(type)}
+      </span>
+    </TransactionDisplay.SectionItem>
+  );
+};
+
 const FilledSrcAmount = () => {
   const { order, chainId, srcFilledAmount } = useOrderViewContext();
   return (
@@ -362,10 +358,49 @@ const ExecutionRate = () => {
   return (
     <TransactionDisplay.SectionItem
       label="Execution Rate"
-      missingValue={BN(executionRate.formatted).isZero()}
+      missingValue={BN(executionRate || 0).isZero()}
     >
       <PriceRate
-        rate={executionRate.formatted}
+        rate={executionRate}
+        srcToken={srcToken}
+        chainId={chainId}
+        dstToken={dstToken}
+      />
+    </TransactionDisplay.SectionItem>
+  );
+};
+
+
+const LimitPriceRate = () => {
+  const { srcToken, chainId, limitPriceRate, dstToken } = useOrderViewContext();
+  
+  if (BN(limitPriceRate || 0).isZero()) return null;
+
+  return (
+    <TransactionDisplay.SectionItem
+      label="Limit Price Rate"
+      missingValue={BN(limitPriceRate || 0).isZero()}
+    >
+      <PriceRate
+        rate={limitPriceRate}
+        srcToken={srcToken}
+        chainId={chainId}
+        dstToken={dstToken}
+      />
+    </TransactionDisplay.SectionItem>
+  );
+};
+
+const TriggerPriceRate = () => {
+  const { srcToken, chainId, triggerPriceRate, dstToken } = useOrderViewContext();
+  
+  if (BN(triggerPriceRate || 0).isZero()) return null;
+  return (
+    <TransactionDisplay.SectionItem
+      label="Trigger Price Rate"
+    >
+      <PriceRate
+        rate={triggerPriceRate}
         srcToken={srcToken}
         chainId={chainId}
         dstToken={dstToken}
@@ -391,11 +426,12 @@ const OrderDetails = () => {
 const OrderTerms = () => {
   return (
     <TransactionDisplay.SectionCard title="Terms" icon={Settings}>
+      <OrderTypeSection />
       <InAmountSection />
       <SrcChunkAmount />
+      <ExpectedAmountOut />
       <MinOutAmountSection />
-      <LimitPrice />
-      <TriggerPrice />
+      <TriggerPriceRate />
       <FillDelaySection />
       <OrderChunks />
     </TransactionDisplay.SectionCard>
