@@ -23,13 +23,16 @@ import { OrderChunks } from "./order-chunks";
 import BN from "bignumber.js";
 import {
   AlertTriangle,
+  CheckCircle2,
   Clock,
   Code,
+  PlayCircle,
   Receipt,
   Settings,
   Timer,
   TrendingUp,
   Wallet,
+  XCircle,
 } from "lucide-react";
 import { Network } from "@/components/ui/network";
 import { Partner } from "@/components/ui/partner";
@@ -109,26 +112,130 @@ const PriceRate = ({
 };
 
 
+const ORDER_STATUS_VISUAL = {
+  completed: {
+    icon: CheckCircle2,
+    label: "Completed",
+    sublabel: "All chunks filled",
+    className: "border-emerald-500/40 bg-emerald-500/10",
+    iconClassName: "text-emerald-500",
+    labelClassName: "text-emerald-700 dark:text-emerald-400",
+  },
+  pending: {
+    icon: PlayCircle,
+    label: "In Progress",
+    sublabel: "Chunks filling",
+    className: "border-blue-500/40 bg-blue-500/10",
+    iconClassName: "text-blue-500",
+    labelClassName: "text-blue-700 dark:text-blue-400",
+  },
+  open: {
+    icon: PlayCircle,
+    label: "In Progress",
+    sublabel: "Chunks filling",
+    className: "border-blue-500/40 bg-blue-500/10",
+    iconClassName: "text-blue-500",
+    labelClassName: "text-blue-700 dark:text-blue-400",
+  },
+  partially_completed: {
+    icon: CheckCircle2,
+    label: "Partially Completed",
+    sublabel: "Some chunks filled",
+    className: "border-amber-500/40 bg-amber-500/10",
+    iconClassName: "text-amber-500",
+    labelClassName: "text-amber-700 dark:text-amber-400",
+  },
+  failed: {
+    icon: XCircle,
+    label: "Failed",
+    sublabel: "Order did not complete",
+    className: "border-red-500/40 bg-red-500/10",
+    iconClassName: "text-red-500",
+    labelClassName: "text-red-700 dark:text-red-400",
+  },
+  canceled: {
+    icon: XCircle,
+    label: "Canceled",
+    sublabel: "Order was canceled",
+    className: "border-red-500/30 bg-red-500/5",
+    iconClassName: "text-red-500/90",
+    labelClassName: "text-red-700/90 dark:text-red-400/90",
+  },
+  cancelled: {
+    icon: XCircle,
+    label: "Canceled",
+    sublabel: "Order was canceled",
+    className: "border-red-500/30 bg-red-500/5",
+    iconClassName: "text-red-500/90",
+    labelClassName: "text-red-700/90 dark:text-red-400/90",
+  },
+  expired: {
+    icon: Clock,
+    label: "Expired",
+    sublabel: "Order deadline passed",
+    className: "border-orange-500/40 bg-orange-500/10",
+    iconClassName: "text-orange-500",
+    labelClassName: "text-orange-700 dark:text-orange-400",
+  },
+} as const;
+
+const DEFAULT_STATUS_VISUAL = {
+  icon: Receipt,
+  label: "Order",
+  sublabel: "",
+  className: "border-border bg-muted/50",
+  iconClassName: "text-muted-foreground",
+  labelClassName: "text-foreground",
+};
+
 const OrderHeader = () => {
-  const { type, status, srcToken, dstToken, chainId } =
+  const { type, status, srcToken, dstToken, chainId, originalOrder } =
     useOrderViewContext();
+
+  const normalizedStatus = (status ?? "").toLowerCase().replace(/^cancelled$/, "canceled");
+  const visual =
+    ORDER_STATUS_VISUAL[normalizedStatus as keyof typeof ORDER_STATUS_VISUAL] ??
+    DEFAULT_STATUS_VISUAL;
+  const StatusIcon = visual.icon;
+
+  const totalChunks = originalOrder?.metadata?.expectedChunks ?? 0;
+  const filledChunks =
+    originalOrder?.metadata?.chunks?.filter((c) => c.status === "success").length ?? 0;
+  const showChunkProgress = totalChunks > 0 && ["pending", "open", "partially_completed", "completed"].includes(normalizedStatus);
 
   return (
     <TransactionDisplay.Hero>
       <div className="flex flex-col gap-4">
-        {/* Status & Type Badges */}
-        <div className="flex items-center justify-between flex-wrap gap-2">
-          <div className="flex items-center gap-2">
-            {status && <OrderStatusBadge status={status} statusOnly />}
-            <TransactionDisplay.Badge variant="muted">
-              {parseOrderType(type)} Order
-            </TransactionDisplay.Badge>
+        {/* Prominent status card - always show so status is visible */}
+        <div
+            className={`flex items-center gap-4 rounded-xl border p-4 ${visual.className}`}
+          >
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-background/80 border border-inherit">
+              <StatusIcon className={`h-6 w-6 ${visual.iconClassName}`} />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className={`text-base font-semibold ${visual.labelClassName}`}>
+                {visual.label}
+              </p>
+              {visual.sublabel && (
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {visual.sublabel}
+                </p>
+              )}
+              {showChunkProgress && (
+                <p className="text-sm font-mono text-muted-foreground mt-1">
+                  {filledChunks} / {totalChunks} chunks filled
+                </p>
+              )}
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <TransactionDisplay.Badge variant="muted">
+                {parseOrderType(type)} Order
+              </TransactionDisplay.Badge>
+              <OriginalOrder />
+              <SpotOrderUiLogs />
+            </div>
           </div>
-          <div className="flex items-center gap-2">
-            <OriginalOrder />
-            <SpotOrderUiLogs />
-          </div>
-        </div>
         <OrderHash />
         {/* Swap Visual with Progress */}
         <div className="flex items-center gap-4 flex-wrap">

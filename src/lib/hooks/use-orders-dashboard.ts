@@ -9,6 +9,7 @@ import {
   ordersToPartnerStats,
   PartnerStats,
 } from "../orders-dashboard";
+import { ListOrder } from "../types";
 
 export function useOrdersDashboard() {
   const { data: config, isLoading: configLoading } = useSpotConfig();
@@ -52,7 +53,7 @@ export function useOrdersDashboard() {
   }, [partners, orderQueries]);
 
   const ordersByPartnerId = useMemo(() => {
-    const map: Record<string, import("../types").ListOrder[]> = {};
+    const map: Record<string, ListOrder[]> = {};
     partners.forEach((p, i) => {
       map[p.partnerId] = orderQueries[i]?.data ?? [];
     });

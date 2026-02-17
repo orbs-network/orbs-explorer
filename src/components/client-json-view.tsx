@@ -1,6 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import { ThemeKeys } from "react-json-view";
 
 /**
  * react-json-view uses `document` at load time, so it must be loaded only on the client.
@@ -31,7 +32,7 @@ export function ClientReactJson({
   return (
     <ReactJson
       src={src}
-      theme={theme}
+      theme={theme as ThemeKeys}
       collapsed={collapsed}
       displayDataTypes={displayDataTypes}
       enableClipboard={enableClipboard}
