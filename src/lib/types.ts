@@ -96,6 +96,16 @@ export interface OrderMetadata {
   status: string; // e.g. "completed"
 }
 
+type SolverReportData = {
+  
+    outputAmount: string;
+    solverName: string;
+    timestamp: string;
+
+}
+
+
+
 export interface OrderChunk {
   blockId?: number;
   createdAt: string; // ISO-8601
@@ -118,6 +128,7 @@ export interface OrderChunk {
   swapper?: `0x${string}`;
   timestamp: string; // ISO-8601
   txHash?: `0x${string}`;
+  solverReportedOutput?: SolverReportData;
 }
 
 export interface OraclePricingDatum {
@@ -234,21 +245,44 @@ export enum ChunkStatus {
 
 
 export type ParsedOrderChunk = {
-  inAmountRaw: string;
-  inAmountFormatted: string;
-  outAmountRaw: string;
-  outAmountFormatted: string;
+  updatedAt: string;
+  inAmount: string;
+  outAmount: string;
   feesUsd: string;
   status: string;
   dueTime: string;
   createdAt: string;
   txHash: string;
   index: number;
-  inToken: string;
-  outToken: string;
+  inToken?: Token;
+  outToken?: Token;
   chainId?: number;
   /** Raw description from API; use formatChunkDescription() for display when status is failed or pending */
   description?: string;
+  /** Extra chunk fields from API for full details in modal */
+  blockId?: number;
+  displayOnlyFee?: string;
+  epoch?: string;
+  exchange?: string;  
+  executor?: string;
+  extraTitle?: string;
+  minOut?: string;
+  settled?: boolean;
+  swapper?: string;
+  oracleName?: string;
+  oracleAddress?: string;
+  inputTokenUsd?: string;
+  outputTokenUsd?: string;
+  solverOutAmount?: string;
+  solverName?: string;
+  oracleTimestamp?: string;
+  minAmountOut?: string;
+  exchangeRate?: string;
+  expectedOutputOracle?: string;
+  inputTotalUsd?: string;
+
+  outputTotalUsd?: string;
+  outAmountDiff?: string;
 };
 
 
