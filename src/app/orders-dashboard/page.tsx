@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo } from "react";
 import { Page } from "@/components/page";
 import { useOrdersDashboard } from "@/lib/hooks/use-orders-dashboard";
 import {
@@ -9,15 +10,17 @@ import {
 import { Spinner } from "@/components/ui/spinner";
 import {
   BarChart3,
-  Calendar,
   LayoutGrid,
-  PieChart as PieChartIcon,
   Users,
 } from "lucide-react";
 
 export default function OrdersDashboardPage() {
   const { isLoading, isError, error, stats, ordersByPartnerId } =
     useOrdersDashboard();
+  const allOrders = useMemo(
+    () => Object.values(ordersByPartnerId ?? {}).flat(),
+    [ordersByPartnerId]
+  );
 
   if (isLoading) {
     return (
@@ -72,7 +75,7 @@ export default function OrdersDashboardPage() {
             <LayoutGrid className="h-4 w-4" />
             Overview
           </h2>
-          <DashboardSummary stats={stats} />
+          <DashboardSummary stats={stats} allOrders={allOrders} />
         </section>
 
 

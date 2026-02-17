@@ -13,7 +13,9 @@ import {
   DollarSign,
   ChevronRight,
 } from "lucide-react";
-import { ErrorOrdersModal } from "./ErrorOrdersModal";
+import { usePartner } from "@/lib/hooks/use-partner";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { StatusOrdersModal } from "./StatusOrdersModal";
 
 function formatUsd(n: number): string {
   if (n >= 1_000_000) return `$${(n / 1_000_000).toFixed(2)}M`;
@@ -26,6 +28,15 @@ function formatUsd(n: number): string {
   }).format(n);
 }
 
+function isFilledOrder(order: ListOrder): boolean {
+  return (order.metadata?.status ?? "") === "completed";
+}
+function isPartiallyFilledOrder(order: ListOrder): boolean {
+  return (order.metadata?.status ?? "") === "partially_completed";
+}
+function isPendingOrder(order: ListOrder): boolean {
+  return (order.metadata?.status ?? "") === "pending";
+}
 function isErrorOrder(order: ListOrder): boolean {
   const status = order.metadata?.status ?? "";
   return (
@@ -34,6 +45,9 @@ function isErrorOrder(order: ListOrder): boolean {
     status !== "pending"
   );
 }
+
+const sortByCreatedAtDesc = (a: ListOrder, b: ListOrder) =>
+  new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
 
 const statRow = (
   label: string,
@@ -87,17 +101,26 @@ export function PartnerStatsCard({
   stats: PartnerStats;
   orders?: ListOrder[];
 }) {
+  const [filledModalOpen, setFilledModalOpen] = useState(false);
+  const [partialModalOpen, setPartialModalOpen] = useState(false);
+  const [pendingModalOpen, setPendingModalOpen] = useState(false);
   const [errorModalOpen, setErrorModalOpen] = useState(false);
+  const partner = usePartner(stats.partnerId);
 
+  const filledOrders = useMemo(
+    () => orders.filter(isFilledOrder).sort(sortByCreatedAtDesc),
+    [orders]
+  );
+  const partialOrders = useMemo(
+    () => orders.filter(isPartiallyFilledOrder).sort(sortByCreatedAtDesc),
+    [orders]
+  );
+  const pendingOrders = useMemo(
+    () => orders.filter(isPendingOrder).sort(sortByCreatedAtDesc),
+    [orders]
+  );
   const errorOrders = useMemo(
-    () =>
-      orders
-        .filter(isErrorOrder)
-        .sort(
-          (a, b) =>
-            parseFloat(b.totalUSDAmount || "0") -
-            parseFloat(a.totalUSDAmount || "0")
-        ),
+    () => orders.filter(isErrorOrder).sort(sortByCreatedAtDesc),
     [orders]
   );
 
@@ -113,14 +136,26 @@ export function PartnerStatsCard({
         }`}
       >
         <CardHeader className="pb-2 pt-5 px-5">
-          <h3 className="text-lg font-semibold tracking-tight text-foreground">
-            {stats.partnerName}
-          </h3>
-          {hasNoOrders && (
-            <p className="text-xs text-muted-foreground mt-0.5">
-              No orders in last 7 days
-            </p>
-          )}
+          <div className="flex items-center gap-3">
+            {partner && (
+              <Avatar className="h-10 w-10 shrink-0 border border-border">
+                <AvatarImage src={partner.logo} alt={stats.partnerName} />
+                <AvatarFallback className="text-sm bg-muted">
+                  {stats.partnerName.slice(0, 2).toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
+            )}
+            <div className="min-w-0">
+              <h3 className="text-lg font-semibold tracking-tight text-foreground">
+                {stats.partnerName}
+              </h3>
+              {hasNoOrders && (
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  No orders in last 7 days
+                </p>
+              )}
+            </div>
+          </div>
         </CardHeader>
         <CardContent className="px-5 pb-5 space-y-0">
           {statRow(
@@ -137,34 +172,67 @@ export function PartnerStatsCard({
             "Filled",
             stats.filledOrders,
             <CheckCircle2 className="h-4 w-4 text-emerald-500" />,
-            "text-emerald-600 dark:text-emerald-400"
+            "text-emerald-600 dark:text-emerald-400",
+            stats.filledOrders > 0 ? () => setFilledModalOpen(true) : undefined
           )}
           {statRow(
             "Partially filled",
             stats.partiallyFilledOrders,
             <AlertCircle className="h-4 w-4 text-amber-500" />,
-            "text-amber-600 dark:text-amber-400"
+            "text-amber-600 dark:text-amber-400",
+            stats.partiallyFilledOrders > 0 ? () => setPartialModalOpen(true) : undefined
           )}
           {statRow(
             "Error / failed",
             stats.errorOrders,
             <XCircle className="h-4 w-4 text-destructive" />,
             "text-destructive",
-            () => setErrorModalOpen(true)
+            stats.errorOrders > 0 ? () => setErrorModalOpen(true) : undefined
           )}
-          {stats.pendingOrders > 0 &&
-            statRow(
-              "Pending",
-              stats.pendingOrders,
-              <Clock className="h-4 w-4 text-muted-foreground" />
-            )}
+          {statRow(
+            "Pending",
+            stats.pendingOrders,
+            <Clock className="h-4 w-4 text-muted-foreground" />,
+            "text-muted-foreground",
+            stats.pendingOrders > 0 ? () => setPendingModalOpen(true) : undefined
+          )}
         </CardContent>
       </Card>
-      <ErrorOrdersModal
+      <StatusOrdersModal
+        open={filledModalOpen}
+        onOpenChange={setFilledModalOpen}
+        partnerName={stats.partnerName}
+        orders={filledOrders}
+        title="Filled"
+        variant="filled"
+        emptyMessage="No filled orders in this period."
+      />
+      <StatusOrdersModal
+        open={partialModalOpen}
+        onOpenChange={setPartialModalOpen}
+        partnerName={stats.partnerName}
+        orders={partialOrders}
+        title="Partially filled"
+        variant="partial"
+        emptyMessage="No partially filled orders in this period."
+      />
+      <StatusOrdersModal
+        open={pendingModalOpen}
+        onOpenChange={setPendingModalOpen}
+        partnerName={stats.partnerName}
+        orders={pendingOrders}
+        title="Pending"
+        variant="pending"
+        emptyMessage="No pending orders in this period."
+      />
+      <StatusOrdersModal
         open={errorModalOpen}
         onOpenChange={setErrorModalOpen}
         partnerName={stats.partnerName}
         orders={errorOrders}
+        title="Error / failed"
+        variant="error"
+        emptyMessage="No error orders in this period."
       />
     </>
   );
