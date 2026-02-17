@@ -21,26 +21,39 @@ import {
   Layers,
   Loader2,
   ArrowRight,
+  XCircle,
 } from "lucide-react";
 import { useSpotOrderChunks } from "@/lib/hooks/twap-hooks/use-spot-order-chunks";
 import { useOrderViewContext } from "./use-order-view-context";
 
+const isOrderCancelled = (status: string) =>
+  Boolean(status?.toLowerCase().includes("cancel"));
+
 export function OrderChunks() {
-  const { hash } = useOrderViewContext();
+  const { hash, status } = useOrderViewContext();
   const { chunks, isLoading } = useSpotOrderChunks(hash);
   if (isLoading || !chunks) return null;
   const { successChunks, failedChunks, pendingChunks, expectedChunks } = chunks;
+  const orderCancelled = isOrderCancelled(status ?? "");
+
   return (
-    <TransactionDisplay.SectionItem label="Fills">
+    <TransactionDisplay.SectionItem label={orderCancelled ? "Fills (cancelled)" : "Fills"}>
       <Dialog>
         <DialogTrigger asChild>
           <Button variant="outline" size="sm" className="gap-2">
-            <Layers className="w-4 h-4" />
+            {orderCancelled ? (
+              <XCircle className="w-4 h-4 text-muted-foreground" />
+            ) : (
+              <Layers className="w-4 h-4" />
+            )}
             <span className="font-mono">
               {successChunks.length} / {expectedChunks}
             </span>
-            {successChunks.length === expectedChunks && expectedChunks > 0 && (
+            {!orderCancelled && successChunks.length === expectedChunks && expectedChunks > 0 && (
               <CheckCircle2 className="w-3.5 h-3.5 text-green-500" />
+            )}
+            {orderCancelled && (
+              <span className="text-xs text-muted-foreground">cancelled</span>
             )}
           </Button>
         </DialogTrigger>
@@ -48,18 +61,21 @@ export function OrderChunks() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Layers className="w-5 h-5 text-primary" />
-              Order Fills
+              {orderCancelled ? "Order Fills (cancelled)" : "Order Fills"}
             </DialogTitle>
             <p className="text-sm text-muted-foreground">
               {successChunks.length} of {expectedChunks} chunks filled
+              {orderCancelled && (
+                <span className="text-muted-foreground ml-2">(order cancelled)</span>
+              )}
               {failedChunks.length > 0 && (
                 <span className="text-red-500 ml-2">
                   ({failedChunks.length} failed)
                 </span>
               )}
               {pendingChunks.length > 0 && (
-                <span className="text-amber-500 ml-2">
-                  ({pendingChunks.length} pending)
+                <span className={orderCancelled ? "text-muted-foreground ml-2" : "text-amber-500 ml-2"}>
+                  ({pendingChunks.length} {orderCancelled ? "cancelled" : "pending"})
                 </span>
               )}
             </p>
@@ -75,7 +91,7 @@ export function OrderChunks() {
               <ChunkCardPendingOrFailed
                 key={`pending-${chunk.index}`}
                 chunk={chunk}
-                variant="pending"
+                variant={orderCancelled ? "cancelled" : "pending"}
               />
             ))}
             {failedChunks.map((chunk) => (
@@ -97,7 +113,7 @@ const ChunkCardPendingOrFailed = ({
   variant,
 }: {
   chunk: ParsedOrderChunk;
-  variant: "pending" | "failed";
+  variant: "pending" | "failed" | "cancelled";
 }) => {
   const { srcToken, dstToken, chainId, chunkAmount, minOutAmountPerChunk } =
     useOrderViewContext();
@@ -116,6 +132,19 @@ const ChunkCardPendingOrFailed = ({
       ? chunk.outAmountRaw
       : minOutAmountPerChunk?.raw ?? "0";
 
+  const isFailed = variant === "failed";
+  const isCancelled = variant === "cancelled";
+  const isPending = variant === "pending";
+
+  const badgeStyles = isFailed
+    ? "bg-red-500/10 border-red-500/20"
+    : isCancelled
+      ? "bg-muted border-border"
+      : "bg-amber-500/10 border-amber-500/20";
+  const iconColor = isFailed ? "text-red-500" : isCancelled ? "text-muted-foreground" : "text-amber-500";
+  const labelColor = isFailed ? "text-red-500" : isCancelled ? "text-muted-foreground" : "text-amber-500";
+  const label = isFailed ? "Failed" : isCancelled ? "Chunk cancelled" : "Pending";
+
   return (
     <div className="flex flex-col gap-3 p-4 bg-card rounded-lg border border-border hover:border-primary/30 transition-colors">
       <div className="flex items-center justify-between">
@@ -123,23 +152,17 @@ const ChunkCardPendingOrFailed = ({
           Chunk #{chunk.index}
         </span>
         <div
-          className={`flex items-center gap-1.5 px-2 py-1 rounded-full border ${
-            variant === "failed"
-              ? "bg-red-500/10 border-red-500/20"
-              : "bg-amber-500/10 border-amber-500/20"
-          }`}
+          className={`flex items-center gap-1.5 px-2 py-1 rounded-full border ${badgeStyles}`}
         >
-          {variant === "failed" ? (
+          {isFailed ? (
             <AlertCircle className="w-3 h-3 text-red-500" />
+          ) : isCancelled ? (
+            <XCircle className={`w-3 h-3 ${iconColor}`} />
           ) : (
-            <Loader2 className="w-3 h-3 text-amber-500 animate-spin" />
+            <Loader2 className={`w-3 h-3 ${iconColor} animate-spin`} />
           )}
-          <span
-            className={`text-xs ${
-              variant === "failed" ? "text-red-500" : "text-amber-500"
-            }`}
-          >
-            {variant === "failed" ? "Failed" : "Pending"}
+          <span className={`text-xs ${labelColor}`}>
+            {label}
           </span>
         </div>
       </div>

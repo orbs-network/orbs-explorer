@@ -14,4 +14,5 @@ export const ROUTES = {
     TX: (identifier: string) => `/liquidity-hub/tx/${identifier}`,
   },
   ORDERS_DASHBOARD: "/orders-dashboard",
+  LIQUIDITY_HUB_DASHBOARD: "/liquidity-hub-dashboard",
 } as const;
