@@ -1,5 +1,5 @@
 import { PARTNERS } from "../../partners";
-import { Order, Partner, SpotOrderType, Token } from "../../types";
+import { Order, Status, Partner, SpotOrderType, Token } from "../../types";
 import { URL_QUERY_KEYS } from "../../consts";
 import { isValidWalletAddress, isNumeric, toAmountUI } from "../utils";
 import { isHash, maxUint256 } from "viem";
@@ -289,4 +289,15 @@ export const getOrderTriggerPriceRate = (
   const rate = BN(triggerPriceFormatted).div(chunkAmountFormatted).toString();
   console.log('rate', rate);
   return rate;
+};
+
+
+export const getOrderStatus = (order?: Order) => {
+  console.log(order?.metadata.description);
+  
+  if (!order) return Status.PENDING;
+  if (order.metadata.description?.toLowerCase().includes('cancelled')) return Status.CANCELLED;
+  if (order.metadata.status.includes('failed')) return Status.FAILED;
+  if (order.metadata.status.includes('completed')) return Status.COMPLETED;
+  return Status.PENDING;
 };

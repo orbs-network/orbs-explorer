@@ -4,7 +4,7 @@ import { useSpotOrderUiLogs } from "@/lib/hooks/twap-hooks/use-spot-order-ui-log
 import { Dialog, DialogTrigger, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Code, Minimize2, Maximize2 } from "lucide-react";
 import { useState } from "react";
-import ReactJson from "react-json-view";
+import { ClientReactJson } from "@/components/client-json-view";
 import { useOrderViewContext } from "./use-order-view-context";
 
 export const SpotOrderUiLogs = () => {
@@ -44,7 +44,7 @@ export const SpotOrderUiLogs = () => {
             </Button>
           </DialogHeader>
           <div className="flex-1 overflow-auto rounded-lg bg-[#1e1e1e] p-4">
-            <ReactJson
+            <ClientReactJson
               src={clientLogs || {}}
               theme="monokai"
               collapsed={2}

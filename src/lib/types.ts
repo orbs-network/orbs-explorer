@@ -1,4 +1,3 @@
-
 export enum Partners {
   SwapX = "swapx",
   H2Finance = "h2finance",
@@ -191,7 +190,6 @@ export interface TriggerPriceOrderWitness {
   swapper: `0x${string}`;
 }
 
-
 export type Address = `0x${string}`;
 
 export interface TwapConfig {
@@ -219,6 +217,13 @@ export interface SaltConfig {
 }
 
 
+export enum Status {
+  COMPLETED = "completed",
+  FAILED = "failed",
+  PENDING = "pending",
+  CANCELLED = "cancelled",
+}
+
 
 export type ParsedOrderChunk = {
   inAmountRaw: string;
@@ -236,7 +241,8 @@ export type ParsedOrderChunk = {
   chainId?: number;
   /** Raw description from API; use formatChunkDescription() for display when status is failed or pending */
   description?: string;
-}
+};
+
 
 export enum SpotOrderType {
   TAKE_PROFIT = "take_profit",
@@ -246,4 +252,6 @@ export enum SpotOrderType {
   TWAP_MARKET = "twap_market",
   TWAP_LIMIT = "twap_limit",
 }
+
+
 

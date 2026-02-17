@@ -1,6 +1,8 @@
 import { formatChunkDescription } from "@/lib/utils/spot-utils";
 import { useOrderViewContext } from "./use-order-view-context";
 import { AlertTriangle, CheckCircle } from "lucide-react";
+import { stubArray } from "lodash";
+import { Status } from "@/lib/types";
 
 const OrderFailureReason = () => {
     const { description, dstToken } = useOrderViewContext();
@@ -47,10 +49,9 @@ const OrderFailureReason = () => {
   export const OrderFinalStatus = () => {
     const { status } = useOrderViewContext();
 
-    const isFailed =
-      status === "failed" || status === "expired" || status === "canceled";
+    const isFailed =  status === Status.FAILED
 
     if (isFailed) return <OrderFailureReason />;
-    if (status === "completed") return <OrderSuccessReason />;
+    if (status === "completed"  ) return <OrderSuccessReason />;
     return null;
   };

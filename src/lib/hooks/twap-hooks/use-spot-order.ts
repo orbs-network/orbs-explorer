@@ -7,6 +7,7 @@ import {
   getMinAmountPerChunk,
   getOrderLimitPriceRate,
   getOrderTriggerPriceRate,
+  getOrderStatus,
 } from "@/lib/utils/spot-utils";
 import {
   toMoment,
@@ -57,6 +58,7 @@ export const useSpotOrder = (hash?: string) => {
 
       const totalMinOutAmount = parseValue(BN(minOutAmountPerChunk.raw || 0).multipliedBy(order?.metadata.expectedChunks || 1).toFixed(), dstToken?.decimals);
     const totalExpectedAmountOut = parseValue(BN(expectedAmountOutPerChunk.raw || 0).multipliedBy(order?.metadata.expectedChunks || 1).toFixed(), dstToken?.decimals);
+    
     return {
       originalOrder: order,
       hash: order?.hash,
@@ -69,7 +71,6 @@ export const useSpotOrder = (hash?: string) => {
       config,
       type: getSpotOrderType(order),
       description: order?.metadata.description,
-      status: order?.metadata.status.toLowerCase(),
       createdAt: toMoment(order?.timestamp),
       expiration: moment(Number(deadline)),
       epoch: order?.order.witness.epoch || 0,
@@ -87,6 +88,7 @@ export const useSpotOrder = (hash?: string) => {
       chunkAmount,
       feeUsd,
       totalChunks: order?.metadata.expectedChunks || 0,
+      status: getOrderStatus(order),
     };
   }, [isLoading, srcToken, dstToken, chainId, partner, config, order]);
 };

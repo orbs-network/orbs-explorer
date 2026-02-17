@@ -10,7 +10,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { useFormatNumber } from "@/lib/hooks/use-number-format";
-import { ParsedOrderChunk } from "@/lib/types";
+import { ParsedOrderChunk, Status } from "@/lib/types";
 import { toMoment } from "@/lib/utils/utils";
 import { formatChunkDescription } from "@/lib/utils/spot-utils";
 import {
@@ -26,18 +26,21 @@ import {
 import { useSpotOrderChunks } from "@/lib/hooks/twap-hooks/use-spot-order-chunks";
 import { useOrderViewContext } from "./use-order-view-context";
 
-const isOrderCancelled = (status: string) =>
-  Boolean(status?.toLowerCase().includes("cancel"));
 
 export function OrderChunks() {
   const { hash, status } = useOrderViewContext();
   const { chunks, isLoading } = useSpotOrderChunks(hash);
   if (isLoading || !chunks) return null;
   const { successChunks, failedChunks, pendingChunks, expectedChunks } = chunks;
-  const orderCancelled = isOrderCancelled(status ?? "");
+  const orderCancelled = status === 'cancelled'
+
+
+
+  
+  
 
   return (
-    <TransactionDisplay.SectionItem label={orderCancelled ? "Fills (cancelled)" : "Fills"}>
+    <TransactionDisplay.SectionItem label="Fills">
       <Dialog>
         <DialogTrigger asChild>
           <Button variant="outline" size="sm" className="gap-2">
@@ -65,17 +68,15 @@ export function OrderChunks() {
             </DialogTitle>
             <p className="text-sm text-muted-foreground">
               {successChunks.length} of {expectedChunks} chunks filled
-              {orderCancelled && (
-                <span className="text-muted-foreground ml-2">(order cancelled)</span>
-              )}
+              
               {failedChunks.length > 0 && (
                 <span className="text-red-500 ml-2">
                   ({failedChunks.length} failed)
                 </span>
               )}
-              {pendingChunks.length > 0 && (
-                <span className={orderCancelled ? "text-muted-foreground ml-2" : "text-amber-500 ml-2"}>
-                  ({pendingChunks.length} {orderCancelled ? "cancelled" : "pending"})
+              {!orderCancelled && pendingChunks.length > 0 && (
+                <span className="text-amber-500 ml-2">
+                  ({pendingChunks.length} pending)
                 </span>
               )}
             </p>
@@ -133,8 +134,7 @@ const ChunkCardPendingOrFailed = ({
       : minOutAmountPerChunk?.raw ?? "0";
 
   const isFailed = variant === "failed";
-  const isCancelled = variant === "cancelled";
-  const isPending = variant === "pending";
+  const isCancelled = variant === 'cancelled'
 
   const badgeStyles = isFailed
     ? "bg-red-500/10 border-red-500/20"
@@ -143,7 +143,7 @@ const ChunkCardPendingOrFailed = ({
       : "bg-amber-500/10 border-amber-500/20";
   const iconColor = isFailed ? "text-red-500" : isCancelled ? "text-muted-foreground" : "text-amber-500";
   const labelColor = isFailed ? "text-red-500" : isCancelled ? "text-muted-foreground" : "text-amber-500";
-  const label = isFailed ? "Failed" : isCancelled ? "Chunk cancelled" : "Pending";
+  const label = isFailed ? "Failed" : isCancelled ? "Cancelled" : "Pending";
 
   return (
     <div className="flex flex-col gap-3 p-4 bg-card rounded-lg border border-border hover:border-primary/30 transition-colors">

@@ -1,14 +1,13 @@
-import { Token, ParsedOrderChunk, Order, OrderChunk } from "@/lib/types";
+import { Token, ParsedOrderChunk, Order, OrderChunk, Status } from "@/lib/types";
 import { toAmountUI } from "@/lib/utils/utils";
-import { useSpotOrderQuery } from "./use-spot-orders";
-import { useToken } from "../use-token";
-import { useSpotPartner } from "./use-spot-partner";
 import { useMemo } from "react";
+import { useSpotOrder } from "./use-spot-order";
 
 export type GetOrderChunksContext = {
   srcToken?: Token;
   dstToken?: Token;
   chainId?: number;
+  status?: Status;
 };
 
 export type OrderChunksResult = {
@@ -26,10 +25,12 @@ export function getOrderChunks(
   order: Order | undefined,
   context: GetOrderChunksContext,
 ): OrderChunksResult {
-  const { srcToken, dstToken, chainId } = context;
+  const { srcToken, dstToken, chainId, status: orderStatus } = context;
   const chunkList = order?.metadata.chunks;
   const srcDecimals = srcToken?.decimals;
   const dstDecimals = dstToken?.decimals;
+
+  
 
   const chunks: ParsedOrderChunk[] =
     chunkList
@@ -41,7 +42,7 @@ export function getOrderChunks(
           outAmountRaw: chunk.outAmount ?? "0",
           outAmountFormatted: toAmountUI(chunk.outAmount ?? "0", dstDecimals),
           feesUsd: chunk.displayOnlyFee?.replace("$", "") || "0",
-          status: chunk.status,
+          status: orderStatus === Status.CANCELLED ?  'cancelled' : chunk.status,
           dueTime: chunk.displayOnlyDueTime,
           createdAt: chunk.timestamp,
           txHash: chunk.txHash ?? "",
@@ -65,21 +66,17 @@ export function getOrderChunks(
   };
 }
 
-export function useSpotOrderChunks(hash?: string): { isLoading: boolean, chunks: OrderChunksResult } {
-  const { data, isLoading } = useSpotOrderQuery(hash);
-  const { chainId } = useSpotPartner(data?.order.witness.exchange.adapter);
-  const srcToken = useToken(
-    data?.order.witness.input.token,
-    chainId,
-  ).data;
-  const dstToken = useToken(
-    data?.order.witness.output.token,
-    chainId,
-  ).data;
+export function useSpotOrderChunks(hash?: string): {
+  isLoading: boolean;
+  chunks: OrderChunksResult;
+} {
+  const { originalOrder, isLoading, srcToken, dstToken, chainId, status } =
+    useSpotOrder(hash);
+
   return useMemo(() => {
     return {
-        isLoading,
-        chunks: getOrderChunks(data, { srcToken, dstToken, chainId })
+      isLoading,
+      chunks: getOrderChunks(originalOrder, { srcToken, dstToken, chainId, status }),
     };
-  }, [data, srcToken, dstToken, chainId, isLoading]);
+  }, [originalOrder, srcToken, dstToken, chainId, isLoading, status]);
 }

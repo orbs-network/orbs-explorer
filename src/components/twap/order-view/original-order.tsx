@@ -3,7 +3,7 @@ import { DialogHeader } from "@/components/ui/dialog";
 import { Dialog, DialogTrigger, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Code, Minimize2, Maximize2 } from "lucide-react";
 import { useState } from "react";
-import ReactJson from "react-json-view";
+import { ClientReactJson } from "@/components/client-json-view";
 import { useOrderViewContext } from "./use-order-view-context";
 
 export const OriginalOrder = () => {
@@ -42,7 +42,7 @@ export const OriginalOrder = () => {
             </Button>
           </DialogHeader>
           <div className="flex-1 overflow-auto rounded-lg bg-[#1e1e1e] p-4">
-            <ReactJson
+            <ClientReactJson
               src={originalOrder!}
               theme="monokai"
               collapsed={2}
