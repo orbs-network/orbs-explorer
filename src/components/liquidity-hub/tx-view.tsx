@@ -82,13 +82,18 @@ const useSwapPageContext = () => {
 export function LiquidityHubTxView({
   isPreview,
   identifier,
+  defaultBackHref,
 }: {
   isPreview?: boolean;
   identifier: string;
+  /** When no history to go back, navigate here */
+  defaultBackHref?: string;
 }) {
   const content = (
     <TransactionDisplay.Container>
-      {!isPreview && <TransactionDisplay.ContainerHeader />}
+      {!isPreview && (
+        <TransactionDisplay.ContainerHeader defaultBackHref={defaultBackHref} />
+      )}
       <State isPreview={isPreview} identifier={identifier} />
     </TransactionDisplay.Container>
   );

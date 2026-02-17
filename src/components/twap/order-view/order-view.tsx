@@ -26,6 +26,7 @@ import {
   CheckCircle2,
   Clock,
   Code,
+  Hash,
   PlayCircle,
   Receipt,
   Settings,
@@ -43,10 +44,17 @@ import { OrderViewContext } from "./context";
 import { useOrderViewContext } from "./use-order-view-context";
 import { SpotOrderUiLogs } from "./ui-logs";
 import { OriginalOrder } from "./original-order";
-import { OrderFinalStatus } from "./order-final-status";
 import { parseOrderType } from "@/lib/utils/spot-utils";
 
-export function OrderView({ hash }: { hash: string }) {
+export function OrderView({
+  hash,
+  backHref,
+  defaultBackHref,
+}: {
+  hash: string;
+  backHref?: string;
+  defaultBackHref?: string;
+}) {
   const orderPayload = useSpotOrder(hash);
 
   if (orderPayload.isLoading) {
@@ -73,7 +81,10 @@ export function OrderView({ hash }: { hash: string }) {
       value={{ ...orderPayload, order: orderPayload.originalOrder! }}
     >
       <TransactionDisplay.Container>
-        <TransactionDisplay.ContainerHeader />
+        <TransactionDisplay.ContainerHeader
+          backHref={backHref}
+          defaultBackHref={defaultBackHref}
+        />
         <OrderHeader />
         <TransactionDisplay.Grid>
           {/* When, where, who — context & identity */}
@@ -253,10 +264,16 @@ const OrderHeader = () => {
 
 const OrderHash = () => {
   const { hash } = useOrderViewContext();
+  if (!hash) return null;
   return (
-    <div className="flex items-center gap-2">
-      <span className="text-muted-foreground">ID:</span>{" "}
-      <Copy text={shortenAddress(hash!)} value={hash!} tooltip={hash} />
+    <div className="flex items-center gap-3 rounded-lg border border-border bg-muted/30 px-3 py-2.5">
+      <Hash className="h-4 w-4 text-muted-foreground shrink-0" />
+      <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider shrink-0">
+        Order ID
+      </span>
+      <span className="flex-1 min-w-0 border-l border-border pl-3">
+        <Copy text={shortenAddress(hash)} value={hash} tooltip={hash} />
+      </span>
     </div>
   );
 };
@@ -554,8 +571,6 @@ const ExecutionDetails = () => {
 
   return (
     <TransactionDisplay.SectionCard title="Execution Details" icon={TrendingUp}>
-      {/* Progress Bar */}
-      <OrderFinalStatus />
 
       <TransactionDisplay.ProgressBar
         progress={progress}

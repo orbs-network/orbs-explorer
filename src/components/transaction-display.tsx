@@ -129,16 +129,25 @@ const Container = ({ children }: { children: ReactNode }) => {
 const ContainerHeader = ({
   children,
   backHref,
+  defaultBackHref,
 }: {
   children?: ReactNode;
+  /** Explicit back destination (e.g. when coming from dashboard) */
   backHref?: string;
+  /** When no backHref and no history, navigate here instead of router.back() */
+  defaultBackHref?: string;
 }) => {
   const router = useRouter();
+
+  const onBack = () => {
+    if (backHref) router.push(backHref);
+    else if (defaultBackHref) router.push(defaultBackHref);
+    else router.back();
+  };
+
   return (
     <div className="flex flex-row justify-between items-center w-full mb-2">
-      <BackButton
-        onClick={() => (backHref ? router.push(backHref) : router.back())}
-      />
+      <BackButton onClick={onBack} />
       {children}
     </div>
   );

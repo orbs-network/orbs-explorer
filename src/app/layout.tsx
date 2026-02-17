@@ -46,15 +46,24 @@ export default function RootLayout({
                 {children}
                 <Toaster
                   position="top-right"
+                  offset={16}
+                  gap={12}
                   toastOptions={{
-                    className: "!bg-card !text-foreground !border-border",
-                    style: {
-                      background: "hsl(var(--card))",
-                      color: "hsl(var(--foreground))",
-                      border: "1px solid hsl(var(--border))",
+                    classNames: {
+                      toast:
+                        "!rounded-xl !border !border-border !bg-card !shadow-lg !py-3 !px-4 !text-card-foreground group",
+                      title: "!text-sm !font-semibold !text-foreground",
+                      description: "!text-sm !text-muted-foreground",
+                      closeButton:
+                        "!top-2.5 !right-2.5 !border-0 !bg-transparent !text-muted-foreground hover:!text-foreground hover:!bg-muted !rounded-md",
+                      success:
+                        "!border-primary/30 dark:!border-primary/20",
+                      error:
+                        "!border-destructive/40",
                     },
                   }}
                   richColors
+                  closeButton
                 />
               </RouterProvider>
             </AuthProvider>

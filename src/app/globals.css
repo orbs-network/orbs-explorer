@@ -124,3 +124,17 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Sonner toasts – align with design system */
+[data-sonner-toaster] {
+  --width: 380px;
+}
+[data-sonner-toast] {
+  font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+}
+[data-sonner-toast][data-type="success"] [data-icon] {
+  color: hsl(var(--primary));
+}
+[data-sonner-toast][data-type="error"] [data-icon] {
+  color: hsl(var(--destructive));
+}
