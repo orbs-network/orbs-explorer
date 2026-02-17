@@ -7,6 +7,7 @@ import {
   getPartnerChainPairs,
   ordersToPartnerStats,
   partnerChainKey,
+  PartnerCard,
   PartnerStats,
 } from "../orders-dashboard";
 import { ListOrder } from "../types";
@@ -53,6 +54,7 @@ export function useOrdersDashboard() {
   const isError = orderQueries.some((q) => q.isError);
   const error = orderQueries.find((q) => q.isError)?.error;
 
+  /** One entry per partner+chain for overview and backward compat. */
   const stats: PartnerStats[] = useMemo(() => {
     if (!partnerChains.length) return [];
     return partnerChains
@@ -65,6 +67,61 @@ export function useOrdersDashboard() {
         });
       })
       .sort((a, b) => b.totalOrders - a.totalOrders);
+  }, [partnerChains, orderQueries, chainNameById]);
+
+  /** Grouped by partner for one card per partner with chain tabs. */
+  const partnerCards: PartnerCard[] = useMemo(() => {
+    if (!partnerChains.length) return [];
+    const byPartner = new Map<
+      string,
+      { partnerName: string; chains: { chainId: number; chainName: string; adapter: string; queryIndex: number }[] }
+    >();
+    partnerChains.forEach((p, i) => {
+      const existing = byPartner.get(p.partnerId);
+      const chainName = chainNameById[p.chainId] ?? `Chain ${p.chainId}`;
+      const entry = {
+        chainId: p.chainId,
+        chainName,
+        adapter: p.adapter,
+        queryIndex: i,
+      };
+      if (!existing) {
+        byPartner.set(p.partnerId, {
+          partnerName: p.partnerName,
+          chains: [entry],
+        });
+      } else {
+        existing.chains.push(entry);
+      }
+    });
+    const cards: PartnerCard[] = [];
+    byPartner.forEach((value, partnerId) => {
+      const chains = value.chains.map((ch) => {
+        const orders = orderQueries[ch.queryIndex]?.data ?? [];
+        const chainStats = ordersToPartnerStats(
+          orders,
+          partnerId,
+          value.partnerName,
+          { chainId: ch.chainId, chainName: ch.chainName }
+        );
+        return {
+          chainId: ch.chainId,
+          chainName: ch.chainName,
+          stats: chainStats,
+          orders,
+        };
+      });
+      cards.push({
+        partnerId,
+        partnerName: value.partnerName,
+        chains,
+      });
+    });
+    return cards.sort(
+      (a, b) =>
+        b.chains.reduce((s, c) => s + c.stats.totalOrders, 0) -
+        a.chains.reduce((s, c) => s + c.stats.totalOrders, 0)
+    );
   }, [partnerChains, orderQueries, chainNameById]);
 
   const ordersByPartnerChainKey = useMemo(() => {
@@ -80,6 +137,7 @@ export function useOrdersDashboard() {
     isError,
     error,
     stats,
+    partnerCards,
     ordersByPartnerChainKey,
   };
 }

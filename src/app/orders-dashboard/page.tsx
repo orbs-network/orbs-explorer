@@ -7,7 +7,6 @@ import {
   PartnerStatsCard,
   DashboardSummary,
 } from "@/components/orders-dashboard/index";
-import { partnerChainKey } from "@/lib/orders-dashboard";
 import { Spinner } from "@/components/ui/spinner";
 import {
   BarChart3,
@@ -16,7 +15,7 @@ import {
 } from "lucide-react";
 
 export default function OrdersDashboardPage() {
-  const { isLoading, isError, error, stats, ordersByPartnerChainKey } =
+  const { isLoading, isError, error, stats, partnerCards, ordersByPartnerChainKey } =
     useOrdersDashboard();
   const allOrders = useMemo(
     () => Object.values(ordersByPartnerChainKey ?? {}).flat(),
@@ -80,29 +79,15 @@ export default function OrdersDashboardPage() {
         </section>
 
 
-        {/* Partner cards - all partners */}
+        {/* Partner cards - one per partner with chain tabs */}
         <section>
           <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2 mb-4">
             <Users className="h-4 w-4" />
-            All partners ({stats.length})
+            All partners ({partnerCards.length})
           </h2>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {stats.map((s) => (
-              <PartnerStatsCard
-                key={
-                  s.chainId != null
-                    ? partnerChainKey(s.partnerId, s.chainId)
-                    : s.partnerId
-                }
-                stats={s}
-                orders={
-                  s.chainId != null
-                    ? ordersByPartnerChainKey[
-                        partnerChainKey(s.partnerId, s.chainId)
-                      ] ?? []
-                    : []
-                }
-              />
+            {partnerCards.map((card) => (
+              <PartnerStatsCard key={card.partnerId} partnerCard={card} />
             ))}
           </div>
         </section>

@@ -90,6 +90,21 @@ export function partnerChainKey(partnerId: string, chainId: number): string {
   return `${partnerId}-${chainId}`;
 }
 
+/** One chain's stats + orders for use inside a partner card tab. */
+export type PartnerChainEntry = {
+  chainId: number;
+  chainName: string;
+  stats: PartnerStats;
+  orders: ListOrder[];
+};
+
+/** One card per partner: partner info + list of chains (each with stats + orders). */
+export type PartnerCard = {
+  partnerId: string;
+  partnerName: string;
+  chains: PartnerChainEntry[];
+};
+
 function getPartnerName(partnerId: string): string {
   let id = partnerId;
   if (id === "spooky") id = Partners.Spookyswap;
