@@ -1,6 +1,41 @@
 import { ListOrder } from "./types";
 import { PARTNERS } from "./partners";
-import { Partners } from "./types";
+import { Partners, Status } from "./types";
+
+/** Raw status string from ListOrder.metadata.status. */
+export function getListOrderStatus(order: ListOrder): string {
+  return order.metadata?.status ?? "";
+}
+
+export function isListOrderCompleted(order: ListOrder): boolean {
+  return getListOrderStatus(order) === Status.COMPLETED;
+}
+
+export function isListOrderPartiallyCompleted(order: ListOrder): boolean {
+  return getListOrderStatus(order) === Status.PARTIALLY_COMPLETED;
+}
+
+export function isListOrderPending(order: ListOrder): boolean {
+  return getListOrderStatus(order) === Status.PENDING;
+}
+
+export function isListOrderError(order: ListOrder): boolean {
+  const s = getListOrderStatus(order);
+  return (
+    s !== Status.COMPLETED &&
+    s !== Status.PARTIALLY_COMPLETED &&
+    s !== Status.PENDING
+  );
+}
+
+/** Classify order for aggregation. */
+export function classifyListOrderStatus(order: ListOrder): Status {
+  const s = getListOrderStatus(order);
+  if (s === Status.COMPLETED) return Status.COMPLETED;
+  if (s === Status.PARTIALLY_COMPLETED) return Status.PARTIALLY_COMPLETED;
+  if (s === Status.PENDING) return Status.PENDING;
+  return Status.FAILED;
+}
 
 export type PartnerStats = {
   partnerId: string;
@@ -185,10 +220,10 @@ export function aggregateOrdersByPartner(
     const usd = parseFloat(order.totalUSDAmount) || 0;
     row.totalUsd += usd;
 
-    const status = order.metadata?.status ?? "";
-    if (status === "completed") row.filled += 1;
-    else if (status === "partially_completed") row.partiallyFilled += 1;
-    else if (status === "pending") row.pending += 1;
+    const status = classifyListOrderStatus(order);
+    if (status === Status.COMPLETED) row.filled += 1;
+    else if (status === Status.PARTIALLY_COMPLETED) row.partiallyFilled += 1;
+    else if (status === Status.PENDING) row.pending += 1;
     else row.error += 1;
   }
 
@@ -226,10 +261,10 @@ export function ordersToPartnerStats(
 
   for (const order of orders) {
     totalUsd += parseFloat(order.totalUSDAmount) || 0;
-    const status = order.metadata?.status ?? "";
-    if (status === "completed") filled += 1;
-    else if (status === "partially_completed") partiallyFilled += 1;
-    else if (status === "pending") pending += 1;
+    const status = classifyListOrderStatus(order);
+    if (status === Status.COMPLETED) filled += 1;
+    else if (status === Status.PARTIALLY_COMPLETED) partiallyFilled += 1;
+    else if (status === Status.PENDING) pending += 1;
     else error += 1;
   }
 

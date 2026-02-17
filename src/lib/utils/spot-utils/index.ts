@@ -1,5 +1,5 @@
 import { PARTNERS } from "../../partners";
-import { Order, Status, Partner, SpotOrderType, Token } from "../../types";
+import { Order, Status, SpotOrderType, Token, ChunkStatus } from "../../types";
 import { URL_QUERY_KEYS } from "../../consts";
 import { isValidWalletAddress, isNumeric, toAmountUI } from "../utils";
 import { isHash, maxUint256 } from "viem";
@@ -218,7 +218,7 @@ export const getOrderFilledAmounts = (order?: Order) => {
     feeUsd: '',
   };
   const filledChunks = order.metadata.chunks.filter(
-    (chunk) => chunk.status === "success",
+    (chunk) => chunk.status === ChunkStatus.SUCCESS,
   );
   return {
     srcFilledAmount: filledChunks
@@ -281,23 +281,19 @@ export const getOrderTriggerPriceRate = (
   chunkAmountFormatted: string,
   triggerPriceFormatted: string,
 ) => {
-  console.log('chunkAmountFormatted', chunkAmountFormatted);
-  console.log('triggerPriceFormatted', triggerPriceFormatted);
-  
   if (BN(chunkAmountFormatted || 0).lte(0) || BN(triggerPriceFormatted || 0).lte(0))
     return "";
-  const rate = BN(triggerPriceFormatted).div(chunkAmountFormatted).toString();
-  console.log('rate', rate);
-  return rate;
+  return BN(triggerPriceFormatted).div(chunkAmountFormatted).toString();
 };
 
-
-export const getOrderStatus = (order?: Order) => {
-  console.log(order?.metadata.description);
-  
+export const getOrderStatus = (order?: Order): Status => {
   if (!order) return Status.PENDING;
-  if (order.metadata.description?.toLowerCase().includes('cancelled')) return Status.CANCELLED;
-  if (order.metadata.status.includes('failed')) return Status.FAILED;
-  if (order.metadata.status.includes('completed')) return Status.COMPLETED;
+  if (order.metadata.description?.toLowerCase().includes("cancelled"))
+    return Status.CANCELLED;
+  const s = order.metadata.status ?? "";
+  if (s.includes("failed")) return Status.FAILED;
+  if (s === Status.COMPLETED) return Status.COMPLETED;
+  if (s === Status.PARTIALLY_COMPLETED) return Status.PARTIALLY_COMPLETED;
+  if (s.includes("completed")) return Status.COMPLETED;
   return Status.PENDING;
 };

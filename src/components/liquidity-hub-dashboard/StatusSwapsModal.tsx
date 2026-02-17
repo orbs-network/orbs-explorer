@@ -125,7 +125,7 @@ function SwapRow({
       </div>
       {errorText && (
         <div className="mt-2 pt-2 border-t border-destructive/20 bg-destructive/5 rounded-b -mx-3.5 -mb-3.5 px-3.5 pb-3.5">
-          <p className="text-muted-foreground text-sm line-clamp-2" title={errorText}>
+          <p className="text-muted-foreground text-sm whitespace-pre-wrap break-words">
             {errorText}
           </p>
         </div>

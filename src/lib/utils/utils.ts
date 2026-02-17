@@ -6,7 +6,7 @@ import { useQueryFilterParams } from "../hooks/use-query-filter-params";
 import { map } from "lodash";
 import { formatUnits, parseUnits, zeroAddress } from "viem";
 import BN from "bignumber.js";
-import { ListOrder, Order, Token } from "../types";
+import { ListOrder, Order, Token, ChunkStatus } from "../types";
 import { PARTNERS } from "../partners";
 import * as chains from "viem/chains";
 import { chainLogosByChainId, wTokensByChainId } from "../chain";
@@ -151,7 +151,7 @@ export const getChain = (chainId?: number) => {
 export const getOrderProgress = (order: Order) => {
   const totalChunks = order.metadata.expectedChunks;
   const filledChunks = order.metadata.chunks.filter(
-    (chunk) => chunk.status === "success",
+    (chunk) => chunk.status === ChunkStatus.SUCCESS,
   ).length;
   return BN((filledChunks / totalChunks) * 100)
     .decimalPlaces(2)
@@ -215,25 +215,23 @@ export const parseListOrderStatus = (order: ListOrder) => {
 
   if (successChunks === totalChunks) return "completed";
   if (deadline < Date.now()) return "expired";
-  if (order.metadata.status.includes('canceled')) return "canceled";
+  if (order.metadata.status?.toLowerCase().includes("cancel")) return "canceled";
 
   return "open";
-
 };
 
 export const parseOrderStatus = (order: Order) => {
   const totalChunks = order.metadata.expectedChunks;
   const successChunks = order.metadata.chunks.filter(
-    (chunk) => chunk.status === "success",
+    (chunk) => chunk.status === ChunkStatus.SUCCESS,
   ).length;
   const deadline = Number(order.order.witness.deadline) * 1000;
 
   if (successChunks === totalChunks) return "completed";
   if (deadline < Date.now()) return "expired";
-  if (order.metadata.status.includes('canceled')) return "canceled";
+  if (order.metadata.status?.toLowerCase().includes("cancel")) return "canceled";
 
   return "open";
-
 };
 
 

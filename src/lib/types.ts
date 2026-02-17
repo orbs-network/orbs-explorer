@@ -222,6 +222,14 @@ export enum Status {
   FAILED = "failed",
   PENDING = "pending",
   CANCELLED = "cancelled",
+  PARTIALLY_COMPLETED = "partially_completed",
+}
+
+/** Chunk execution status from API. */
+export enum ChunkStatus {
+  SUCCESS = "success",
+  FAILED = "failed",
+  PENDING = "pending-price-check",
 }
 
 

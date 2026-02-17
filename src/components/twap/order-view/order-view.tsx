@@ -4,10 +4,7 @@ import { Address, TokenAddress } from "@/components/token-address";
 import { TokenAmount, TokenAmountFormatted } from "@/components/token-amount";
 import { TransactionDisplay } from "@/components/transaction-display";
 import { useFormatNumber } from "@/lib/hooks/use-number-format";
-import {
-  Token,
-  SpotOrderType,
-} from "@/lib/types";
+import { Token, SpotOrderType, ChunkStatus } from "@/lib/types";
 import {
   abbreviate,
   formatDuration,
@@ -211,8 +208,10 @@ const OrderHeader = () => {
 
   const totalChunks = originalOrder?.metadata?.expectedChunks ?? 0;
   const filledChunks =
-    originalOrder?.metadata?.chunks?.filter((c) => c.status === "success").length ?? 0;
-  const showChunkProgress = totalChunks > 0 && ["pending", "open", "partially_completed", "completed"].includes(normalizedStatus);
+    originalOrder?.metadata?.chunks?.filter((c) => c.status === ChunkStatus.SUCCESS).length ?? 0;
+  const showChunkProgress =
+    totalChunks > 0 &&
+    ["pending", "open", "partially_completed", "completed"].includes(normalizedStatus);
 
   return (
     <TransactionDisplay.Hero>

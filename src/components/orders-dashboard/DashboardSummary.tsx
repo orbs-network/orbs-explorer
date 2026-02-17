@@ -2,6 +2,12 @@
 
 import { useState, useMemo } from "react";
 import type { PartnerStats } from "@/lib/orders-dashboard";
+import {
+  isListOrderCompleted,
+  isListOrderPartiallyCompleted,
+  isListOrderPending,
+  isListOrderError,
+} from "@/lib/orders-dashboard";
 import type { ListOrder } from "@/lib/types";
 import { formatUsd } from "@/lib/utils/utils";
 import {
@@ -25,7 +31,7 @@ const STATUS_TILES = [
       stats.reduce((a, s) => a + s.filledOrders, 0),
     icon: CheckCircle2,
     className: "text-emerald-600 dark:text-emerald-400",
-    filter: (o: ListOrder) => (o.metadata?.status ?? "") === "completed",
+    filter: isListOrderCompleted,
     title: "Filled",
     variant: "filled" as const,
     emptyMessage: "No filled orders in this period.",
@@ -37,7 +43,7 @@ const STATUS_TILES = [
       stats.reduce((a, s) => a + s.partiallyFilledOrders, 0),
     icon: MinusCircle,
     className: "text-amber-600 dark:text-amber-400",
-    filter: (o: ListOrder) => (o.metadata?.status ?? "") === "partially_completed",
+    filter: isListOrderPartiallyCompleted,
     title: "Partially filled",
     variant: "partial" as const,
     emptyMessage: "No partially filled orders in this period.",
@@ -49,10 +55,7 @@ const STATUS_TILES = [
       stats.reduce((a, s) => a + s.errorOrders, 0),
     icon: XCircle,
     className: "text-destructive",
-    filter: (o: ListOrder) => {
-      const s = o.metadata?.status ?? "";
-      return s !== "completed" && s !== "partially_completed" && s !== "pending";
-    },
+    filter: isListOrderError,
     title: "Error / failed",
     variant: "error" as const,
     emptyMessage: "No error orders in this period.",
@@ -64,7 +67,7 @@ const STATUS_TILES = [
       stats.reduce((a, s) => a + s.pendingOrders, 0),
     icon: Clock,
     className: "text-muted-foreground",
-    filter: (o: ListOrder) => (o.metadata?.status ?? "") === "pending",
+    filter: isListOrderPending,
     title: "Pending",
     variant: "pending" as const,
     emptyMessage: "No pending orders in this period.",

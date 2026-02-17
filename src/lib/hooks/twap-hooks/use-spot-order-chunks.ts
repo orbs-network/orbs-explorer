@@ -1,4 +1,4 @@
-import { Token, ParsedOrderChunk, Order, OrderChunk, Status } from "@/lib/types";
+import { Token, ParsedOrderChunk, Order, OrderChunk, Status, ChunkStatus } from "@/lib/types";
 import { toAmountUI } from "@/lib/utils/utils";
 import { useMemo } from "react";
 import { useSpotOrder } from "./use-spot-order";
@@ -57,10 +57,10 @@ export function getOrderChunks(
 
   return {
     expectedChunks: order?.metadata.expectedChunks,
-    successChunks: chunks.filter((c) => c.status === "success"),
-    failedChunks: chunks.filter((c) => c.status === "failed"),
+    successChunks: chunks.filter((c) => c.status === ChunkStatus.SUCCESS),
+    failedChunks: chunks.filter((c) => c.status === ChunkStatus.FAILED),
     pendingChunks: chunks.filter(
-      (c) => c.status !== "success" && c.status !== "failed",
+      (c) => c.status !== ChunkStatus.SUCCESS && c.status !== ChunkStatus.FAILED,
     ),
     chunks,
   };

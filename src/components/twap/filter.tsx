@@ -1,6 +1,7 @@
 "use client";
 
 import { URL_QUERY_KEYS } from "@/lib/consts";
+import { Status } from "@/lib/types";
 import { QueryFilters } from "@/components/query-filters";
 import { shortenAddress } from "@/lib/utils/utils";
 
@@ -25,9 +26,9 @@ const TYPE_OPTIONS = [
 
 const STATUS_OPTIONS = [
   { label: "Open", value: "open" },
-  { label: "Completed", value: "completed" },
-  { label: "Failed", value: "failed" },
-  { label: "Partially Completed", value: "partially_completed" },
+  { label: "Completed", value: Status.COMPLETED },
+  { label: "Failed", value: Status.FAILED },
+  { label: "Partially Completed", value: Status.PARTIALLY_COMPLETED },
 ];
 
 const OrderTypeFilter = () => {

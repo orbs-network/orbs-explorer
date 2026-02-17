@@ -3,6 +3,12 @@
 import { useState, useMemo } from "react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import type { PartnerCard, PartnerStats } from "@/lib/orders-dashboard";
+import {
+  isListOrderCompleted,
+  isListOrderPartiallyCompleted,
+  isListOrderPending,
+  isListOrderError,
+} from "@/lib/orders-dashboard";
 import type { ListOrder } from "@/lib/types";
 import {
   CheckCircle2,
@@ -22,21 +28,16 @@ import { cn } from "@/lib/utils";
 import { formatUsd } from "@/lib/utils/utils";
 
 function isFilledOrder(order: ListOrder): boolean {
-  return (order.metadata?.status ?? "") === "completed";
+  return isListOrderCompleted(order);
 }
 function isPartiallyFilledOrder(order: ListOrder): boolean {
-  return (order.metadata?.status ?? "") === "partially_completed";
+  return isListOrderPartiallyCompleted(order);
 }
 function isPendingOrder(order: ListOrder): boolean {
-  return (order.metadata?.status ?? "") === "pending";
+  return isListOrderPending(order);
 }
 function isErrorOrder(order: ListOrder): boolean {
-  const status = order.metadata?.status ?? "";
-  return (
-    status !== "completed" &&
-    status !== "partially_completed" &&
-    status !== "pending"
-  );
+  return isListOrderError(order);
 }
 
 const sortByCreatedAtDesc = (a: ListOrder, b: ListOrder) =>

@@ -1,9 +1,10 @@
 import { useMemo } from "react";
-import { CheckCircle2, Clock, XCircle, PlayCircle, RefreshCw, AlertCircle } from "lucide-react";
+import { CheckCircle2, Clock, XCircle, PlayCircle, RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Status } from "@/lib/types";
 
 const getStatusConfig = (status: string) => {
-  if (status === "completed") {
+  if (status === Status.COMPLETED) {
     return {
       icon: CheckCircle2,
       label: "Completed",
@@ -12,7 +13,7 @@ const getStatusConfig = (status: string) => {
       border: "border-green-500/20",
     };
   }
-  if (status === "canceled") {
+  if (status === "canceled" || status === Status.CANCELLED) {
     return {
       icon: XCircle,
       label: "Canceled",
@@ -40,7 +41,7 @@ const getStatusConfig = (status: string) => {
       border: "border-blue-500/20",
     };
   }
-  if (status === "failed") {
+  if (status === Status.FAILED) {
     return {
       icon: XCircle,
       label: "Failed",
@@ -49,7 +50,7 @@ const getStatusConfig = (status: string) => {
       border: "border-red-500/20",
     };
   }
-  if (status === "partially_completed") {
+  if (status === Status.PARTIALLY_COMPLETED) {
     return {
       icon: CheckCircle2,
       label: "Partially Completed",

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useCallback } from "react";
+import { useMemo, useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -9,20 +9,18 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import type { ListOrder } from "@/lib/types";
-import { ExternalLink, Search, ChevronDown, ChevronUp, ArrowRight } from "lucide-react";
+import { ExternalLink, Search, ArrowRight } from "lucide-react";
 import Link from "next/link";
 import { ROUTES } from "@/lib/routes";
 import { Virtuoso } from "react-virtuoso";
 import { useToken } from "@/lib/hooks/use-token";
 import { useSpotPartner } from "@/lib/hooks/twap-hooks/use-spot-partner";
 import { formatUsd } from "@/lib/utils/utils";
+import moment from "moment";
 
 function formatDate(iso: string): string {
-  const d = new Date(iso);
-  const day = d.getDate();
-  const month = d.getMonth() + 1;
-  const year = String(d.getFullYear()).slice(-2);
-  return `${day}/${month}/${year}`;
+  const d = moment(iso);
+  return d.format("DD MMM YY");
 }
 
 function filterOrders(orders: ListOrder[], query: string): ListOrder[] {
@@ -84,13 +82,9 @@ function OrderRowTokenPair({ order }: { order: ListOrder }) {
 function OrderRow({
   order,
   variant,
-  isExpanded,
-  onToggleExpand,
 }: {
   order: ListOrder;
   variant: StatusOrdersModalVariant;
-  isExpanded: boolean;
-  onToggleExpand: () => void;
 }) {
   const usd = parseFloat(order.totalUSDAmount || "0");
   const desc =
@@ -106,8 +100,9 @@ function OrderRow({
       : null;
 
   return (
-    <div
-      className={`rounded-lg border border-border border-l-4 bg-muted/30 p-3.5 text-sm ${variantBorderColors[variant]}`}
+    <Link
+      href={ROUTES.TWAP.ORDER(order.hash)}
+      className={`block rounded-lg border border-border border-l-4 bg-muted/30 p-3.5 text-sm cursor-pointer transition-colors hover:bg-muted/50 hover:border-border ${variantBorderColors[variant]}`}
     >
       {/* Row 1: Token pair (primary) + USD */}
       <div className="flex items-center justify-between gap-3 mb-2">
@@ -134,45 +129,24 @@ function OrderRow({
           </>
         )}
       </div>
-      {/* Row 3: Hash link + date */}
+      {/* Row 3: Hash + date badge */}
       <div className="flex flex-wrap items-center gap-2 text-[11px]">
-        <Link
-          href={ROUTES.TWAP.ORDER(order.hash)}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex items-center gap-1 font-mono text-muted-foreground hover:text-primary hover:underline"
-        >
+        <span className="inline-flex items-center gap-1 font-mono text-muted-foreground text-[14px]">
           {order.hash.slice(0, 10)}…{order.hash.slice(-8)}
-          <ExternalLink className="h-3 w-3 shrink-0" />
-        </Link>
-        <span className="text-border">·</span>
-        <span className="text-muted-foreground/90">{formatDate(order.timestamp)}</span>
+        </span>
+        <span className="px-2 py-0.5 rounded-md bg-muted/60 border border-border text-muted-foreground text-xs font-medium tabular-nums">
+          {formatDate(order.timestamp)}
+        </span>
       </div>
-      {/* Error description */}
+      {/* Error description — full message, no truncation */}
       {hasDesc && (
         <div className="mt-2 pt-2 border-t border-destructive/20 bg-destructive/5 rounded-b -mx-3.5 -mb-3.5 px-3.5 pb-3.5">
-          <p
-            className={`text-muted-foreground text-sm ${isExpanded ? "" : "line-clamp-2"}`}
-          >
+          <p className="text-muted-foreground text-sm whitespace-pre-wrap break-words">
             {desc}
           </p>
-          <button
-            type="button"
-            onClick={(e) => {
-              e.preventDefault();
-              onToggleExpand();
-            }}
-            className="text-destructive/90 dark:text-destructive font-medium text-sm mt-1 hover:underline flex items-center gap-0.5"
-          >
-            {isExpanded ? (
-              <>Show less <ChevronUp className="h-3 w-3" /></>
-            ) : (
-              <>Read more <ChevronDown className="h-3 w-3" /></>
-            )}
-          </button>
         </div>
       )}
-    </div>
+    </Link>
   );
 }
 
@@ -194,7 +168,6 @@ export function StatusOrdersModal({
   emptyMessage?: string;
 }) {
   const [filterQuery, setFilterQuery] = useState("");
-  const [expandedHashes, setExpandedHashes] = useState<Set<string>>(new Set());
 
   const sorted = useMemo(() => sortByCreatedAt(orders), [orders]);
 
@@ -202,15 +175,6 @@ export function StatusOrdersModal({
     () => filterOrders(sorted, filterQuery),
     [sorted, filterQuery]
   );
-
-  const toggleExpanded = useCallback((hash: string) => {
-    setExpandedHashes((prev) => {
-      const next = new Set(prev);
-      if (next.has(hash)) next.delete(hash);
-      else next.add(hash);
-      return next;
-    });
-  }, []);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -252,12 +216,7 @@ export function StatusOrdersModal({
                 overscan={20}
                 itemContent={(index, order) => (
                   <div className="pb-2">
-                    <OrderRow
-                      order={order}
-                      variant={variant}
-                      isExpanded={expandedHashes.has(order.hash)}
-                      onToggleExpand={() => toggleExpanded(order.hash)}
-                    />
+                    <OrderRow order={order} variant={variant} />
                   </div>
                 )}
               />
