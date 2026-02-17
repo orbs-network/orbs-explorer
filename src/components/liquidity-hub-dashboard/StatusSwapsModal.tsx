@@ -24,15 +24,7 @@ import Link from "next/link";
 import { ROUTES } from "@/lib/routes";
 import { Virtuoso } from "react-virtuoso";
 import { useToken } from "@/lib/hooks/use-token";
-
-function formatUsd(n: number): string {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(n);
-}
+import { formatUsd } from "@/lib/utils/utils";
 
 function formatDate(ts: string | number): string {
   const d = typeof ts === "string" ? new Date(ts) : new Date(ts);

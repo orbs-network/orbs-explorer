@@ -15,15 +15,7 @@ import { ROUTES } from "@/lib/routes";
 import { Virtuoso } from "react-virtuoso";
 import { useToken } from "@/lib/hooks/use-token";
 import { useSpotPartner } from "@/lib/hooks/twap-hooks/use-spot-partner";
-
-function formatUsd(n: number): string {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(n);
-}
+import { formatUsd } from "@/lib/utils/utils";
 
 function formatDate(iso: string): string {
   const d = new Date(iso);

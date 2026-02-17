@@ -5,6 +5,9 @@ import { Partners } from "./types";
 export type PartnerStats = {
   partnerId: string;
   partnerName: string;
+  /** When set, card is for this partner on this chain (e.g. "Pangolin Monad") */
+  chainId?: number;
+  chainName?: string;
   totalOrders: number;
   totalUsd: number;
   filledOrders: number;
@@ -22,6 +25,14 @@ export type PartnerWithAdapter = {
   partnerId: string;
   partnerName: string;
   adapter: string;
+};
+
+/** One card per partner per chain (e.g. Pangolin Monad, Pangolin Avalanche). */
+export type PartnerChainPair = {
+  partnerId: string;
+  partnerName: string;
+  adapter: string;
+  chainId: number;
 };
 
 export function getPartnersWithAdapters(
@@ -50,6 +61,33 @@ export function getPartnersWithAdapters(
   }
 
   return Array.from(byAdapter.values());
+}
+
+/** Returns one entry per (partner, chain) for dashboard cards. */
+export function getPartnerChainPairs(config: SpotConfig | null): PartnerChainPair[] {
+  if (!config) return [];
+  const pairs: PartnerChainPair[] = [];
+
+  for (const [chainIdStr, chainConfig] of Object.entries(config)) {
+    const chainId = Number(chainIdStr);
+    if (Number.isNaN(chainId) || !chainConfig?.dex) continue;
+    for (const [partnerId, dexConfig] of Object.entries(chainConfig.dex)) {
+      if (typeof dexConfig === "object" && dexConfig.adapter) {
+        pairs.push({
+          partnerId,
+          partnerName: getPartnerName(partnerId),
+          adapter: dexConfig.adapter,
+          chainId,
+        });
+      }
+    }
+  }
+
+  return pairs;
+}
+
+export function partnerChainKey(partnerId: string, chainId: number): string {
+  return `${partnerId}-${chainId}`;
 }
 
 function getPartnerName(partnerId: string): string {
@@ -158,13 +196,13 @@ export function getLast7DaysDate(): Date {
   return d;
 }
 
-/** Aggregate a single partner's orders (e.g. from getAllOrdersForExchange) into PartnerStats for last 7 days. */
+/** Aggregate a single partner's orders into PartnerStats. Optionally include chain for card title "PartnerName ChainName". */
 export function ordersToPartnerStats(
   orders: ListOrder[],
   partnerId: string,
-  partnerName: string
+  partnerName: string,
+  options?: { chainId?: number; chainName?: string }
 ): PartnerStats {
-
   let totalUsd = 0;
   let filled = 0;
   let partiallyFilled = 0;
@@ -172,8 +210,7 @@ export function ordersToPartnerStats(
   let pending = 0;
 
   for (const order of orders) {
-
-      totalUsd += parseFloat(order.totalUSDAmount) || 0;
+    totalUsd += parseFloat(order.totalUSDAmount) || 0;
     const status = order.metadata?.status ?? "";
     if (status === "completed") filled += 1;
     else if (status === "partially_completed") partiallyFilled += 1;
@@ -184,6 +221,8 @@ export function ordersToPartnerStats(
   return {
     partnerId,
     partnerName,
+    chainId: options?.chainId,
+    chainName: options?.chainName,
     totalOrders: orders.length,
     totalUsd,
     filledOrders: filled,

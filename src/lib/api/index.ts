@@ -136,6 +136,52 @@ export const getAllOrdersForExchange = async ({
   );
 };
 
+/**
+ * Fetches all orders for a given exchange adapter on a specific chain.
+ */
+export const getAllOrdersForExchangeAndChain = async ({
+  exchange: adapter,
+  chainId,
+  signal,
+  limit = 400,
+}: {
+  exchange: string;
+  chainId: number;
+  signal?: AbortSignal;
+  limit?: number;
+}): Promise<ListOrder[]> => {
+  const all: ListOrder[] = [];
+  let page = 0;
+  let totalFetched = 0;
+  let totalFromApi: number | null = null;
+
+  while (true) {
+    const { orders, total } = await getOrdersPageWithFilters({
+      signal,
+      page,
+      limit,
+      filters: { exchange: adapter, chainIds: [chainId] },
+    });
+
+    if (totalFromApi === null) totalFromApi = total;
+    all.push(...orders);
+    totalFetched += orders.length;
+
+    if (
+      orders.length < limit ||
+      (totalFromApi !== null && totalFetched >= totalFromApi)
+    ) {
+      break;
+    }
+    page += 1;
+  }
+
+  return all.sort(
+    (a, b) =>
+      new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+  );
+};
+
 export const getOrdersListPage = async ({
   signal,
   page = 0,

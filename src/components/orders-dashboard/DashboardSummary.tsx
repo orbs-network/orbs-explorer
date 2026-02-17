@@ -3,6 +3,7 @@
 import { useState, useMemo } from "react";
 import type { PartnerStats } from "@/lib/orders-dashboard";
 import type { ListOrder } from "@/lib/types";
+import { formatUsd } from "@/lib/utils/utils";
 import {
   CheckCircle2,
   XCircle,
@@ -12,17 +13,6 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { StatusOrdersModal } from "./StatusOrdersModal";
-
-function formatUsd(n: number): string {
-  if (n >= 1_000_000) return `$${(n / 1_000_000).toFixed(2)}M`;
-  if (n >= 1_000) return `$${(n / 1_000).toFixed(2)}K`;
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(n);
-}
 
 const sortByCreatedAtDesc = (a: ListOrder, b: ListOrder) =>
   new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();

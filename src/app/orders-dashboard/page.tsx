@@ -7,6 +7,7 @@ import {
   PartnerStatsCard,
   DashboardSummary,
 } from "@/components/orders-dashboard/index";
+import { partnerChainKey } from "@/lib/orders-dashboard";
 import { Spinner } from "@/components/ui/spinner";
 import {
   BarChart3,
@@ -15,11 +16,11 @@ import {
 } from "lucide-react";
 
 export default function OrdersDashboardPage() {
-  const { isLoading, isError, error, stats, ordersByPartnerId } =
+  const { isLoading, isError, error, stats, ordersByPartnerChainKey } =
     useOrdersDashboard();
   const allOrders = useMemo(
-    () => Object.values(ordersByPartnerId ?? {}).flat(),
-    [ordersByPartnerId]
+    () => Object.values(ordersByPartnerChainKey ?? {}).flat(),
+    [ordersByPartnerChainKey]
   );
 
   if (isLoading) {
@@ -88,9 +89,19 @@ export default function OrdersDashboardPage() {
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {stats.map((s) => (
               <PartnerStatsCard
-                key={s.partnerId}
+                key={
+                  s.chainId != null
+                    ? partnerChainKey(s.partnerId, s.chainId)
+                    : s.partnerId
+                }
                 stats={s}
-                orders={ordersByPartnerId[s.partnerId] ?? []}
+                orders={
+                  s.chainId != null
+                    ? ordersByPartnerChainKey[
+                        partnerChainKey(s.partnerId, s.chainId)
+                      ] ?? []
+                    : []
+                }
               />
             ))}
           </div>

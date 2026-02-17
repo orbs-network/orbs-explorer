@@ -1,33 +1,48 @@
 import { useQueries } from "@tanstack/react-query";
 import { useMemo } from "react";
-import { getAllOrdersForExchange } from "../api";
+import { getAllOrdersForExchangeAndChain } from "../api";
 import { REACT_QUERY_KEYS } from "../consts";
 import { useSpotConfig } from "./use-twap-config";
 import {
-  getLast7DaysDate,
-  getPartnersWithAdapters,
+  getPartnerChainPairs,
   ordersToPartnerStats,
+  partnerChainKey,
   PartnerStats,
 } from "../orders-dashboard";
 import { ListOrder } from "../types";
+import { getChains } from "../utils/utils";
 
 export function useOrdersDashboard() {
   const { data: config, isLoading: configLoading } = useSpotConfig();
 
-  const partners = useMemo(
-    () => getPartnersWithAdapters(config ?? null),
+  const partnerChains = useMemo(
+    () => getPartnerChainPairs(config ?? null),
     [config]
   );
 
+  const chainNameById = useMemo(() => {
+    const map: Record<number, string> = {};
+    getChains().forEach((c) => {
+      map[c.id] = c.name;
+    });
+    return map;
+  }, []);
+
   const orderQueries = useQueries({
-    queries: partners.map((p) => ({
-      queryKey: [REACT_QUERY_KEYS.spotOrders, "dashboard", p.adapter],
+    queries: partnerChains.map((p) => ({
+      queryKey: [
+        REACT_QUERY_KEYS.spotOrders,
+        "dashboard",
+        p.adapter,
+        p.chainId,
+      ],
       queryFn: ({ signal }: { signal?: AbortSignal }) =>
-        getAllOrdersForExchange({
+        getAllOrdersForExchangeAndChain({
           exchange: p.adapter,
+          chainId: p.chainId,
           signal,
         }),
-      enabled: !!config && partners.length > 0,
+      enabled: !!config && partnerChains.length > 0,
       staleTime: 1000 * 60 * 60 * 24, // 24 hours
     })),
   });
@@ -39,32 +54,32 @@ export function useOrdersDashboard() {
   const error = orderQueries.find((q) => q.isError)?.error;
 
   const stats: PartnerStats[] = useMemo(() => {
-    if (!partners.length) return [];
-    return partners
+    if (!partnerChains.length) return [];
+    return partnerChains
       .map((p, i) => {
         const orders = orderQueries[i]?.data ?? [];
-        return ordersToPartnerStats(
-          orders,
-          p.partnerId,
-          p.partnerName
-        );
+        const chainName = chainNameById[p.chainId] ?? `Chain ${p.chainId}`;
+        return ordersToPartnerStats(orders, p.partnerId, p.partnerName, {
+          chainId: p.chainId,
+          chainName,
+        });
       })
       .sort((a, b) => b.totalOrders - a.totalOrders);
-  }, [partners, orderQueries]);
+  }, [partnerChains, orderQueries, chainNameById]);
 
-  const ordersByPartnerId = useMemo(() => {
+  const ordersByPartnerChainKey = useMemo(() => {
     const map: Record<string, ListOrder[]> = {};
-    partners.forEach((p, i) => {
-      map[p.partnerId] = orderQueries[i]?.data ?? [];
+    partnerChains.forEach((p, i) => {
+      map[partnerChainKey(p.partnerId, p.chainId)] = orderQueries[i]?.data ?? [];
     });
     return map;
-  }, [partners, orderQueries]);
+  }, [partnerChains, orderQueries]);
 
   return {
     isLoading,
     isError,
     error,
     stats,
-    ordersByPartnerId,
+    ordersByPartnerChainKey,
   };
 }

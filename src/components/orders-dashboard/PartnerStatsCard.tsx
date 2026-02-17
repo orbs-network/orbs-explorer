@@ -15,18 +15,10 @@ import {
 } from "lucide-react";
 import { usePartner } from "@/lib/hooks/use-partner";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Network } from "@/components/ui/network";
 import { StatusOrdersModal } from "./StatusOrdersModal";
-
-function formatUsd(n: number): string {
-  if (n >= 1_000_000) return `$${(n / 1_000_000).toFixed(2)}M`;
-  if (n >= 1_000) return `$${(n / 1_000).toFixed(2)}K`;
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(n);
-}
+import { cn } from "@/lib/utils";
+import { formatUsd } from "@/lib/utils/utils";
 
 function isFilledOrder(order: ListOrder): boolean {
   return (order.metadata?.status ?? "") === "completed";
@@ -125,18 +117,22 @@ export function PartnerStatsCard({
   );
 
   const hasNoOrders = stats.totalOrders === 0;
+  const displayName = stats.chainName
+    ? `${stats.partnerName} ${stats.chainName}`
+    : stats.partnerName;
 
   return (
     <>
       <Card
-        className={`overflow-hidden border bg-card shadow-sm transition-all hover:shadow-md ${
+        className={cn(
+          "overflow-hidden border bg-card shadow-sm transition-all hover:shadow-md gap-3 pb-2",
           hasNoOrders
             ? "border-border/60 opacity-90"
             : "border-border hover:border-primary/20"
-        }`}
+        )}
       >
-        <CardHeader className="pb-2 pt-5 px-5">
-          <div className="flex items-center gap-3">
+        <CardHeader className="pb-0 pt-1 px-5">
+          <div className="flex items-center gap-2">
             {partner && (
               <Avatar className="h-10 w-10 shrink-0 border border-border">
                 <AvatarImage src={partner.logo} alt={stats.partnerName} />
@@ -145,10 +141,20 @@ export function PartnerStatsCard({
                 </AvatarFallback>
               </Avatar>
             )}
-            <div className="min-w-0">
-              <h3 className="text-lg font-semibold tracking-tight text-foreground">
-                {stats.partnerName}
-              </h3>
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-center gap-2">
+                <h3 className="text-lg font-semibold tracking-tight text-foreground">
+                  {stats.partnerName}
+                </h3>
+                {stats.chainId != null && stats.chainName && (
+                  <Network
+                    chainId={stats.chainId}
+                    variant="compact"
+                    showChainId={false}
+                    className="shrink-0 rounded-md border border-border bg-muted/40 px-1.5 py-0.5 [&_span]:text-xs"
+                  />
+                )}
+              </div>
               {hasNoOrders && (
                 <p className="text-xs text-muted-foreground mt-0.5">
                   No orders in last 7 days
@@ -201,7 +207,7 @@ export function PartnerStatsCard({
       <StatusOrdersModal
         open={filledModalOpen}
         onOpenChange={setFilledModalOpen}
-        partnerName={stats.partnerName}
+        partnerName={displayName}
         orders={filledOrders}
         title="Filled"
         variant="filled"
@@ -210,7 +216,7 @@ export function PartnerStatsCard({
       <StatusOrdersModal
         open={partialModalOpen}
         onOpenChange={setPartialModalOpen}
-        partnerName={stats.partnerName}
+        partnerName={displayName}
         orders={partialOrders}
         title="Partially filled"
         variant="partial"
@@ -219,7 +225,7 @@ export function PartnerStatsCard({
       <StatusOrdersModal
         open={pendingModalOpen}
         onOpenChange={setPendingModalOpen}
-        partnerName={stats.partnerName}
+        partnerName={displayName}
         orders={pendingOrders}
         title="Pending"
         variant="pending"
@@ -228,7 +234,7 @@ export function PartnerStatsCard({
       <StatusOrdersModal
         open={errorModalOpen}
         onOpenChange={setErrorModalOpen}
-        partnerName={stats.partnerName}
+        partnerName={displayName}
         orders={errorOrders}
         title="Error / failed"
         variant="error"
