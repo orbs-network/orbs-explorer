@@ -55,22 +55,22 @@ export default function OrdersDashboardPage() {
     <Page>
       <div className="min-h-screen">
         {/* Hero header */}
-        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary/10 via-background to-background border border-border/80 mb-10">
-          <div className="relative z-10 px-6 py-8 sm:px-8 sm:py-10">
+        <div className="relative overflow-hidden rounded-xl sm:rounded-2xl bg-gradient-to-br from-primary/10 via-background to-background border border-border/80 mb-6 sm:mb-10">
+          <div className="relative z-10 px-4 py-6 sm:px-8 sm:py-10">
             <div className="flex items-center gap-2 text-primary mb-2">
               <BarChart3 className="h-5 w-5" />
               <span className="text-sm font-semibold uppercase tracking-wider">
                 Orders Dashboard
               </span>
             </div>
-            <h1 className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
+            <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-4xl">
               Partner order activity
             </h1>
           </div>
         </div>
 
         {/* Overview */}
-        <section className="mb-10">
+        <section className="mb-6 sm:mb-10">
           <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2 mb-4">
             <LayoutGrid className="h-4 w-4" />
             Overview

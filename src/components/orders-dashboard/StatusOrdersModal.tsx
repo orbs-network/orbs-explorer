@@ -9,16 +9,17 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import type { ListOrder } from "@/lib/types";
-import { ExternalLink, Search, ArrowRight } from "lucide-react";
+import { ExternalLink, Search, ArrowRight, ChevronRight } from "lucide-react";
 import Link from "next/link";
 import { ROUTES } from "@/lib/routes";
 import { Virtuoso } from "react-virtuoso";
 import { useToken } from "@/lib/hooks/use-token";
 import { useSpotPartner } from "@/lib/hooks/twap-hooks/use-spot-partner";
 import { formatUsd } from "@/lib/utils/utils";
+import BN from "bignumber.js";
 import moment from "moment";
 
-function formatDate(iso: string): string {
+function formatDate(iso: string | number): string {
   const d = moment(iso);
   return d.format("DD MMM YY");
 }
@@ -116,7 +117,7 @@ function OrderRow({
         </span>
       </div>
       {/* Row 2: Type + chunks only */}
-      <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground mb-1.5">
+      <div className="flex flex-wrap items-center gap-1 text-xs text-muted-foreground mb-1.5">
         <span className="px-2 py-0.5 rounded-md bg-primary/10 text-primary font-medium border border-primary/20">
           {orderType}
         </span>
@@ -130,14 +131,11 @@ function OrderRow({
         )}
       </div>
       {/* Row 3: Hash + date badge */}
-      <div className="flex flex-wrap items-center gap-2 text-[11px]">
-        <span className="inline-flex items-center gap-1 font-mono text-muted-foreground text-[14px]">
-          {order.hash.slice(0, 10)}…{order.hash.slice(-8)}
+      <span className="px-2 py-0.5 rounded-md bg-muted/60 border border-border text-muted-foreground text-xs font-medium tabular-nums inline-flex items-center gap-1">
+          {formatDate(order.timestamp)} 
+          <ChevronRight className="w-3 h-3 text-muted-foreground shrink-0" />
+           {formatDate(BN(order.order.witness.deadline).multipliedBy(1000).toNumber())}
         </span>
-        <span className="px-2 py-0.5 rounded-md bg-muted/60 border border-border text-muted-foreground text-xs font-medium tabular-nums">
-          {formatDate(order.timestamp)}
-        </span>
-      </div>
       {/* Error description — full message, no truncation */}
       {hasDesc && (
         <div className="mt-2 pt-2 border-t border-destructive/20 bg-destructive/5 rounded-b -mx-3.5 -mb-3.5 px-3.5 pb-3.5">
@@ -178,7 +176,7 @@ export function StatusOrdersModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl h-[85vh] max-h-[85vh] flex flex-col gap-0 overflow-hidden">
+      <DialogContent className="w-[calc(100vw-1.5rem)] max-w-2xl h-[85vh] max-h-[calc(100dvh-2rem)] sm:max-h-[85vh] flex flex-col gap-0 overflow-hidden">
         <DialogHeader className="shrink-0">
           <DialogTitle>
             {title} — {partnerName}

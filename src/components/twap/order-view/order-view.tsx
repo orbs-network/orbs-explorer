@@ -43,58 +43,6 @@ import { SpotOrderUiLogs } from "./ui-logs";
 import { OriginalOrder } from "./original-order";
 import { parseOrderType } from "@/lib/utils/spot-utils";
 
-export function OrderView({
-  hash,
-  backHref,
-  defaultBackHref,
-}: {
-  hash: string;
-  backHref?: string;
-  defaultBackHref?: string;
-}) {
-  const orderPayload = useSpotOrder(hash);
-
-  if (orderPayload.isLoading) {
-    return (
-      <TransactionDisplay.Container>
-        <TransactionDisplay.Loading message="Loading order..." />
-      </TransactionDisplay.Container>
-    );
-  }
-
-  if (!orderPayload.originalOrder) {
-    return (
-      <TransactionDisplay.Container>
-        <TransactionDisplay.NotFound
-          title="Order Not Found"
-          description="The TWAP order you're looking for doesn't exist."
-        />
-      </TransactionDisplay.Container>
-    );
-  }
-
-  return (
-    <OrderViewContext.Provider
-      value={{ ...orderPayload, order: orderPayload.originalOrder! }}
-    >
-      <TransactionDisplay.Container>
-        <TransactionDisplay.ContainerHeader
-          backHref={backHref}
-          defaultBackHref={defaultBackHref}
-        />
-        <OrderHeader />
-        <TransactionDisplay.Grid>
-          {/* When, where, who — context & identity */}
-          <OrderDetails />
-          {/* What you're trading and on what conditions */}
-          <OrderTerms />
-        </TransactionDisplay.Grid>
-        {/* How the order is executing */}
-        <ExecutionDetails />
-      </TransactionDisplay.Container>
-    </OrderViewContext.Provider>
-  );
-}
 
 const PriceRate = ({
   rate,
@@ -218,13 +166,13 @@ const OrderHeader = () => {
       <div className="flex flex-col gap-4">
         {/* Prominent status card - always show so status is visible */}
         <div
-            className={`flex items-center gap-4 rounded-xl border p-4 ${visual.className}`}
+            className={`flex flex-wrap items-center gap-3 sm:gap-4 rounded-xl border p-3 sm:p-4 ${visual.className}`}
           >
-            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-background/80 border border-inherit">
-              <StatusIcon className={`h-6 w-6 ${visual.iconClassName}`} />
+            <div className="flex h-10 w-10 sm:h-12 sm:w-12 shrink-0 items-center justify-center rounded-full bg-background/80 border border-inherit">
+              <StatusIcon className={`h-5 w-5 sm:h-6 sm:w-6 ${visual.iconClassName}`} />
             </div>
             <div className="min-w-0 flex-1">
-              <p className={`text-base font-semibold ${visual.labelClassName}`}>
+              <p className={`text-sm sm:text-base font-semibold ${visual.labelClassName}`}>
                 {visual.label}
               </p>
               {visual.sublabel && (
@@ -233,12 +181,12 @@ const OrderHeader = () => {
                 </p>
               )}
               {showChunkProgress && (
-                <p className="text-sm font-mono text-muted-foreground mt-1">
+                <p className="text-xs sm:text-sm font-mono text-muted-foreground mt-1">
                   {filledChunks} / {totalChunks} chunks filled
                 </p>
               )}
             </div>
-            <div className="flex items-center gap-2 shrink-0">
+            <div className="flex flex-wrap items-center gap-2 shrink-0 w-full sm:w-auto">
               <TransactionDisplay.Badge variant="muted">
                 {parseOrderType(type)} Order
               </TransactionDisplay.Badge>
@@ -295,23 +243,55 @@ const PartnerSection = () => {
   );
 };
 
-const InTokenSection = () => {
-  const { srcToken, chainId } = useOrderViewContext();
+
+const Reactor = () => {
+  const { order, chainId } = useOrderViewContext();
   return (
-    <TransactionDisplay.SectionItem label="In Token">
-      <TokenAddress address={srcToken?.address} chainId={chainId} />
+    <TransactionDisplay.SectionItem label="Reactor">
+      <Address address={order.order.witness.reactor} chainId={chainId} />
     </TransactionDisplay.SectionItem>
   );
 };
 
-const OutTokenSection = () => {
-  const { dstToken, chainId } = useOrderViewContext();
+
+const Executor = () => {
+  const { order, chainId } = useOrderViewContext();
   return (
-    <TransactionDisplay.SectionItem label="Out Token">
-      <TokenAddress address={dstToken?.address} chainId={chainId} />
+    <TransactionDisplay.SectionItem label="Executor">
+      <Address address={order.order.witness.executor} chainId={chainId} />
     </TransactionDisplay.SectionItem>
   );
 };
+
+
+const ExchangeAdapter = () => {
+  const { order, chainId } = useOrderViewContext();
+  return (
+    <TransactionDisplay.SectionItem label="Exchange Adapter">
+      <Address address={order.order.witness.exchange.adapter} chainId={chainId} />
+    </TransactionDisplay.SectionItem>
+  );
+};
+
+const ExchangeReferrer = () => {
+  const { order, chainId } = useOrderViewContext();
+  return (
+    <TransactionDisplay.SectionItem label="Exchange Referrer">
+      <Address address={order.order.witness.exchange.ref} chainId={chainId} />
+    </TransactionDisplay.SectionItem>
+  );
+};
+
+const ReferrerShare = () => {
+  const { order } = useOrderViewContext();
+  const valueF = useFormatNumber({value: order.order.witness.exchange.share * 100, decimalScale: 2})
+  return (
+    <TransactionDisplay.SectionItem label="Referrer Share">
+      <span className="text-[13px] font-mono">{valueF}%</span>
+    </TransactionDisplay.SectionItem>
+  );
+};
+
 
 const SwapperSection = () => {
   const { swapper, chainId } = useOrderViewContext();
@@ -546,6 +526,18 @@ const OrderDetails = () => {
   );
 };
 
+const ContractAddresses = () => {
+  return (
+    <TransactionDisplay.SectionCard title="Contract Addresses" icon={Receipt}>
+      <Reactor />
+      <Executor />
+      <ExchangeAdapter />
+      <ExchangeReferrer />
+      <ReferrerShare />
+    </TransactionDisplay.SectionCard>
+  );
+};
+
 /** What you're trading and on what conditions — amounts, price, chunks, fills */
 const OrderTerms = () => {
   return (
@@ -601,3 +593,58 @@ const ExecutionDetails = () => {
     </TransactionDisplay.SectionCard>
   );
 };
+
+
+export function OrderView({
+  hash,
+  backHref,
+  defaultBackHref,
+}: {
+  hash: string;
+  backHref?: string;
+  defaultBackHref?: string;
+}) {
+  const orderPayload = useSpotOrder(hash);
+
+  if (orderPayload.isLoading) {
+    return (
+      <TransactionDisplay.Container>
+        <TransactionDisplay.Loading message="Loading order..." />
+      </TransactionDisplay.Container>
+    );
+  }
+
+  if (!orderPayload.originalOrder) {
+    return (
+      <TransactionDisplay.Container>
+        <TransactionDisplay.NotFound
+          title="Order Not Found"
+          description="The TWAP order you're looking for doesn't exist."
+        />
+      </TransactionDisplay.Container>
+    );
+  }
+
+  return (
+    <OrderViewContext.Provider
+      value={{ ...orderPayload, order: orderPayload.originalOrder! }}
+    >
+      <TransactionDisplay.Container>
+        <TransactionDisplay.ContainerHeader
+          backHref={backHref}
+          defaultBackHref={defaultBackHref}
+        />
+        <OrderHeader />
+        <TransactionDisplay.Grid>
+          {/* When, where, who — context & identity */}
+          <OrderDetails />
+          {/* What you're trading and on what conditions */}
+          <OrderTerms />
+        </TransactionDisplay.Grid>
+        {/* How the order is executing */}
+        <ExecutionDetails />
+        <ContractAddresses />
+      </TransactionDisplay.Container>
+    </OrderViewContext.Provider>
+  );
+}

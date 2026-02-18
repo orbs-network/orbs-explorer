@@ -22,20 +22,16 @@ export type OrderChunksResult = {
 /**
  * Pure function: computes parsed chunks and grouped lists from order.
  */
-export function getOrderChunks(
+export function parseOrderChunks(
   order: Order | undefined,
   context: GetOrderChunksContext,
 ): OrderChunksResult {
   const { srcToken, dstToken, chainId, status: orderStatus } = context;
   const chunkList = order?.metadata.chunks;
 
-
-  
-
   const chunks: ParsedOrderChunk[] =
     chunkList
       ?.map((chunk: OrderChunk) => {
-        console.log(chunk);
         
         const oracle  = chunk.oraclePricingData?.[0];      
         const description = chunk.description?.trim() || undefined;
@@ -110,7 +106,7 @@ export function useSpotOrderChunks(hash?: string): {
   return useMemo(() => {
     return {
       isLoading,
-      chunks: getOrderChunks(originalOrder, { srcToken, dstToken, chainId, status }),
+      chunks: parseOrderChunks(originalOrder, { srcToken, dstToken, chainId, status }),
     };
   }, [originalOrder, srcToken, dstToken, chainId, isLoading, status]);
 }

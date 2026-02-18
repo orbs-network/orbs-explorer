@@ -120,14 +120,27 @@
   * {
     @apply border-border outline-ring/50;
   }
+  html {
+    -webkit-tap-highlight-color: transparent;
+    -webkit-text-size-adjust: 100%;
+  }
   body {
     @apply bg-background text-foreground;
+    min-height: 100dvh;
+    overflow-x: hidden;
   }
 }
 
-/* Sonner toasts – align with design system */
+/* Sonner toasts – align with design system, narrower on mobile */
 [data-sonner-toaster] {
-  --width: 380px;
+  --width: min(380px, calc(100vw - 24px));
+}
+@media (max-width: 640px) {
+  [data-sonner-toaster] {
+    left: 12px !important;
+    right: 12px !important;
+    width: auto !important;
+  }
 }
 [data-sonner-toast] {
   font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;

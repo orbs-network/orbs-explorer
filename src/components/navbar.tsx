@@ -53,8 +53,8 @@ export function Navbar() {
   };
 
   return (
-    <div className="flex flex-row justify-between items-center bg-background border-b border-border px-4 py-3 gap-4">
-      <Link href={ROUTES.HOME} className="flex flex-row items-center gap-2 shrink-0">
+    <header className="flex flex-row justify-between items-center bg-background border-b border-border px-3 py-2.5 sm:px-4 sm:py-3 gap-2 sm:gap-4 shrink-0">
+      <Link href={ROUTES.HOME} className="flex flex-row items-center gap-2 shrink-0 min-h-[44px] min-w-[44px] justify-center sm:justify-start">
         <img src={ORBS_LOGO} alt="logo" className="h-8 w-8" />
         <p className="text-foreground text-xl font-bold hidden sm:block">Orbs Explorer</p>
       </Link>
@@ -82,12 +82,13 @@ export function Navbar() {
             <ThemeToggle />
           </nav>
 
-          <div className="md:hidden flex items-center gap-2">
+          <div className="md:hidden flex items-center gap-1">
             <ThemeToggle />
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon">
+                <Button variant="ghost" size="icon" className="h-11 w-11 shrink-0">
                   <Menu className="h-5 w-5" />
+                  <span className="sr-only">Open menu</span>
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-64">
@@ -120,7 +121,7 @@ export function Navbar() {
       ) : (
         <ThemeToggle />
       )}
-    </div>
+    </header>
   );
 }
 

@@ -91,11 +91,11 @@ const TransactionDisplay = ({
   isLoading?: boolean;
 }) => {
   return (
-    <Card className="border-border bg-card/50 backdrop-blur-sm">
+    <Card className="border-border bg-card/50 backdrop-blur-sm overflow-hidden">
       {header && (
-        <CardHeader className="border-b border-border">{header}</CardHeader>
+        <CardHeader className="border-b border-border shrink-0">{header}</CardHeader>
       )}
-      <CardContent className="flex flex-col gap-4 pt-6">{children}</CardContent>
+      <CardContent className="flex flex-col gap-4 pt-4 sm:pt-6 min-w-0">{children}</CardContent>
     </Card>
   );
 };
@@ -120,7 +120,7 @@ const Grid = ({ children }: { children: ReactNode }) => {
 
 const Container = ({ children }: { children: ReactNode }) => {
   return (
-    <div className="flex flex-col gap-4 max-w-screen-lg mx-auto px-4 py-6">
+    <div className="flex flex-col gap-4 max-w-screen-lg mx-auto px-3 py-4 sm:px-4 sm:py-6 w-full min-w-0">
       {children}
     </div>
   );
@@ -146,9 +146,9 @@ const ContainerHeader = ({
   };
 
   return (
-    <div className="flex flex-row justify-between items-center w-full mb-2">
+    <div className="flex flex-row justify-between items-center w-full mb-2 gap-2 min-w-0">
       <BackButton onClick={onBack} />
-      {children}
+      <div className="min-w-0 shrink">{children}</div>
     </div>
   );
 };

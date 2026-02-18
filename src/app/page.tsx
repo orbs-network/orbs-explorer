@@ -7,7 +7,7 @@ export default function Home() {
   return (
     <div className="flex flex-col min-h-[calc(100vh-73px)]">
       {/* Hero Section */}
-      <div className="flex-1 flex flex-col items-center justify-center px-4 py-16">
+      <div className="flex-1 flex flex-col items-center justify-center px-3 py-10 sm:px-4 sm:py-16">
         {/* Gradient orb background effect */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
           <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-primary/20 rounded-full blur-[128px] opacity-50" />
@@ -25,7 +25,7 @@ export default function Home() {
 
           {/* Main heading */}
           <div className="text-center space-y-4">
-            <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-foreground tracking-tight">
+            <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-foreground tracking-tight">
               Explore Orbs
               <span className="text-primary"> Transactions</span>
             </h1>
@@ -48,9 +48,9 @@ export default function Home() {
       </div>
 
       {/* Features Section */}
-      <div className="border-t border-border bg-background-secondary/50 px-4 py-12">
-        <div className="max-w-4xl mx-auto">
-          <div className="grid md:grid-cols-2 gap-6">
+      <div className="border-t border-border bg-background-secondary/50 px-3 py-8 sm:px-4 sm:py-12">
+        <div className="max-w-4xl mx-auto w-full">
+          <div className="grid md:grid-cols-2 gap-4 sm:gap-6">
             {/* Liquidity Hub Card */}
             <div className="group relative p-6 rounded-xl bg-card border border-border hover:border-primary/50 transition-all duration-300">
               <div className="flex items-start gap-4">
@@ -102,9 +102,9 @@ export default function Home() {
       </div>
 
       {/* Footer hint */}
-      <div className="border-t border-border px-4 py-6">
-        <div className="max-w-4xl mx-auto flex items-center justify-center gap-2 text-sm text-muted-foreground">
-          <Search className="w-4 h-4" />
+      <div className="border-t border-border px-3 py-4 sm:px-4 sm:py-6">
+        <div className="max-w-4xl mx-auto flex flex-wrap items-center justify-center gap-2 text-sm text-muted-foreground text-center">
+          <Search className="w-4 h-4 shrink-0" />
           <span>
             Search by transaction hash to view detailed swap analytics
           </span>

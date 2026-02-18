@@ -9,9 +9,9 @@ export function Page({
   auth?: boolean;
 }) {
   const content = (
-    <div className="flex flex-row w-full mx-auto px-4">
-      <div className="flex-1 flex flex-col gap-4 relative">
-        <div className="flex-1 pl-[20px]">{children}</div>
+    <div className="flex flex-row w-full mx-auto px-3 sm:px-4 max-w-full">
+      <div className="flex-1 flex flex-col gap-4 relative min-w-0">
+        <div className="flex-1 pl-0 sm:pl-5">{children}</div>
       </div>
     </div>
   );
