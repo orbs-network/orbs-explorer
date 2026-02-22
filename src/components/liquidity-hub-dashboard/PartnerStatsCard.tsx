@@ -13,7 +13,7 @@ import {
 } from "lucide-react";
 import { usePartner } from "@/lib/hooks/use-partner";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { formatUsd } from "@/lib/utils/utils";
+import { abbreviate } from "@/lib/utils/utils";
 import { StatusSwapsModal } from "./StatusSwapsModal";
 
 const sortByCreatedAtDesc = (a: LiquidityHubSwap, b: LiquidityHubSwap) =>
@@ -130,7 +130,7 @@ export function LHPartnerStatsCard({
           )}
           {statRow(
             "Total USD",
-            formatUsd(stats.totalUsd),
+            `$${abbreviate(stats.totalUsd)}`,
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           )}
           {statRow(

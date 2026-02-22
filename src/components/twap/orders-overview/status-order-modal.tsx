@@ -15,9 +15,10 @@ import { ROUTES } from "@/lib/routes";
 import { Virtuoso } from "react-virtuoso";
 import { useToken } from "@/lib/hooks/use-token";
 import { useSpotPartner } from "@/lib/hooks/twap-hooks/use-spot-partner";
-import { formatUsd } from "@/lib/utils/utils";
+import { Amount } from "@/components/ui/amount";
 import BN from "bignumber.js";
 import moment from "moment";
+import { TokenDisplay } from "@/components/token-display";
 
 function formatDate(iso: string | number): string {
   const d = moment(iso);
@@ -69,13 +70,11 @@ function OrderRowTokenPair({ order }: { order: ListOrder }) {
   const { chainId } = useSpotPartner(order.exchangeAdapter);
   const srcToken = useToken(order.inputToken, chainId).data;
   const dstToken = useToken(order.outputToken, chainId).data;
-  const src = order.metadata?.srcToken?.symbol ?? srcToken?.symbol ?? "—";
-  const dst = order.metadata?.dstToken?.symbol ?? dstToken?.symbol ?? "—";
   return (
     <span className="inline-flex items-center gap-1.5 text-sm">
-      <span className="font-semibold text-foreground">{src}</span>
+      <TokenDisplay address={srcToken?.address} chainId={chainId} />
       <ArrowRight className="h-3.5 w-3.5 shrink-0 text-primary/70" />
-      <span className="font-semibold text-foreground">{dst}</span>
+      <TokenDisplay address={dstToken?.address} chainId={chainId} />
     </span>
   );
 }
@@ -108,13 +107,13 @@ function OrderRow({
       {/* Row 1: Token pair (primary) + USD */}
       <div className="flex items-center justify-between gap-3 mb-2">
         <OrderRowTokenPair order={order} />
-        <span
+        <Amount
+          amount={String(usd)}
+          prefix="$"
           className={`font-semibold tabular-nums shrink-0 ${
             usd > 0 ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground"
           }`}
-        >
-          {formatUsd(usd)}
-        </span>
+        />
       </div>
       {/* Row 2: Type + chunks only */}
       <div className="flex flex-wrap items-center gap-1 text-xs text-muted-foreground mb-1.5">

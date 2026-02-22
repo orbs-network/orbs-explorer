@@ -25,7 +25,7 @@ import { Network } from "@/components/ui/network";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { StatusOrdersModal } from "./status-order-modal";
 import { cn } from "@/lib/utils";
-import { formatUsd } from "@/lib/utils/utils";
+import { abbreviate } from "@/lib/utils/utils";
 
 function isFilledOrder(order: ListOrder): boolean {
   return isListOrderCompleted(order);
@@ -106,22 +106,6 @@ function ChainStatsContent({
   onOpenPending: () => void;
   onOpenError: () => void;
 }) {
-  const filledOrders = useMemo(
-    () => orders.filter(isFilledOrder).sort(sortByCreatedAtDesc),
-    [orders]
-  );
-  const partialOrders = useMemo(
-    () => orders.filter(isPartiallyFilledOrder).sort(sortByCreatedAtDesc),
-    [orders]
-  );
-  const pendingOrders = useMemo(
-    () => orders.filter(isPendingOrder).sort(sortByCreatedAtDesc),
-    [orders]
-  );
-  const errorOrders = useMemo(
-    () => orders.filter(isErrorOrder).sort(sortByCreatedAtDesc),
-    [orders]
-  );
 
   return (
     <>
@@ -132,7 +116,7 @@ function ChainStatsContent({
       )}
       {statRow(
         "Total USD",
-        formatUsd(stats.totalUsd),
+        `$${abbreviate(stats.totalUsd)}`,
         <DollarSign className="h-4 w-4 text-muted-foreground" />
       )}
       {statRow(

@@ -1,4 +1,3 @@
-import { PARTNERS } from "../../partners";
 import { Order, Status, SpotOrderType, Token, ChunkStatus } from "../../types";
 import { URL_QUERY_KEYS } from "../../consts";
 import { isValidWalletAddress, isNumeric, toAmountUI } from "../utils";
@@ -67,7 +66,7 @@ const getSpotOrderIsTakeProfit = (order?: Order) => {
 export const getSpotOrderType = (order?: Order) => {
   const isLimitPrice = BN(order?.order.witness.output.limit || "0").gt(1);
   const isTakeProfit = getSpotOrderIsTakeProfit(order);
-  const isStopLoss = BN(order?.order.witness.output.stop || "0").lt(maxUint256);
+  const isStopLoss = BN(order?.order.witness.output.stop || "0").lt(maxUint256) && BN(order?.order.witness.output.stop || "0").gt(0);
   const chunks = order?.metadata.chunks;
   const isTWAP = (chunks?.length || 0) > 1;
   if (isTakeProfit) {
@@ -132,6 +131,82 @@ const KNOWN_CHUNK_ERRORS: { signature: string; name: string; description: string
   { signature: "InvalidOrder()", name: "InvalidOrder", description: "Invalid order" },
   { signature: "CosignedExceedsStop()", name: "CosignedExceedsStop", description: "Cosigned amount exceeds stop price" },
 ];
+
+export type ParsedChunkDescription =
+  | { type: "trigger"; current: string; trigger: string; pct: string; symbol: string }
+  | { type: "limit_price"; got: string; expected: string; pct: string; symbol: string }
+  | { type: "error"; text: string }
+  | { type: "text"; text: string };
+
+/**
+ * Parses API chunk description into structured data for rendering with Amount components.
+ */
+export function parseChunkDescription(
+  description: string | undefined,
+  outputTokenSymbol?: string,
+): ParsedChunkDescription {
+  if (!description?.trim()) {
+    return { type: "text", text: "No details available." };
+  }
+
+  const d = description.trim();
+  const sym = outputTokenSymbol?.trim() ?? "";
+
+  const triggerMatch = d.match(
+    /Trigger price not met,\s*current output\s+([\d.]+)\s*>\s*trigger\s+([\d.]+)\s*-\s*([\d.]+)%/i,
+  );
+  if (triggerMatch) {
+    const [, current, trigger, pct] = triggerMatch;
+    return { type: "trigger", current, trigger, pct, symbol: sym };
+  }
+
+  const priceMatch = d.match(
+    /Price can't meet condition:\s*expected\s+([\d.]+),\s*got\s+([\d.]+)\s*\([^)]+\)\s*-\s*([\d.]+)%/i,
+  );
+  if (priceMatch) {
+    const [, expected, got, pct] = priceMatch;
+    return { type: "limit_price", got, expected, pct, symbol: sym };
+  }
+
+  for (const err of KNOWN_CHUNK_ERRORS) {
+    if (d.includes(err.signature) || d.includes(err.name)) {
+      const hasPlaceholders = err.description.includes("%s");
+      if (hasPlaceholders) {
+        const paramsMatch = d.match(new RegExp(`${escapeRegExp(err.name)}\\s*\\(([^)]+)\\)`));
+        const params = paramsMatch
+          ? paramsMatch[1].split(",").map((s) => s.trim())
+          : [];
+        if (params.length > 0) {
+          let msg = err.description;
+          for (const p of params) {
+            msg = msg.replace("%s", p);
+          }
+          return { type: "error", text: msg.replace(/%s/g, "—") };
+        }
+      }
+      return { type: "error", text: err.description };
+    }
+  }
+
+  if (/price\s+condition\s+met/i.test(d)) {
+    return { type: "text", text: "Price condition was met; execution may still be in progress." };
+  }
+  if (/slippage/i.test(d)) {
+    return {
+      type: "text",
+      text: "Execution failed due to slippage: the price moved too much before the trade could be filled.",
+    };
+  }
+  if (/insufficient\s+liquidity/i.test(d)) {
+    return { type: "text", text: "Not enough liquidity to fill this chunk at the requested price." };
+  }
+  if (/timeout|expired/i.test(d)) {
+    return { type: "text", text: "This chunk did not fill in time and is no longer active." };
+  }
+
+  const withoutRawNumbers = d.replace(/\s*\(\d+\s+vs\.\s+\d+\)\s*/g, " ").trim();
+  return { type: "text", text: withoutRawNumbers || d };
+}
 
 /**
  * Turns API chunk description into human-readable text for failed/pending chunks.
@@ -259,10 +334,10 @@ export const getMinAmountPerChunk = (order?: Order) => {
 export const parseOrderType = (type: SpotOrderType) => {
   if (type === SpotOrderType.TAKE_PROFIT) return "Take Profit";
   if (type === SpotOrderType.LIMIT) return "Limit";
-  if (type === SpotOrderType.STOP_LOSS_LIMIT) return "Stop Loss Limit";
-  if (type === SpotOrderType.TWAP_LIMIT) return "TWAP Limit";
-  if (type === SpotOrderType.STOP_LOSS_MARKET) return "Stop Loss Market";
-  if (type === SpotOrderType.TWAP_MARKET) return "TWAP Market";
+  if (type === SpotOrderType.STOP_LOSS_LIMIT) return "Stop Loss (Limit)";
+  if (type === SpotOrderType.TWAP_LIMIT) return "TWAP (Limit)";
+  if (type === SpotOrderType.STOP_LOSS_MARKET) return "Stop Loss (Market)";
+  if (type === SpotOrderType.TWAP_MARKET) return "TWAP (Market)";
   return type;
 };
 

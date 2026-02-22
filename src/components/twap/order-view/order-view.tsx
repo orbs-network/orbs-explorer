@@ -43,7 +43,7 @@ import { SpotOrderUiLogs } from "./ui-logs";
 import { OriginalOrder } from "./original-order";
 import { parseOrderType } from "@/lib/utils/spot-utils";
 import { useSearchParams } from "next/navigation";
-import { Address } from "@/components/address";
+import { ExplorerLink } from "@/components/explorer-link";
 
 
 const PriceRate = ({
@@ -147,7 +147,7 @@ const DEFAULT_STATUS_VISUAL = {
 };
 
 const OrderHeader = () => {
-  const { type, status, srcToken, dstToken, chainId, originalOrder } =
+  const { type, status, srcToken, dstToken, chainId, originalOrder, hash } =
     useOrderViewContext();
   const searchParams = useSearchParams();
   const isDev = searchParams.get("dev") === "true";
@@ -170,7 +170,7 @@ const OrderHeader = () => {
       <div className="flex flex-col gap-4">
         {/* Prominent status card - always show so status is visible */}
         <div
-            className={`flex flex-wrap items-center gap-3 sm:gap-4 rounded-xl border p-3 sm:p-4 ${visual.className}`}
+            className={`flex flex-wrap items-start gap-3 sm:gap-4 rounded-xl border p-3 sm:p-4 ${visual.className}`}
           >
             <div className="flex h-10 w-10 sm:h-12 sm:w-12 shrink-0 items-center justify-center rounded-full bg-background/80 border border-inherit">
               <StatusIcon className={`h-5 w-5 sm:h-6 sm:w-6 ${visual.iconClassName}`} />
@@ -179,11 +179,9 @@ const OrderHeader = () => {
               <p className={`text-sm sm:text-base font-semibold ${visual.labelClassName}`}>
                 {visual.label}
               </p>
-              {visual.sublabel && (
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  {visual.sublabel}
-                </p>
-              )}
+              <span className="text-[14px] text-muted-foreground">
+              {parseOrderType(type)} Order
+              </span>
               {showChunkProgress && (
                 <p className="text-xs sm:text-sm font-mono text-muted-foreground mt-1">
                   {filledChunks} / {totalChunks} chunks filled
@@ -191,9 +189,13 @@ const OrderHeader = () => {
               )}
             </div>
             <div className="flex flex-wrap items-center gap-2 shrink-0 w-full sm:w-auto">
-              <TransactionDisplay.Badge variant="muted">
-                {parseOrderType(type)} Order
-              </TransactionDisplay.Badge>
+              {hash && (
+                <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-background/60 border border-inherit min-w-0">
+                  <Hash className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                  <Copy text={shortenAddress(hash, 8)} value={hash} tooltip={hash} />
+                </div>
+              )}
+
               {isDev && (
                 <>
                   <OriginalOrder />
@@ -202,7 +204,6 @@ const OrderHeader = () => {
               )}
             </div>
           </div>
-        <OrderHash />
         {/* Swap Visual with Progress */}
         <div className="flex items-center gap-4 flex-wrap">
           <TransactionDisplay.SwapDirection
@@ -217,21 +218,7 @@ const OrderHeader = () => {
 };
 
 
-const OrderHash = () => {
-  const { hash } = useOrderViewContext();
-  if (!hash) return null;
-  return (
-    <div className="flex items-center gap-3 rounded-lg border border-border bg-muted/30 px-3 py-2.5">
-      <Hash className="h-4 w-4 text-muted-foreground shrink-0" />
-      <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider shrink-0">
-        Order ID
-      </span>
-      <span className="flex-1 min-w-0 border-l border-border pl-3">
-        <Copy text={shortenAddress(hash)} value={hash} tooltip={hash} />
-      </span>
-    </div>
-  );
-};
+
 
 const NetworkSection = () => {
   const { chainId } = useOrderViewContext();
@@ -256,7 +243,7 @@ const Reactor = () => {
   const { order, chainId } = useOrderViewContext();
   return (
     <TransactionDisplay.SectionItem label="Reactor">
-      <Address address={order.order.witness.reactor} chainId={chainId} />
+      <ExplorerLink value={order.order.witness.reactor} chainId={chainId} />
     </TransactionDisplay.SectionItem>
   );
 };
@@ -266,7 +253,7 @@ const Executor = () => {
   const { order, chainId } = useOrderViewContext();
   return (
     <TransactionDisplay.SectionItem label="Executor">
-      <Address address={order.order.witness.executor} chainId={chainId} />
+      <ExplorerLink value={order.order.witness.executor} chainId={chainId} />
     </TransactionDisplay.SectionItem>
   );
 };
@@ -276,7 +263,7 @@ const ExchangeAdapter = () => {
   const { order, chainId } = useOrderViewContext();
   return (
     <TransactionDisplay.SectionItem label="Exchange Adapter">
-      <Address address={order.order.witness.exchange.adapter} chainId={chainId} />
+      <ExplorerLink value={order.order.witness.exchange.adapter} chainId={chainId} />
     </TransactionDisplay.SectionItem>
   );
 };
@@ -285,7 +272,7 @@ const ExchangeReferrer = () => {
   const { order, chainId } = useOrderViewContext();
   return (
     <TransactionDisplay.SectionItem label="Exchange Referrer">
-      <Address address={order.order.witness.exchange.ref} chainId={chainId} />
+      <ExplorerLink value={order.order.witness.exchange.ref} chainId={chainId} />
     </TransactionDisplay.SectionItem>
   );
 };
@@ -307,7 +294,7 @@ const SwapperSection = () => {
     <TransactionDisplay.SectionItem label="Swapper">
       <div className="flex items-center gap-2">
         <Wallet className="w-3.5 h-3.5 text-muted-foreground" />
-        <Address address={swapper} chainId={chainId} />
+        <ExplorerLink value={swapper} chainId={chainId} />
       </div>
     </TransactionDisplay.SectionItem>
   );
@@ -440,9 +427,7 @@ const OrderTypeSection = () => {
   const { type } = useOrderViewContext();
   return (
     <TransactionDisplay.SectionItem label="Order Type">
-      <span className="text-sm font-mono">
-      {parseOrderType(type)}
-      </span>
+     {parseOrderType(type)}
     </TransactionDisplay.SectionItem>
   );
 };

@@ -3,7 +3,7 @@ import { twMerge } from "tailwind-merge";
 import moment from "moment";
 import { FILTER_KEY_NAMES, ROUTES, URL_QUERY_KEYS } from "../consts";
 import { useQueryFilterParams } from "../hooks/use-query-filter-params";
-import { map } from "lodash";
+import _, { map } from "lodash";
 import { formatUnits, parseUnits, zeroAddress } from "viem";
 import BN from "bignumber.js";
 import { ListOrder, Order, Token, ChunkStatus } from "../types";
@@ -16,16 +16,6 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-export function formatUsd(n: number): string {
-  if (n >= 1_000_000) return `$${(n / 1_000_000).toFixed(2)}M`;
-  if (n >= 1_000) return `$${(n / 1_000).toFixed(2)}K`;
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(n);
-}
 
 export function isNumeric(value: string): boolean {
   return /^-?\d+(\.\d+)?$/.test(value.trim());
@@ -266,12 +256,12 @@ const SUPPORTED_CHAINS = [
 ] as number[];
 
 export const getChains = () => {
-  const chainsData = Object.values(chains).map((chain) => ({
+  const chainsData = _.unionBy(Object.values(chains).map((chain) => ({
     id: chain.id,
     name: chain.name,
     nativeCurrency: chain.nativeCurrency,
     logoUrl: getChainLogo(chain.id),
-  }));
+  })), "id");
 
   return chainsData.filter((chain) => SUPPORTED_CHAINS.includes(chain.id));
 };

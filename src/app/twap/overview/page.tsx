@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 import { OrdersOverview } from "@/components/twap/orders-overview/orders-overview";
 
-export default function OrdersDashboardPage() {
+export default function TwapOverviewPage() {
   const { isLoading, isError, error, stats, partnerCards, ordersByPartnerChainKey } =
     useOrdersDashboard();
   const allOrders = useMemo(

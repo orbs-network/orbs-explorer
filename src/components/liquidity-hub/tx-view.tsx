@@ -62,7 +62,7 @@ import {
   Wallet,
 } from "lucide-react";
 import { eqIgnoreCase } from "@/lib/utils/utils";
-import { Address } from "../address";
+import { ExplorerLink } from "../explorer-link";
 
 interface ContextType extends SwapQueryResponse {
   isPreview?: boolean;
@@ -127,13 +127,14 @@ const State = ({
     );
   }
 
+  const swapData = data as unknown as SwapQueryResponse;
   return (
     <Context.Provider
       value={{
-        swap: data?.swap,
-        quotes: data?.quotes,
-        clientLogs: data?.clientLogs,
-        quote: data?.quote,
+        swap: swapData.swap,
+        quotes: swapData.quotes,
+        clientLogs: swapData.clientLogs,
+        quote: swapData.quote,
         isPreview,
       }}
     >
@@ -320,7 +321,7 @@ const Content = () => {
         <TransactionDisplay.SectionCard title="Transaction Details" icon={Receipt}>
           <TransactionDisplay.SectionItem label="Tx Hash">
             <div className="flex items-center gap-2">
-              <Address address={swap.txHash} chainId={swap.chainId} />
+              <ExplorerLink value={swap.txHash} chainId={swap.chainId} />
               <ExternalLink className="w-3.5 h-3.5 text-muted-foreground" />
             </div>
           </TransactionDisplay.SectionItem>
@@ -338,7 +339,7 @@ const Content = () => {
           <TransactionDisplay.SectionItem label="Swapper">
             <div className="flex items-center gap-2">
               <Wallet className="w-3.5 h-3.5 text-muted-foreground" />
-              <Address address={swap.user} chainId={swap.chainId} />
+              <ExplorerLink value={swap.user} chainId={swap.chainId} />
             </div>
           </TransactionDisplay.SectionItem>
           <TransactionDisplay.SectionItem label="Slippage">
@@ -410,9 +411,9 @@ const DexRouterData = () => {
           <div className="flex flex-col gap-2">
             <label className="text-sm font-semibold text-foreground uppercase tracking-wide">To Address</label>
             <div className="p-4 bg-muted/50 rounded-lg border border-border">
-              <Address address={swap.dexRouteTo} chainId={swap.chainId}>
+              <ExplorerLink value={swap.dexRouteTo} chainId={swap.chainId}>
                 {swap.dexRouteTo}
-              </Address>
+              </ExplorerLink>
             </div>
           </div>
         </div>
@@ -490,9 +491,9 @@ const Transfer = ({ log, tokens, index }: { log: TransferLog; tokens: Token[]; i
           {fromToken ? (
             <TokenDisplay chainId={swap.chainId} address={log.from} />
           ) : (
-            <Address chainId={swap.chainId} address={log.from}>
+            <ExplorerLink chainId={swap.chainId} value={log.from}>
               {eqIgnoreCase(log.from, swap.user) ? "User wallet" : undefined}
-            </Address>
+            </ExplorerLink>
           )}
         </div>
         <ArrowRight className="w-4 h-4 text-primary" />
@@ -501,9 +502,9 @@ const Transfer = ({ log, tokens, index }: { log: TransferLog; tokens: Token[]; i
           {toToken ? (
             <TokenDisplay chainId={swap.chainId} address={log.to} />
           ) : (
-            <Address chainId={swap.chainId} address={log.to}>
+            <ExplorerLink chainId={swap.chainId} value={log.to}>
               {eqIgnoreCase(log.to, swap.user) ? "User wallet" : undefined}
-            </Address>
+            </ExplorerLink>
           )}
         </div>
       </div>

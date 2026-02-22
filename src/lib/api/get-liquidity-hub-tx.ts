@@ -20,7 +20,7 @@ export const getLiquidityHubTx = async (identifier: string, signal?: AbortSignal
   );
 
   const swap = response[0];
-  if (!swap) return null;
+  if (!swap) return;
   const { sessionId } = swap;
 
   const [quotes, clientLogs] = [

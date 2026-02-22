@@ -31,6 +31,26 @@ const STATUS_OPTIONS = [
   { label: "Partially Completed", value: Status.PARTIALLY_COMPLETED },
 ];
 
+/** Values from order.metadata.displayOnlyStatus (order-sink API) */
+const DISPLAY_STATUS_OPTIONS = [
+  { label: "Pending Price Check", value: "PENDING-PRICE-CHECK" },
+  { label: "Succeeded", value: "SUCCEEDED" },
+  { label: "Expired", value: "EXPIRED" },
+  { label: "Failed", value: "FAILED" },
+  { label: "Cancelled", value: "CANCELLED" },
+  { label: "Error", value: "ERROR" },
+];
+
+const OrderStatusFilter = () => {
+  return (
+    <QueryFilters.Badge
+      queryKey={URL_QUERY_KEYS.ORDER_STATUS}
+      label="Order Status"
+      options={DISPLAY_STATUS_OPTIONS}
+    />
+  );
+};
+
 const OrderTypeFilter = () => {
   return (
     <QueryFilters.Badge
@@ -59,6 +79,7 @@ export const OrdersFilter = () => {
       chainIdFilter: true,
     }}>
       <OrderIdFilter />
+      <OrderStatusFilter />
       {/* <OrderTypeFilter /> */}
       {/* <SwapStatusFilter /> */}
     </QueryFilters>

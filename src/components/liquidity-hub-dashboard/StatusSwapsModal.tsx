@@ -24,7 +24,7 @@ import Link from "next/link";
 import { ROUTES } from "@/lib/routes";
 import { Virtuoso } from "react-virtuoso";
 import { useToken } from "@/lib/hooks/use-token";
-import { formatUsd } from "@/lib/utils/utils";
+import { Amount } from "@/components/ui/amount";
 
 function formatDate(ts: string | number): string {
   const d = typeof ts === "string" ? new Date(ts) : new Date(ts);
@@ -102,13 +102,13 @@ function SwapRow({
     >
       <div className="flex items-center justify-between gap-3 mb-2">
         <SwapRowTokenPair swap={swap} />
-        <span
+        <Amount
+          amount={String(usd)}
+          prefix="$"
           className={`font-semibold tabular-nums shrink-0 ${
             usd > 0 ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground"
           }`}
-        >
-          {formatUsd(Number(usd))}
-        </span>
+        />
       </div>
       <div className="flex flex-wrap items-center gap-2 text-[11px]">
         <Link

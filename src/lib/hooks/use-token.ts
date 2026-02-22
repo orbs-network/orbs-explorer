@@ -9,6 +9,25 @@ import { zeroAddress } from "viem";
 
 
 
+const getLogoUrl = (name: string) => {
+ try {
+  return  `https://static.arkhamintelligence.com/tokens/${
+    name
+    ?.toLowerCase()
+    .replace(/usd₮0/g, 'usdt0')        // usd₮0 → usdt0
+    .replace(/\(.*?\)/g, '')           // remove (text)
+    .replace(/\susd$/, '')             // remove trailing " usd"
+    .replace(/\s+/g, '-')              // spaces → "-"
+    .replace(/-+/g, '-')               // collapse multiple dashes
+    .replace(/^-|-$/g, '')             // trim dashes
+    .replace(/^wrapped-bnb$/, 'wbnb')  // wrapped-bnb → wbnb
+    .replace(/^usdc$/, 'usd-coin')     // usdc → usd-coin
+  }.png`
+ } catch (error) {
+  return ''
+ }
+}
+
 export const useToken = (
   address?: string,
   chainId?: number,
@@ -34,15 +53,11 @@ export const useToken = (
       });
       const data = await response.json();
       const token = data[0];
+
+
       return {
         ...token,
-        logoUrl: `https://static.arkhamintelligence.com/tokens/${
-          token.name
-            ?.toLowerCase()
-            .replace(/usd₮0/g, 'usdt0')  // usd₮0 → usdt0
-            .replace(/\susd$/, '')       // remove trailing " usd"
-            .replace(/\s+/g, '-')        // spaces → "-"
-        }.png`,
+        logoUrl: getLogoUrl(token.name),
       } as Token;
     },
     enabled: !!address && !!chainId && !disabled,

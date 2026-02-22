@@ -18,6 +18,7 @@ import { Partner } from "../ui/partner";
 import { OrdersFilter } from "./filter";
 import { TwapSinkEnvSelect } from "./sink-env-select";
 import { useToken } from "@/lib/hooks/use-token";
+import { TokenDisplay } from "../token-display";
 
 const Timestamp = ({ item }: { item: ListOrder }) => {
   return (
@@ -62,6 +63,7 @@ const OrderTypeComponent = ({ item }: { item: ListOrder }) => {
 
 const PartnerCell = ({ item }: { item: ListOrder }) => {
   const dex = useSpotPartner(item.exchangeAdapter);
+  
   const network = useNetwork(dex?.chainId);
 
   return (
@@ -75,16 +77,9 @@ const PartnerCell = ({ item }: { item: ListOrder }) => {
 
 const TxHash = ({ item }: { item: ListOrder }) => {
   return (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <span className="font-mono text-primary hover:text-primary/80 cursor-pointer transition-colors">
+    <span className="font-mono text-primary">
           {shortenAddress(item.hash)}
         </span>
-      </TooltipTrigger>
-      <TooltipContent side="bottom" className="flex items-center gap-2">
-        <span className="text-xs font-mono">{item.hash}</span>
-      </TooltipContent>
-    </Tooltip>
   );
 };
 
@@ -94,9 +89,9 @@ const TokenPair = ({ item }: { item: ListOrder }) => {
   const dstToken = useToken(item.outputToken, chainId).data;
   return (
     <div className="flex flex-row gap-2 items-center">
-      <span className="text-sm font-medium text-foreground">{srcToken?.symbol}</span>
+      <TokenDisplay address={srcToken?.address} chainId={chainId} className="pointer-events-none" />
       <ArrowRight className="w-3.5 h-3.5 text-muted-foreground" />
-      <span className="text-sm font-medium text-foreground">{dstToken?.symbol}</span>
+      <TokenDisplay address={dstToken?.address} chainId={chainId} className="pointer-events-none" />
     </div>
   );
 };

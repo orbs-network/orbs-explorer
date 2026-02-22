@@ -4,6 +4,21 @@ import { useSpotOrder } from "./use-spot-order";
 import BN from "bignumber.js";
 import { toAmountUI } from "@/lib/utils/utils";
 
+/**
+ * Computes expected output amount in out-token raw units from input amount and exchange rate.
+ * Uses src token decimals for input and dst token decimals for output.
+ */
+function computeExpectedOutputInOutTokenDecimals(
+  inAmountRaw: string,
+  exchangeRate: string,
+  srcDecimals: number,
+  dstDecimals: number,
+): string {
+  const inAmountUi = BN(inAmountRaw).dividedBy(BN(10).pow(srcDecimals));
+  const expectedOutUi = inAmountUi.multipliedBy(exchangeRate);
+  return expectedOutUi.multipliedBy(BN(10).pow(dstDecimals)).decimalPlaces(0).toFixed();
+}
+
 export type GetOrderChunksContext = {
   srcToken?: Token;
   dstToken?: Token;
@@ -41,8 +56,15 @@ export function parseOrderChunks(
         const inAmount = chunk.inAmount ?? "0";
         const outAmount = chunk.outAmount ?? "0";
         const solverOutAmount = chunk.solverReportedOutput?.outputAmount ?? "0";
-        const expectedOutputOracle = BN(inAmount).multipliedBy(exchangeRate).toFixed();
-        const outAmountDiff = BN(solverOutAmount).minus(BN(expectedOutputOracle)).div(BN(expectedOutputOracle)).multipliedBy(100).toFixed();
+        const expectedOutputOracle = computeExpectedOutputInOutTokenDecimals(
+          inAmount,
+          exchangeRate,
+          srcToken?.decimals ?? 0,
+          dstToken?.decimals ?? 0,
+        );
+        const outAmountDiff = BN(expectedOutputOracle).isZero()
+          ? "0"
+          : BN(solverOutAmount).minus(BN(expectedOutputOracle)).div(BN(expectedOutputOracle)).multipliedBy(100).toFixed();
         const feeOnTransfer = chunk.transferFeeEstimation?.inputTokenFee ?? '0';
         
         return {

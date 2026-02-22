@@ -9,7 +9,7 @@ import {
   LayoutGrid,
   ChevronRight,
 } from "lucide-react";
-import { formatUsd } from "@/lib/utils/utils";
+import { Amount } from "@/components/ui/amount";
 import { StatusSwapsModal } from "./StatusSwapsModal";
 
 const sortByCreatedAtDesc = (a: LiquidityHubSwap, b: LiquidityHubSwap) =>
@@ -121,7 +121,7 @@ export function LHDashboardSummary({
                 )}
               </div>
               <p className="mt-1 text-xs text-muted-foreground tabular-nums truncate">
-                {formatUsd(usd)}
+                <Amount amount={String(usd)} prefix="$" className="text-inherit font-normal" />
               </p>
             </>
           );

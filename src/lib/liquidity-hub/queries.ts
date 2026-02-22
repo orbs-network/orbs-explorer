@@ -107,7 +107,7 @@ export const useLHSwaps = () => {
 };
 
 export const useLHSwap = (identifier?: string) => {
-  return useQuery<SwapQueryResponse>({
+  return useQuery<SwapQueryResponse | undefined>({
     queryKey: ["useLiquidityHubSession", identifier],
     queryFn: async ({ signal }) => {
       if (!identifier) {

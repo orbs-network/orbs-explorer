@@ -22,7 +22,6 @@ import {
 import { Card, CardContent, CardHeader } from "./ui/card";
 import { useRouter } from "next/navigation";
 import { Spinner } from "./ui/spinner";
-import { useToken } from "@/lib/hooks/use-token";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { TokenDisplay } from "./token-display";
 
@@ -63,7 +62,7 @@ export const Row = ({
             )}
           </div>
           {description && (
-            <span className="text-[11px] text-muted-foreground/70 font-normal lowercase">
+            <span className="text-[12px] text-muted-foreground/70 font-normal lowercase">
               {description}
             </span>
           )}
@@ -272,38 +271,13 @@ const SwapDirection = ({
   toAddress?: string;
   chainId?: number;
 }) => {
-  const fromToken = useToken(fromAddress, chainId).data;
-  const toToken = useToken(toAddress, chainId).data;
-
   return (
-    <div className="flex items-center gap-4 flex-wrap">
-      <div className="flex items-center gap-3 bg-card/50 rounded-lg px-4 py-3 border border-border min-w-[140px]">
-        <div className="flex flex-col gap-2">
-          <span className="text-xs text-muted-foreground tracking-wide">
-            From
-          </span>
-          <div className="flex items-center gap-2"> 
-
-            <TokenDisplay address={fromAddress} chainId={chainId} />
-          </div>
-        </div>
-      </div>
-
-      <div className="flex items-center justify-center w-10 h-10 rounded-full bg-primary/10 border border-primary/20">
-        <ArrowRight className="w-5 h-5 text-primary" />
-      </div>
-
-      <div className="flex items-center gap-3 bg-card/50 rounded-lg px-4 py-3 border border-border min-w-[140px]">
-        <div className="flex flex-col gap-2">
-          <span className="text-xs text-muted-foreground tracking-wide">
-            To
-          </span>
-          <div className="flex items-center gap-2">
-          
-            <TokenDisplay address={toAddress} chainId={chainId} />
-          </div>
-        </div>
-      </div>
+    <div className="flex items-center gap-2 flex-wrap">
+      <span className="text-xs text-muted-foreground">From</span>
+      <TokenDisplay address={fromAddress} chainId={chainId} />
+      <ArrowRight className="w-4 h-4 text-primary shrink-0" />
+      <span className="text-xs text-muted-foreground">To</span>
+      <TokenDisplay address={toAddress} chainId={chainId} />
     </div>
   );
 };

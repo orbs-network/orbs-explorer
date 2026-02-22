@@ -1,4 +1,4 @@
-import { Address } from "@/components/address";
+import { ExplorerLink } from "@/components/explorer-link";
 import { TokenAmount, TokenAmountFormatted } from "@/components/token-amount";
 import { TransactionDisplay } from "@/components/transaction-display";
 import { Button } from "@/components/ui/button";
@@ -10,8 +10,11 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { ParsedOrderChunk, Token } from "@/lib/types";
-import { abbreviate, formatUsd, toMoment } from "@/lib/utils/utils";
-import { formatChunkDescription } from "@/lib/utils/spot-utils";
+import { toMoment } from "@/lib/utils/utils";
+import {
+  parseChunkDescription,
+  type ParsedChunkDescription,
+} from "@/lib/utils/spot-utils";
 import {
   CheckCircle2,
   Clock,
@@ -30,6 +33,7 @@ import { useOrderViewContext } from "./use-order-view-context";
 import { useFormatNumber } from "@/lib/hooks/use-number-format";
 import BN from "bignumber.js";
 import { useToUiAmount } from "@/lib/hooks/use-to-ui-amount";
+import { Amount } from "@/components/ui/amount";
 
 const EMPTY = "—";
 
@@ -37,7 +41,10 @@ const ChunkDetailsContext = createContext<ParsedOrderChunk | null>(null);
 
 function useChunkDetails() {
   const chunk = useContext(ChunkDetailsContext);
-  if (!chunk) throw new Error("Chunk details field must be used inside ChunkDetailsSection");
+  if (!chunk)
+    throw new Error(
+      "Chunk details field must be used inside ChunkDetailsSection",
+    );
   return chunk;
 }
 
@@ -49,10 +56,8 @@ function DetailRow({
   value: React.ReactNode;
 }) {
   return (
-    <div className="flex flex-col gap-0.5 min-w-0">
-      <dt className="text-[12px] font-medium text-muted-foreground uppercase tracking-wider">
-        {label}
-      </dt>
+    <div className="flex flex-col gap-1 min-w-0">
+      <dt className="text-[13px] font-medium text-muted-foreground">{label}</dt>
       <dd className="font-mono text-foreground text-[13px] break-all tabular-nums">
         {value ?? EMPTY}
       </dd>
@@ -68,8 +73,8 @@ function DetailSectionBlock({
   children: React.ReactNode;
 }) {
   return (
-    <div className="mt-4 pt-3 border-t border-border/60 [&:first-child]:mt-0 [&:first-child]:pt-0 [&:first-child]:border-t-0">
-      <span className="text-[14px] font-medium text-muted-foreground uppercase tracking-wider block mb-2 bg-primary/10 px-2 py-1 rounded-md">
+    <div className="mt-4 pt-2 border-t border-border/60 [&:first-child]:mt-0 [&:first-child]:pt-0 [&:first-child]:border-t-0">
+      <span className="text-[13px] font-medium text-muted-foreground uppercase tracking-wider block mb-2 bg-primary/10 px-2 py-1 rounded-md">
         {title}
       </span>
       <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2.5">
@@ -84,7 +89,9 @@ function CreatedAt() {
   return (
     <DetailRow
       label="Created at"
-      value={chunk.createdAt != null ? toMoment(chunk.createdAt).format("lll") : null}
+      value={
+        chunk.createdAt != null ? toMoment(chunk.createdAt).format("lll") : null
+      }
     />
   );
 }
@@ -93,7 +100,9 @@ function UpdatedAt() {
   return (
     <DetailRow
       label="Updated at"
-      value={chunk.updatedAt != null ? toMoment(chunk.updatedAt).format("lll") : null}
+      value={
+        chunk.updatedAt != null ? toMoment(chunk.updatedAt).format("lll") : null
+      }
     />
   );
 }
@@ -102,14 +111,24 @@ function DueTime() {
   return (
     <DetailRow
       label="Due time"
-      value={chunk.dueTime != null ? toMoment(chunk.dueTime).format("lll") : null}
+      value={
+        chunk.dueTime != null ? toMoment(chunk.dueTime).format("lll") : null
+      }
     />
   );
 }
 function Block() {
   const chunk = useChunkDetails();
   return (
-    <DetailRow label="Block" value={chunk.blockId != null ? String(chunk.blockId) : null} />
+    <DetailRow
+      label="Block"
+      value={
+        <ExplorerLink
+          value={chunk.blockId?.toString()}
+          chainId={chunk.chainId || 0}
+        />
+      }
+    />
   );
 }
 function TxHash() {
@@ -117,7 +136,7 @@ function TxHash() {
   return (
     <DetailRow
       label="Tx Hash"
-      value={<Address address={chunk.txHash} chainId={chunk.chainId || 0} />}
+      value={<ExplorerLink value={chunk.txHash} chainId={chunk.chainId || 0} />}
     />
   );
 }
@@ -126,7 +145,9 @@ function Executor() {
   return (
     <DetailRow
       label="Executor"
-      value={<Address address={chunk.executor} chainId={chunk.chainId || 0} />}
+      value={
+        <ExplorerLink value={chunk.executor} chainId={chunk.chainId || 0} />
+      }
     />
   );
 }
@@ -135,7 +156,9 @@ function Swapper() {
   return (
     <DetailRow
       label="Swapper"
-      value={<Address address={chunk.swapper} chainId={chunk.chainId || 0} />}
+      value={
+        <ExplorerLink value={chunk.swapper} chainId={chunk.chainId || 0} />
+      }
     />
   );
 }
@@ -189,7 +212,9 @@ function Exchange() {
   return (
     <DetailRow
       label="Exchange"
-      value={<Address address={chunk.exchange} chainId={chunk.chainId || 0} />}
+      value={
+        <ExplorerLink value={chunk.exchange} chainId={chunk.chainId || 0} />
+      }
     />
   );
 }
@@ -211,52 +236,61 @@ function OracleTimestamp() {
   );
 }
 
-
 const OracleAddress = () => {
   const chunk = useChunkDetails();
-  return <DetailRow label="Address" value={
-    <Address address={chunk.oracleAddress} chainId={chunk.chainId || 0} />
-  } />;
-}
+  return (
+    <DetailRow
+      label="Address"
+      value={
+        <ExplorerLink
+          value={chunk.oracleAddress}
+          chainId={chunk.chainId || 0}
+        />
+      }
+    />
+  );
+};
 
 const FeeOnTransfer = () => {
   const chunk = useChunkDetails();
 
   const value = useFormatNumber({
     value: useToUiAmount(chunk.inToken?.decimals, chunk.feeOnTransfer),
-  })
+  });
 
-  if(chunk.feeOnTransferError){
-    return <div className="text-muted-foreground flex items-start gap-2 w-fit mt-4 text-xs bg-red-500/10 border border-red-500/20 px-3 py-2 rounded-md">
-      <AlertCircle className="w-3.5 h-3.5 text-red-500 mt-0.5" />
-      <p className="text-red-500 break-all flex-1">Transfer Fee Estimation Error: {chunk.feeOnTransferError}</p>
-    </div>;
+  if (chunk.feeOnTransferError) {
+    return (
+      <div className="text-muted-foreground flex items-start gap-2 w-fit mt-4 text-xs bg-red-500/10 border border-red-500/20 px-3 py-2 rounded-md">
+        <AlertCircle className="w-3.5 h-3.5 text-red-500 mt-0.5" />
+        <p className="text-red-500 break-all flex-1">
+          Transfer Fee Estimation Error: {chunk.feeOnTransferError}
+        </p>
+      </div>
+    );
   }
 
-  if(BN(chunk.feeOnTransfer).isZero()){
-
-    return <div className="text-muted-foreground flex items-center gap-2 w-fit mt-4 text-xs bg-primary/10 border border-primary/20 px-4 py-1 rounded-md">
-      <CheckIcon className="w-3.5 h-3.5 text-primary" />
-      <span className="text-primary">No fee on transfer</span>
-    </div>;
+  if (BN(chunk.feeOnTransfer).isZero()) {
+    return (
+      <div className="text-muted-foreground flex items-center gap-2 w-fit mt-4 text-xs bg-primary/10 border border-primary/20 px-4 py-1 rounded-md">
+        <CheckIcon className="w-3.5 h-3.5 text-primary" />
+        <span className="text-primary">No fee on transfer</span>
+      </div>
+    );
   }
 
-  return (
-    <DetailRow
-      label="Fee on Transfer"
-      value={value}
-    />
-  );
-}
-
-
+  return <DetailRow label="Fee on Transfer" value={value} />;
+};
 
 function InputTokenPrice() {
   const chunk = useChunkDetails();
   return (
     <DetailRow
       label={`In Token Price (${chunk.inToken?.symbol})`}
-      value={chunk.inputTokenUsd != null ? `$${abbreviate(chunk.inputTokenUsd)}` : null}
+      value={
+        chunk.inputTokenUsd != null ? (
+          <Amount amount={chunk.inputTokenUsd} prefix="$" />
+        ) : null
+      }
     />
   );
 }
@@ -266,7 +300,9 @@ function OutputTokenPrice() {
     <DetailRow
       label={`Out Token Price (${chunk.outToken?.symbol})`}
       value={
-        chunk.outputTokenUsd != null ? `$${abbreviate(chunk.outputTokenUsd)}` : null
+        chunk.outputTokenUsd != null ? (
+          <Amount amount={chunk.outputTokenUsd} prefix="$" />
+        ) : null
       }
     />
   );
@@ -284,7 +320,9 @@ function ExchangeRate() {
             chainId={chunk.chainId || 0}
             usd=""
           />
-          <span className="text-secondary-foreground font-mono font-bold">=</span>
+          <span className="text-secondary-foreground font-mono font-bold">
+            =
+          </span>
           <TokenAmountFormatted
             amount={chunk.exchangeRate ?? "0"}
             token={chunk.outToken}
@@ -365,7 +403,6 @@ function ChunkDetailsSection({ chunk }: { chunk: ParsedOrderChunk }) {
         <div>
           <ChunkDetailsTimingSection />
           <ChunkDetailsOracleSection />
-
           <ChunkDetailsFillSection />
           <FeeOnTransfer />
         </div>
@@ -451,6 +488,61 @@ export function OrderChunks() {
   );
 }
 
+function TextWithAmounts({ text }: { text: string }) {
+  const parts = text.split(/(\d+(?:\.\d+)?)/g);
+  return (
+    <>
+      {parts.map((part, i) =>
+        /^\d+(?:\.\d+)?$/.test(part) ? (
+          <Amount key={i} amount={part} className="font-semibold" />
+        ) : (
+          part
+        ),
+      )}
+    </>
+  );
+}
+
+function ChunkDescriptionDisplay({
+  parsed,
+}: {
+  parsed: ParsedChunkDescription;
+}) {
+  const sym = (p: { symbol?: string }) =>
+    p.symbol ? (
+      <span className="font-semibold text-foreground"> {p.symbol}</span>
+    ) : null;
+
+  if (parsed.type === "trigger") {
+    return (
+      <>
+        Trigger price not met, current output{" "}
+        <Amount amount={parsed.current} className="font-semibold" decimalAmount />
+        {sym(parsed)} &gt; trigger{" "}
+        <Amount amount={parsed.trigger} className="font-semibold" decimalAmount />
+        {sym(parsed)} — <Amount amount={parsed.pct} className="font-semibold" />
+        %
+      </>
+    );
+  }
+
+  if (parsed.type === "limit_price") {
+    return (
+      <>
+        Limit price not met: current price{" "}
+        <Amount amount={parsed.got} className="font-semibold" decimalAmount />
+        {sym(parsed)} is below your limit{" "}
+        <Amount amount={parsed.expected} className="font-semibold" decimalAmount />
+        {sym(parsed)} — <Amount amount={parsed.pct} className="font-semibold" />
+        % of target. This chunk will fill when the market reaches your limit
+        price.
+      </>
+    );
+  }
+
+  return <TextWithAmounts text={parsed.text} />;
+}
+
 const ChunkCardPendingOrFailed = ({
   chunk,
   variant,
@@ -460,7 +552,7 @@ const ChunkCardPendingOrFailed = ({
 }) => {
   const { dstToken, chainId, chunkAmount, minOutAmountPerChunk } =
     useOrderViewContext();
-  const readableDescription = formatChunkDescription(
+  const parsedDescription = parseChunkDescription(
     chunk.description,
     dstToken?.symbol,
   );
@@ -512,7 +604,7 @@ const ChunkCardPendingOrFailed = ({
             )}
             <span className={labelColor}>{label}</span>
           </div>
-          <ChevronDown className="w-4 h-4 text-muted-foreground shrink-0 transition-transform duration-200 group-open:rotate-180 ml-auto" />
+          <ChevronDown className="w-4 h-4 text-muted-foreground shrink-0 transition-transform duration-200 group-open:rotate-180 group-hover:scale-110 ml-auto" />
         </div>
         <span className="min-w-0 flex-1 truncate text-right">
           <ChunkSummaryLine
@@ -525,11 +617,9 @@ const ChunkCardPendingOrFailed = ({
         </span>
       </summary>
       <div className="px-4 pb-4 pt-0 flex flex-col gap-3.5 border-t border-border/60">
-        {readableDescription && (
-          <p className="text-sm text-muted-foreground leading-relaxed">
-            {readableDescription}
-          </p>
-        )}
+        <div className="text-sm text-muted-foreground leading-relaxed mt-2">
+          <ChunkDescriptionDisplay parsed={parsedDescription} />
+        </div>
         {chunk.dueTime && (
           <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
             <Clock className="w-3.5 h-3.5 shrink-0" />
@@ -565,6 +655,7 @@ function ChunkSummaryLine({
           address={inToken?.address}
           chainId={chainId ?? 0}
           usd=""
+          className="pointer-events-none"
         />
       </div>
       <ArrowRight className="w-4 h-4 text-muted-foreground shrink-0" />
@@ -577,6 +668,7 @@ function ChunkSummaryLine({
           address={outToken?.address}
           chainId={chainId ?? 0}
           usd=""
+          className="pointer-events-none"
         />
       </div>
     </div>
@@ -602,11 +694,8 @@ const ChunkCard = ({ chunk }: { chunk: ParsedOrderChunk }) => {
               <CheckCircle2 className="w-3 h-3 text-green-600 dark:text-green-500" />
               <span className="text-green-700 dark:text-green-400">Filled</span>
             </div>
-            <span className="text-muted-foreground tabular-nums shrink-0 text-right bg-muted/40 border border-border/50 px-2 py-1 rounded-md text-xs">
-              {toMoment(chunk.createdAt).format("lll")}
-            </span>
           </div>
-          <ChevronDown className="w-4 h-4 text-muted-foreground shrink-0 transition-transform duration-200 group-open:rotate-180" />
+          <ChevronDown className="w-4 h-4 text-muted-foreground shrink-0 transition-transform duration-200 group-open:rotate-180 group-hover:scale-110" />
         </div>
         <span className="min-w-0 flex-1 truncate text-right">
           <ChunkSummaryLine

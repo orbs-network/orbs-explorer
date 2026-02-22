@@ -9,7 +9,7 @@ import {
   isListOrderError,
 } from "@/lib/orders-dashboard";
 import type { ListOrder } from "@/lib/types";
-import { formatUsd } from "@/lib/utils/utils";
+import { Amount } from "@/components/ui/amount";
 import {
   CheckCircle2,
   XCircle,
@@ -147,7 +147,7 @@ export function OrdersOverview({
                 )}
               </div>
               <p className="mt-1 text-xs text-muted-foreground tabular-nums truncate">
-                {formatUsd(usd)}
+                <Amount amount={String(usd)} prefix="$" className="text-inherit font-normal" />
               </p>
             </>
           );
