@@ -7,24 +7,6 @@ import { getTokenLogo } from "../api";
 import { getChain, isNativeAddress } from "../utils/utils";
 import { zeroAddress } from "viem";
 
-const coingekoChainToName = {
-  [chains.flare.id]: "flare-network",
-  [chains.fantom.id]: "fantom",
-  [chains.arbitrum.id]: "arbitrum-one",
-  [chains.polygon.id]: "polygon-pos",
-  [chains.base.id]: "base",
-  [chains.mainnet.id]: "ethereum",
-  [chains.bsc.id]: "binance-smart-chain",
-  [chains.linea.id]: "linea",
-  [chains.sonic.id]: "sonic",
-  [chains.cronoszkEVM.id]: "cronos-zkevm",
-  [chains.katana.id]: "katana",
-  [chains.sei.id]: "sei-v2",
-  [chains.berachain.id]: "berachain",
-  [chains.monad.id]: "monad",
-  [chains.avalanche.id]: "avalanche",
-};
-
 
 
 export const useToken = (
@@ -51,8 +33,17 @@ export const useToken = (
         body: JSON.stringify({ addresses: [address], chainId }),
       });
       const data = await response.json();
-      
-      return data[0] as Token;
+      const token = data[0];
+      return {
+        ...token,
+        logoUrl: `https://static.arkhamintelligence.com/tokens/${
+          token.name
+            ?.toLowerCase()
+            .replace(/usd₮0/g, 'usdt0')  // usd₮0 → usdt0
+            .replace(/\susd$/, '')       // remove trailing " usd"
+            .replace(/\s+/g, '-')        // spaces → "-"
+        }.png`,
+      } as Token;
     },
     enabled: !!address && !!chainId && !disabled,
     staleTime: Infinity,

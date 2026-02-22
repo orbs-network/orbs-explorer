@@ -18,7 +18,7 @@ export function useLiquidityHubDashboard() {
   const partners = useMemo(() => getLHPartners(), []);
 
   const query = useQuery({
-    queryKey: ["liquidityHubDashboard", "last7days"],
+    queryKey: ["liquidityHubOverview", "last7days"],
     queryFn: async ({ signal }) => {
       const endDate = Date.now();
       const startDate = getLast7DaysDate().getTime();

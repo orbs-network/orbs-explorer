@@ -21,7 +21,7 @@ export default function LiquidityHubDashboardPage() {
           <div className="rounded-full bg-primary/10 p-4">
             <Spinner className="h-10 w-10 text-primary" />
           </div>
-          <p className="text-foreground font-medium">Loading dashboard</p>
+          <p className="text-foreground font-medium">Loading overview</p>
           <p className="text-muted-foreground text-sm max-w-sm text-center">
             Fetching swaps per partner. This may take a moment.
           </p>
@@ -34,7 +34,7 @@ export default function LiquidityHubDashboardPage() {
     return (
       <Page>
         <div className="rounded-2xl border border-destructive/40 bg-destructive/5 p-8 text-destructive max-w-lg">
-          <p className="font-semibold">Failed to load dashboard</p>
+          <p className="font-semibold">Failed to load overview</p>
           <p className="mt-2 text-sm opacity-90">
             {error?.message ?? "Unknown error"}
           </p>
@@ -51,7 +51,7 @@ export default function LiquidityHubDashboardPage() {
             <div className="flex items-center gap-2 text-primary mb-2">
               <BarChart3 className="h-5 w-5" />
               <span className="text-sm font-semibold uppercase tracking-wider">
-                Liquidity Hub Dashboard
+                Liquidity Hub Overview
               </span>
             </div>
             <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-4xl">

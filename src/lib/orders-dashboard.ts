@@ -98,7 +98,7 @@ export function getPartnersWithAdapters(
   return Array.from(byAdapter.values());
 }
 
-/** Returns one entry per (partner, chain) for dashboard cards. */
+/** Returns one entry per (partner, chain) for overview cards. */
 export function getPartnerChainPairs(config: SpotConfig | null): PartnerChainPair[] {
   if (!config) return [];
   const pairs: PartnerChainPair[] = [];

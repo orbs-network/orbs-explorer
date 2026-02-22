@@ -2,7 +2,7 @@
 import { useCallback } from "react";
 import moment from "moment";
 import BN from "bignumber.js";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowRight, Clock, Copy } from "lucide-react";
 import { OrderStatusBadge } from "./order-status-badge";
 import { useNetwork } from "@/lib/hooks/use-network";
@@ -138,6 +138,8 @@ const headerLabels = map(desktopRows, (row) => ({
 
 export function TwapOrdersTable() {
   const { push } = useRouter();
+  const searchParams = useSearchParams();
+  const isDev = searchParams.get("dev") === "true";
   const { orders, isLoading, isFetchingNextPage, fetchNextPage } =
     useSpotOrdersPaginated();
 
@@ -161,7 +163,7 @@ export function TwapOrdersTable() {
       title="TWAP Orders"
       headerAction={
         <div className="flex items-center gap-2">
-          <TwapSinkEnvSelect />
+          {isDev && <TwapSinkEnvSelect />}
           <OrdersFilter />
         </div>
       }

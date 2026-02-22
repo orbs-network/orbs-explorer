@@ -33,7 +33,7 @@ export function useOrdersDashboard() {
     queries: partnerChains.map((p) => ({
       queryKey: [
         REACT_QUERY_KEYS.spotOrders,
-        "dashboard",
+        "overview",
         p.adapter,
         p.chainId,
       ],

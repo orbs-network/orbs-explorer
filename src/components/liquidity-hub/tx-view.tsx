@@ -35,7 +35,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 
 import { TransactionDisplay } from "@/components/transaction-display";
-import { Address, TokenAddress } from "@/components/token-address";
+import { TokenDisplay } from "@/components/token-display";
 import {
   createContext,
   useCallback,
@@ -62,6 +62,7 @@ import {
   Wallet,
 } from "lucide-react";
 import { eqIgnoreCase } from "@/lib/utils/utils";
+import { Address } from "../address";
 
 interface ContextType extends SwapQueryResponse {
   isPreview?: boolean;
@@ -487,7 +488,7 @@ const Transfer = ({ log, tokens, index }: { log: TransferLog; tokens: Token[]; i
         <div className="flex items-center gap-2 px-3 py-1.5 bg-muted/50 rounded-md">
           <span className="text-xs text-muted-foreground uppercase">From</span>
           {fromToken ? (
-            <TokenAddress chainId={swap.chainId} address={log.from} />
+            <TokenDisplay chainId={swap.chainId} address={log.from} />
           ) : (
             <Address chainId={swap.chainId} address={log.from}>
               {eqIgnoreCase(log.from, swap.user) ? "User wallet" : undefined}
@@ -498,7 +499,7 @@ const Transfer = ({ log, tokens, index }: { log: TransferLog; tokens: Token[]; i
         <div className="flex items-center gap-2 px-3 py-1.5 bg-muted/50 rounded-md">
           <span className="text-xs text-muted-foreground uppercase">To</span>
           {toToken ? (
-            <TokenAddress chainId={swap.chainId} address={log.to} />
+            <TokenDisplay chainId={swap.chainId} address={log.to} />
           ) : (
             <Address chainId={swap.chainId} address={log.to}>
               {eqIgnoreCase(log.to, swap.user) ? "User wallet" : undefined}

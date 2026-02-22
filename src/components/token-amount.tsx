@@ -8,7 +8,7 @@ import { Skeleton } from "./skeleton";
 import { cn } from "@/lib/utils";
 import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
 import { Copy } from "lucide-react";
-import { TokenAddress } from "./token-address";
+import { TokenDisplay } from "./token-display";
 import type { Token } from "@/lib/types";
 import { useToWeiAmount } from "@/lib/hooks/use-to-wei-amount";
 
@@ -46,15 +46,15 @@ export const TokenAmountFormatted = ({
         </span>
       </TooltipTrigger>
       <TooltipContent side="bottom" className="flex flex-row gap-2 items-center">
-        <span className="text-[12px] font-mono">{amountRaw || "0"}</span>
+        <span className="text-[12px] font-mono">{amount || "0"}</span>
         <Copy
           className="w-3.5 h-3.5 cursor-pointer hover:text-primary transition-colors"
-          onClick={() => copy(amountRaw)}
+          onClick={() => copy(amount)}
         />
       </TooltipContent>
     </Tooltip>
 
-    <TokenAddress address={token?.address} chainId={chainId} />
+    <TokenDisplay address={token?.address} chainId={chainId} />
     
     {usd && (
       <span className="text-xs text-muted-foreground font-mono px-1.5 py-0.5 bg-muted/50 rounded">
@@ -83,10 +83,7 @@ export const TokenAmount = ({
   const amountFormatted = useToUiAmount(token?.decimals, amountRaw);
   const copy = useCopy();
 
-  const formattedAmount = useMemo(
-    () => abbreviate(amountFormatted, 3),
-    [amountFormatted],
-  );
+
 
 
   const usdF = useMemo(() => {
@@ -102,19 +99,19 @@ export const TokenAmount = ({
       <Tooltip>
         <TooltipTrigger asChild>
           <span className="text-[12px] font-mono font-medium text-foreground cursor-default">
-            {formattedAmount || "0"}
+            {abbreviate(amountFormatted, 3) || "0"}
           </span>
         </TooltipTrigger>
         <TooltipContent side="bottom" className="flex flex-row gap-2 items-center">
-          <span className="text-[12px] font-mono">{amountRaw || "0"}</span>
+          <span className="text-[12px] font-mono">{amountFormatted || "0"}</span>
           <Copy
             className="w-3.5 h-3.5 cursor-pointer hover:text-primary transition-colors"
-            onClick={() => copy(amountRaw)}
+            onClick={() => copy(amountFormatted)}
           />
         </TooltipContent>
       </Tooltip>
 
-      <TokenAddress address={address} chainId={chainId} />
+      <TokenDisplay address={address} chainId={chainId} />
       
       {usd && (
         <span className="text-xs text-muted-foreground font-mono px-1.5 py-0.5 bg-muted/50 rounded">

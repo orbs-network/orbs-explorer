@@ -18,7 +18,7 @@ import {
   Clock,
   ChevronRight,
 } from "lucide-react";
-import { StatusOrdersModal } from "./StatusOrdersModal";
+import { StatusOrdersModal } from "./status-order-modal";
 
 const sortByCreatedAtDesc = (a: ListOrder, b: ListOrder) =>
   new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
@@ -86,7 +86,7 @@ const SUMMARY_TILES = [
   ...STATUS_TILES,
 ];
 
-export function DashboardSummary({
+export function OrdersOverview({
   stats,
   allOrders = [],
 }: {

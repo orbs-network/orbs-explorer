@@ -1,4 +1,4 @@
-import { Address } from "@/components/token-address";
+import { Address } from "@/components/address";
 import { TokenAmount, TokenAmountFormatted } from "@/components/token-amount";
 import { TransactionDisplay } from "@/components/transaction-display";
 import { Button } from "@/components/ui/button";

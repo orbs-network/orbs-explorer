@@ -5,14 +5,14 @@ import { Page } from "@/components/page";
 import { useOrdersDashboard } from "@/lib/hooks/use-orders-dashboard";
 import {
   PartnerStatsCard,
-  DashboardSummary,
-} from "@/components/orders-dashboard/index";
+} from "@/components/twap/orders-overview/partner-stats-card";
 import { Spinner } from "@/components/ui/spinner";
 import {
   BarChart3,
   LayoutGrid,
   Users,
 } from "lucide-react";
+import { OrdersOverview } from "@/components/twap/orders-overview/orders-overview";
 
 export default function OrdersDashboardPage() {
   const { isLoading, isError, error, stats, partnerCards, ordersByPartnerChainKey } =
@@ -29,7 +29,7 @@ export default function OrdersDashboardPage() {
           <div className="rounded-full bg-primary/10 p-4">
             <Spinner className="h-10 w-10 text-primary" />
           </div>
-          <p className="text-foreground font-medium">Loading dashboard</p>
+          <p className="text-foreground font-medium">Loading overview</p>
           <p className="text-muted-foreground text-sm max-w-sm text-center">
             Fetching orders per partner. This may take a moment.
           </p>
@@ -42,7 +42,7 @@ export default function OrdersDashboardPage() {
     return (
       <Page>
         <div className="rounded-2xl border border-destructive/40 bg-destructive/5 p-8 text-destructive max-w-lg">
-          <p className="font-semibold">Failed to load dashboard</p>
+          <p className="font-semibold">Failed to load overview</p>
           <p className="mt-2 text-sm opacity-90">
             {error?.message ?? "Unknown error"}
           </p>
@@ -60,7 +60,7 @@ export default function OrdersDashboardPage() {
             <div className="flex items-center gap-2 text-primary mb-2">
               <BarChart3 className="h-5 w-5" />
               <span className="text-sm font-semibold uppercase tracking-wider">
-                Orders Dashboard
+                Orders Overview
               </span>
             </div>
             <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-4xl">
@@ -75,7 +75,7 @@ export default function OrdersDashboardPage() {
             <LayoutGrid className="h-4 w-4" />
             Overview
           </h2>
-          <DashboardSummary stats={stats} allOrders={allOrders} />
+          <OrdersOverview stats={stats} allOrders={allOrders} />
         </section>
 
 

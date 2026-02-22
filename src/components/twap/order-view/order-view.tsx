@@ -1,6 +1,6 @@
 "use client";
 
-import { Address, TokenAddress } from "@/components/token-address";
+import { TokenDisplay } from "@/components/token-display";
 import { TokenAmount, TokenAmountFormatted } from "@/components/token-amount";
 import { TransactionDisplay } from "@/components/transaction-display";
 import { useFormatNumber } from "@/lib/hooks/use-number-format";
@@ -42,6 +42,8 @@ import { useOrderViewContext } from "./use-order-view-context";
 import { SpotOrderUiLogs } from "./ui-logs";
 import { OriginalOrder } from "./original-order";
 import { parseOrderType } from "@/lib/utils/spot-utils";
+import { useSearchParams } from "next/navigation";
+import { Address } from "@/components/address";
 
 
 const PriceRate = ({
@@ -58,7 +60,7 @@ const PriceRate = ({
   return (
     <div className="flex items-center gap-1 text-[12px]">
       <span className="text-secondary-foreground font-mono">{"1"}</span>
-      <TokenAddress address={srcToken?.address} chainId={chainId} />
+      <TokenDisplay address={srcToken?.address} chainId={chainId} />
       <span className="text-secondary-foreground font-mono font-bold">
         {"="}
       </span>
@@ -147,6 +149,8 @@ const DEFAULT_STATUS_VISUAL = {
 const OrderHeader = () => {
   const { type, status, srcToken, dstToken, chainId, originalOrder } =
     useOrderViewContext();
+  const searchParams = useSearchParams();
+  const isDev = searchParams.get("dev") === "true";
 
   const normalizedStatus = (status ?? "").toLowerCase().replace(/^cancelled$/, "canceled");
   const visual =
@@ -190,8 +194,12 @@ const OrderHeader = () => {
               <TransactionDisplay.Badge variant="muted">
                 {parseOrderType(type)} Order
               </TransactionDisplay.Badge>
-              <OriginalOrder />
-              <SpotOrderUiLogs />
+              {isDev && (
+                <>
+                  <OriginalOrder />
+                  <SpotOrderUiLogs />
+                </>
+              )}
             </div>
           </div>
         <OrderHash />

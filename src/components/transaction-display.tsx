@@ -24,7 +24,7 @@ import { useRouter } from "next/navigation";
 import { Spinner } from "./ui/spinner";
 import { useToken } from "@/lib/hooks/use-token";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
-import { TokenAddress } from "./token-address";
+import { TokenDisplay } from "./token-display";
 
 export const Row = ({
   label,
@@ -132,7 +132,7 @@ const ContainerHeader = ({
   defaultBackHref,
 }: {
   children?: ReactNode;
-  /** Explicit back destination (e.g. when coming from dashboard) */
+  /** Explicit back destination (e.g. when coming from overview) */
   backHref?: string;
   /** When no backHref and no history, navigate here instead of router.back() */
   defaultBackHref?: string;
@@ -284,7 +284,7 @@ const SwapDirection = ({
           </span>
           <div className="flex items-center gap-2"> 
 
-            <TokenAddress address={fromAddress} chainId={chainId} />
+            <TokenDisplay address={fromAddress} chainId={chainId} />
           </div>
         </div>
       </div>
@@ -300,7 +300,7 @@ const SwapDirection = ({
           </span>
           <div className="flex items-center gap-2">
           
-            <TokenAddress address={toAddress} chainId={chainId} />
+            <TokenDisplay address={toAddress} chainId={chainId} />
           </div>
         </div>
       </div>

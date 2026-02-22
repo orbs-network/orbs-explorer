@@ -56,7 +56,7 @@ export const ROUTES = {
     root: `/twap`,
     orders: `/twap/orders`,
     order: `/twap/order`,
-    overview: `/twap/overview`,
+    overview: `/orders-dashboard`,
   },
 };
 

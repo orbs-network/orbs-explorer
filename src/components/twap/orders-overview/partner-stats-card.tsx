@@ -23,7 +23,7 @@ import { usePartner } from "@/lib/hooks/use-partner";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Network } from "@/components/ui/network";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { StatusOrdersModal } from "./StatusOrdersModal";
+import { StatusOrdersModal } from "./status-order-modal";
 import { cn } from "@/lib/utils";
 import { formatUsd } from "@/lib/utils/utils";
 
