@@ -19,7 +19,6 @@ import BN from "bignumber.js";
 import { useSpotPartner } from "./use-spot-partner";
 import { useSpotOrderQuery } from "./use-spot-orders";
 import { useToken } from "../use-token";
-import { Order, OrderChunk, ParsedOrderChunk, Token } from "@/lib/types";
 
 
 const parseValue = (value: string | undefined, decimals?: number) => {

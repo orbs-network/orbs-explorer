@@ -14,7 +14,7 @@ import Link from "next/link";
 import { ROUTES } from "@/lib/routes";
 import { Virtuoso } from "react-virtuoso";
 import { useToken } from "@/lib/hooks/use-token";
-import { useSpotPartner } from "@/lib/hooks/twap-hooks/use-spot-partner";
+import { useSpotPartnerListOrder } from "@/lib/hooks/twap-hooks/use-spot-partner";
 import { Amount } from "@/components/ui/amount";
 import BN from "bignumber.js";
 import moment from "moment";
@@ -67,7 +67,8 @@ const variantBorderColors: Record<StatusOrdersModalVariant, string> = {
 };
 
 function OrderRowTokenPair({ order }: { order: ListOrder }) {
-  const { chainId } = useSpotPartner(order.exchangeAdapter);
+  const { chainId } = useSpotPartnerListOrder(order);
+  
   const srcToken = useToken(order.inputToken, chainId).data;
   const dstToken = useToken(order.outputToken, chainId).data;
   return (

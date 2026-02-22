@@ -13,6 +13,7 @@ export const useSpotOrdersPaginated = () => {
   const { query: queryParams } = useQueryFilterParams();
   const partnerId = queryParams.partner_id?.[0];
   const partner = useSpotPartner(partnerId);
+
   const sinkApiUrl = useTwapSinkApiUrl();
   
 

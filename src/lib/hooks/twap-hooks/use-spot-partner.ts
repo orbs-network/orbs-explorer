@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { useSpotConfig } from "../use-twap-config";
 import { PARTNERS } from "@/lib/partners";
+import { ListOrder } from "@/lib/types";
 
 const getPartner = (partner: string) => {
   return PARTNERS.find((item) =>
@@ -14,7 +15,7 @@ const EMPTY_PARTNER = {
   config: null,
 };
 
-export const useSpotPartner = (adapterOrPartnerId?: string) => {
+export const useSpotPartner = (adapterOrPartnerId?: string, partnerChainId?: number) => {
   const { data: config } = useSpotConfig();
 
   
@@ -23,7 +24,7 @@ export const useSpotPartner = (adapterOrPartnerId?: string) => {
     const target = adapterOrPartnerId.toLowerCase();    
 
     for (const [chainId, chainConfig] of Object.entries(config)) {
-      if (!chainConfig?.dex) continue;
+      if (!chainConfig?.dex || (partnerChainId && Number(chainId) !== partnerChainId)) continue;
 
       for (const [partner, dexConfig] of Object.entries(chainConfig.dex)) {
 
@@ -44,3 +45,8 @@ export const useSpotPartner = (adapterOrPartnerId?: string) => {
     return EMPTY_PARTNER;
   }, [adapterOrPartnerId, config]);
 };
+
+
+export const useSpotPartnerListOrder = (order?: ListOrder) => {
+  return useSpotPartner(order?.exchangeAdapter, order?.order.witness.chainId);
+}

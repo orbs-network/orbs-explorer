@@ -68,6 +68,7 @@ export interface ListOrder {
     witness: {
       deadline: string; // unix timestamp (string)
       epoch: number;
+      chainId: number;
     };
   };
   timestamp: string; // ISO-8601

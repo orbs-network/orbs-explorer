@@ -13,7 +13,7 @@ import { map } from "lodash";
 import { ROUTES } from "@/lib/routes";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip";
 import { ListOrder } from "@/lib/types";
-import { useSpotPartner } from "@/lib/hooks/twap-hooks/use-spot-partner";
+import { useSpotPartnerListOrder } from "@/lib/hooks/twap-hooks/use-spot-partner";
 import { Partner } from "../ui/partner";
 import { OrdersFilter } from "./filter";
 import { TwapSinkEnvSelect } from "./sink-env-select";
@@ -62,7 +62,7 @@ const OrderTypeComponent = ({ item }: { item: ListOrder }) => {
 };
 
 const PartnerCell = ({ item }: { item: ListOrder }) => {
-  const dex = useSpotPartner(item.exchangeAdapter);
+  const dex = useSpotPartnerListOrder(item);
   
   const network = useNetwork(dex?.chainId);
 
@@ -84,7 +84,8 @@ const TxHash = ({ item }: { item: ListOrder }) => {
 };
 
 const TokenPair = ({ item }: { item: ListOrder }) => {
-  const {chainId} = useSpotPartner(item.exchangeAdapter);
+  const {chainId} = useSpotPartnerListOrder(item);
+
   const srcToken = useToken(item.inputToken, chainId).data;
   const dstToken = useToken(item.outputToken, chainId).data;
   return (
