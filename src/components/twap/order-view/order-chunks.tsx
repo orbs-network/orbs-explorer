@@ -22,12 +22,14 @@ import {
   XCircle,
   FileText,
   ChevronDown,
+  CheckIcon,
 } from "lucide-react";
 import { useSpotOrderChunks } from "@/lib/hooks/twap-hooks/use-spot-order-chunks";
 import { createContext, useContext, useState } from "react";
 import { useOrderViewContext } from "./use-order-view-context";
 import { useFormatNumber } from "@/lib/hooks/use-number-format";
 import BN from "bignumber.js";
+import { useToUiAmount } from "@/lib/hooks/use-to-ui-amount";
 
 const EMPTY = "—";
 
@@ -208,11 +210,52 @@ function OracleTimestamp() {
     />
   );
 }
+
+
+const OracleAddress = () => {
+  const chunk = useChunkDetails();
+  return <DetailRow label="Address" value={
+    <Address address={chunk.oracleAddress} chainId={chunk.chainId || 0} />
+  } />;
+}
+
+const FeeOnTransfer = () => {
+  const chunk = useChunkDetails();
+
+  const value = useFormatNumber({
+    value: useToUiAmount(chunk.inToken?.decimals, chunk.feeOnTransfer),
+  })
+
+  if(chunk.feeOnTransferError){
+    return <div className="text-muted-foreground flex items-start gap-2 w-fit mt-4 text-xs bg-red-500/10 border border-red-500/20 px-3 py-2 rounded-md">
+      <AlertCircle className="w-3.5 h-3.5 text-red-500 mt-0.5" />
+      <p className="text-red-500 break-all flex-1">Transfer Fee Estimation Error: {chunk.feeOnTransferError}</p>
+    </div>;
+  }
+
+  if(BN(chunk.feeOnTransfer).isZero()){
+
+    return <div className="text-muted-foreground flex items-center gap-2 w-fit mt-4 text-xs bg-primary/10 border border-primary/20 px-4 py-1 rounded-md">
+      <CheckIcon className="w-3.5 h-3.5 text-primary" />
+      <span className="text-primary">No fee on transfer</span>
+    </div>;
+  }
+
+  return (
+    <DetailRow
+      label="Fee on Transfer"
+      value={value}
+    />
+  );
+}
+
+
+
 function InputTokenPrice() {
   const chunk = useChunkDetails();
   return (
     <DetailRow
-      label="Input Token Price"
+      label={`In Token Price (${chunk.inToken?.symbol})`}
       value={chunk.inputTokenUsd != null ? `$${abbreviate(chunk.inputTokenUsd)}` : null}
     />
   );
@@ -221,7 +264,7 @@ function OutputTokenPrice() {
   const chunk = useChunkDetails();
   return (
     <DetailRow
-      label="Output Token Price"
+      label={`Out Token Price (${chunk.outToken?.symbol})`}
       value={
         chunk.outputTokenUsd != null ? `$${abbreviate(chunk.outputTokenUsd)}` : null
       }
@@ -232,7 +275,7 @@ function ExchangeRate() {
   const chunk = useChunkDetails();
   return (
     <DetailRow
-      label="Exchange Rate"
+      label="Rate"
       value={
         <div className="flex items-center gap-1">
           <TokenAmountFormatted
@@ -285,12 +328,6 @@ function ChunkDetailsFillSection() {
       <TxHash />
       <Executor />
       <Swapper />
-    </DetailSectionBlock>
-  );
-}
-function ChunkDetailsSettlementSection() {
-  return (
-    <DetailSectionBlock title="Settlement">
       <InputAmount />
       <OutputAmount />
       <MinOutputAmount />
@@ -298,10 +335,12 @@ function ChunkDetailsSettlementSection() {
     </DetailSectionBlock>
   );
 }
+
 function ChunkDetailsOracleSection() {
   return (
     <DetailSectionBlock title="Oracle & pricing">
       <OracleName />
+      <OracleAddress />
       <OracleTimestamp />
       <InputTokenPrice />
       <OutputTokenPrice />
@@ -325,9 +364,10 @@ function ChunkDetailsSection({ chunk }: { chunk: ParsedOrderChunk }) {
         </div>
         <div>
           <ChunkDetailsTimingSection />
-          <ChunkDetailsFillSection />
-          <ChunkDetailsSettlementSection />
           <ChunkDetailsOracleSection />
+
+          <ChunkDetailsFillSection />
+          <FeeOnTransfer />
         </div>
       </div>
     </ChunkDetailsContext.Provider>
@@ -424,8 +464,6 @@ const ChunkCardPendingOrFailed = ({
     chunk.description,
     dstToken?.symbol,
   );
-  const inTokenAddress = chunk.inToken?.address;
-  const outTokenAddress = chunk.outToken?.address;
   const inAmountRaw =
     chunk.inAmount && chunk.inAmount !== "0"
       ? chunk.inAmount

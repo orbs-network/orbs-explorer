@@ -129,6 +129,12 @@ export interface OrderChunk {
   timestamp: string; // ISO-8601
   txHash?: `0x${string}`;
   solverReportedOutput?: SolverReportData;
+  transferFeeEstimation: {
+    hasFeeOnTransfer: boolean;
+    inputTokenFee: string;
+    inputTokenReceived: string;
+    error?: string;
+  }
 }
 
 export interface OraclePricingDatum {
@@ -245,6 +251,8 @@ export enum ChunkStatus {
 
 
 export type ParsedOrderChunk = {
+  feeOnTransfer: string;
+  feeOnTransferError?: string;
   updatedAt: string;
   inAmount: string;
   outAmount: string;

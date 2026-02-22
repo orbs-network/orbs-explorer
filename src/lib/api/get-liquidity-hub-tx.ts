@@ -20,7 +20,7 @@ export const getLiquidityHubTx = async (identifier: string, signal?: AbortSignal
   );
 
   const swap = response[0];
-  if (!swap) throw new Error("Swap not found");
+  if (!swap) return null;
   const { sessionId } = swap;
 
   const [quotes, clientLogs] = [

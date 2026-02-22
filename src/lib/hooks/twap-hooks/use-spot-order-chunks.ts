@@ -40,16 +40,18 @@ export function parseOrderChunks(
         const exchangeRate = BN(inputTokenUsd).div(BN(outputTokenUsd)).toFixed();
         const inAmount = chunk.inAmount ?? "0";
         const outAmount = chunk.outAmount ?? "0";
-
         const solverOutAmount = chunk.solverReportedOutput?.outputAmount ?? "0";
         const expectedOutputOracle = BN(inAmount).multipliedBy(exchangeRate).toFixed();
-
         const outAmountDiff = BN(solverOutAmount).minus(BN(expectedOutputOracle)).div(BN(expectedOutputOracle)).multipliedBy(100).toFixed();
+        const feeOnTransfer = chunk.transferFeeEstimation?.inputTokenFee ?? '0';
+        
         return {
           inAmount,
           outAmount: chunk.outAmount ?? "0",
           feesUsd: chunk.displayOnlyFee?.replace("$", "") || "0",
-          status: orderStatus === Status.CANCELLED ? "cancelled" : chunk.status,
+          status: orderStatus === Status.CANCELLED ? "cancelled" : 
+          orderStatus === Status.FAILED ? "failed" :
+          chunk.status,
           dueTime: chunk.displayOnlyDueTime,
           updatedAt: chunk.timestamp,
           createdAt: chunk.createdAt,
@@ -81,6 +83,8 @@ export function parseOrderChunks(
           outAmountDiff,
           inputTotalUsd: BN(toAmountUI(inAmount, srcToken?.decimals ?? 0)).multipliedBy(inputTokenUsd).toFixed(),
           outputTotalUsd: BN(toAmountUI(outAmount, dstToken?.decimals ?? 0)).multipliedBy(outputTokenUsd).toFixed(),
+          feeOnTransfer,
+          feeOnTransferError: chunk.transferFeeEstimation?.error ?? "",
         };
       })
       .sort((a, b) => a.index - b.index) ?? [];
@@ -88,9 +92,9 @@ export function parseOrderChunks(
   return {
     expectedChunks: order?.metadata.expectedChunks,
     successChunks: chunks.filter((c) => c.status === ChunkStatus.SUCCESS),
-    failedChunks: chunks.filter((c) => c.status === ChunkStatus.FAILED),
+    failedChunks: chunks.filter((c) => c.status === ChunkStatus.FAILED || c.status === Status.CANCELLED),
     pendingChunks: chunks.filter(
-      (c) => c.status !== ChunkStatus.SUCCESS && c.status !== ChunkStatus.FAILED,
+      (c) => c.status !== ChunkStatus.SUCCESS && c.status !== ChunkStatus.FAILED && c.status !== Status.CANCELLED,
     ),
     chunks,
   };

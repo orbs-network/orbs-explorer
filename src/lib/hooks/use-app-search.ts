@@ -20,6 +20,7 @@ export function useAppSearch() {
         getSpotOrder({ hash: value }),
         getLiquidityHubTx(value),
       ]);
+      
       if (twapOrder) {
         router.push(ROUTES.TWAP.ORDER(twapOrder.hash));
       } else if (liquidityHubTx) {
@@ -28,6 +29,9 @@ export function useAppSearch() {
       else {
         toast.error("Transaction not found");
       }
+    },
+    onError: (error) => {
+      console.log(error);
     },
   });
 }

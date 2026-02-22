@@ -6,7 +6,7 @@ import { useMemo } from "react";
 import { uniqBy } from "lodash";
 import { useSpotPartner } from "./use-spot-partner";
 import { useTwapSinkApiUrl } from "../use-twap-sink-url";
-import { Partners } from "../../types";
+import { Partners, Status } from "../../types";
 
 export const useSpotOrdersPaginated = () => {
   const { query: queryParams } = useQueryFilterParams();
@@ -68,5 +68,8 @@ export const useSpotOrderQuery = (hash?: string) => {
     },
     enabled: !!hash && !!sinkApiUrl,
     staleTime: Infinity,
+    refetchInterval: (order) => {
+      return order?.state.data?.metadata.status === Status.PENDING ? 20_000 : false;
+    },
   });
 };
