@@ -5,6 +5,7 @@ import { REACT_QUERY_KEYS } from "../consts";
 import { useSpotConfig } from "./use-twap-config";
 import {
   getPartnerChainPairs,
+  getTopPairsByVolume,
   ordersToPartnerStats,
   partnerChainKey,
   PartnerCard,
@@ -104,11 +105,13 @@ export function useOrdersDashboard() {
           value.partnerName,
           { chainId: ch.chainId, chainName: ch.chainName }
         );
+        const topPairs = getTopPairsByVolume(orders, 3);
         return {
           chainId: ch.chainId,
           chainName: ch.chainName,
           stats: chainStats,
           orders,
+          topPairs,
         };
       });
       cards.push({

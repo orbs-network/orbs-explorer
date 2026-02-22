@@ -125,12 +125,21 @@ export function partnerChainKey(partnerId: string, chainId: number): string {
   return `${partnerId}-${chainId}`;
 }
 
+/** Top pair by totalUSDAmount volume. */
+export type TopPair = {
+  inputToken: string;
+  outputToken: string;
+  totalUsd: number;
+  orderCount: number;
+};
+
 /** One chain's stats + orders for use inside a partner card tab. */
 export type PartnerChainEntry = {
   chainId: number;
   chainName: string;
   stats: PartnerStats;
   orders: ListOrder[];
+  topPairs: TopPair[];
 };
 
 /** One card per partner: partner info + list of chains (each with stats + orders). */
@@ -244,6 +253,45 @@ export function getLast7DaysDate(): Date {
   d.setDate(d.getDate() - 7);
   d.setHours(0, 0, 0, 0);
   return d;
+}
+
+/** Top N token pairs by totalUSDAmount volume. Uses canonical pair key (sorted addresses). */
+export function getTopPairsByVolume(
+  orders: ListOrder[],
+  limit = 3
+): TopPair[] {
+  const byPair = new Map<
+    string,
+    { inputToken: string; outputToken: string; totalUsd: number; orderCount: number }
+  >();
+
+  for (const order of orders) {
+    const inAddr = (order.inputToken ?? "").toLowerCase();
+    const outAddr = (order.outputToken ?? "").toLowerCase();
+    if (!inAddr || !outAddr) continue;
+    const pairKey =
+      inAddr < outAddr ? `${inAddr}-${outAddr}` : `${outAddr}-${inAddr}`;
+    const first = inAddr < outAddr ? inAddr : outAddr;
+    const second = inAddr < outAddr ? outAddr : inAddr;
+    const usd = parseFloat(order.totalUSDAmount) || 0;
+
+    const existing = byPair.get(pairKey);
+    if (existing) {
+      existing.totalUsd += usd;
+      existing.orderCount += 1;
+    } else {
+      byPair.set(pairKey, {
+        inputToken: first,
+        outputToken: second,
+        totalUsd: usd,
+        orderCount: 1,
+      });
+    }
+  }
+
+  return Array.from(byPair.values())
+    .sort((a, b) => b.totalUsd - a.totalUsd)
+    .slice(0, limit);
 }
 
 /** Aggregate a single partner's orders into PartnerStats. Optionally include chain for card title "PartnerName ChainName". */

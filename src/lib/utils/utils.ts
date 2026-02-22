@@ -233,6 +233,32 @@ export const isNativeAddress = (address: string) => {
   return eqIgnoreCase(address, zeroAddress);
 };
 
+/** Returns true if token symbol indicates a base/quote asset (stablecoin, wrapped native). */
+export const isBaseAssetSymbol = (symbol?: string | null): boolean => {
+  if (!symbol?.trim()) return true;
+  const s = symbol.toLowerCase().trim();
+  if (s.includes("usd")) return true;
+  const baseSymbols = [
+    "dai",
+    "busd",
+    "weth",
+    "wbnb",
+    "wavax",
+    "wftm",
+    "wmatic",
+    "wpoly",
+    "wnative",
+    "wbtc",
+    "wflr",
+    "wbera",
+    "wmon",
+    "wzkcro",
+    "wsei",
+    "ws",
+  ];
+  return baseSymbols.includes(s);
+};
+
 export const getChainLogo = (chainId?: number) => {
   if (!chainId) return undefined;
   return chainLogosByChainId[chainId as keyof typeof chainLogosByChainId];

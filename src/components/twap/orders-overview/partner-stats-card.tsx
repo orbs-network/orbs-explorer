@@ -18,12 +18,14 @@ import {
   TrendingUp,
   DollarSign,
   ChevronRight,
+  ArrowRightLeft,
 } from "lucide-react";
 import { usePartner } from "@/lib/hooks/use-partner";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Network } from "@/components/ui/network";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { StatusOrdersModal } from "./status-order-modal";
+import { TokenDisplay } from "@/components/token-display";
 import { cn } from "@/lib/utils";
 import { abbreviate } from "@/lib/utils/utils";
 
@@ -42,6 +44,45 @@ function isErrorOrder(order: ListOrder): boolean {
 
 const sortByCreatedAtDesc = (a: ListOrder, b: ListOrder) =>
   new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
+
+function TrendingPairList({
+  pairs,
+  chainId,
+  limit = 3,
+}: {
+  pairs: { inputToken: string; outputToken: string; totalUsd: number }[];
+  chainId: number;
+  limit?: number;
+}) {
+  const display = pairs.slice(0, limit);
+  return (
+    <div className="space-y-1.5">
+      {display.map((p) => (
+        <div
+          key={`${p.inputToken}-${p.outputToken}`}
+          className="flex items-center justify-between gap-2 text-sm"
+        >
+          <div className="flex items-center gap-1.5 min-w-0 flex-1">
+            <TokenDisplay
+              address={p.inputToken}
+              chainId={chainId}
+              className="!px-1.5 !py-0.5 text-xs shrink-0"
+            />
+            <span className="text-muted-foreground shrink-0">→</span>
+            <TokenDisplay
+              address={p.outputToken}
+              chainId={chainId}
+              className="!px-1.5 !py-0.5 text-xs shrink-0"
+            />
+          </div>
+          <span className="text-xs font-medium tabular-nums shrink-0">
+            ${abbreviate(p.totalUsd, 2)}
+          </span>
+        </div>
+      ))}
+    </div>
+  );
+}
 
 const statRow = (
   label: string,
@@ -94,6 +135,8 @@ const statRow = (
 function ChainStatsContent({
   stats,
   orders,
+  topPairs,
+  chainId,
   onOpenFilled,
   onOpenPartial,
   onOpenPending,
@@ -101,12 +144,13 @@ function ChainStatsContent({
 }: {
   stats: PartnerStats;
   orders: ListOrder[];
+  topPairs: { inputToken: string; outputToken: string; totalUsd: number }[];
+  chainId: number;
   onOpenFilled: () => void;
   onOpenPartial: () => void;
   onOpenPending: () => void;
   onOpenError: () => void;
 }) {
-
   return (
     <>
       {statRow(
@@ -146,6 +190,19 @@ function ChainStatsContent({
         <Clock className="h-4 w-4 text-muted-foreground" />,
         "text-muted-foreground",
         stats.pendingOrders > 0 ? onOpenPending : undefined
+      )}
+      {topPairs.length > 0 && (
+        <div className="pt-3 mt-3 border-t border-border/50">
+          <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">
+            <ArrowRightLeft className="h-3.5 w-3.5" />
+            Trending pairs
+          </div>
+          <TrendingPairList
+            pairs={topPairs}
+            chainId={chainId}
+            limit={3}
+          />
+        </div>
       )}
     </>
   );
@@ -270,6 +327,8 @@ export function PartnerStatsCard({ partnerCard }: { partnerCard: PartnerCard }) 
             <ChainStatsContent
               stats={singleChain.stats}
               orders={singleChain.orders}
+              topPairs={singleChain.topPairs}
+              chainId={singleChain.chainId}
               onOpenFilled={() => openFilled(singleChain.chainId)}
               onOpenPartial={() => openPartial(singleChain.chainId)}
               onOpenPending={() => openPending(singleChain.chainId)}
@@ -302,6 +361,8 @@ export function PartnerStatsCard({ partnerCard }: { partnerCard: PartnerCard }) 
                   <ChainStatsContent
                     stats={ch.stats}
                     orders={ch.orders}
+                    topPairs={ch.topPairs}
+                    chainId={ch.chainId}
                     onOpenFilled={() => openFilled(ch.chainId)}
                     onOpenPartial={() => openPartial(ch.chainId)}
                     onOpenPending={() => openPending(ch.chainId)}
