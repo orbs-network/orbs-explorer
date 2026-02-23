@@ -26,6 +26,8 @@ import {
   FileText,
   ChevronDown,
   CheckIcon,
+  Zap,
+  Database,
 } from "lucide-react";
 import { useSpotOrderChunks } from "@/lib/hooks/twap-hooks/use-spot-order-chunks";
 import { createContext, useContext, useState } from "react";
@@ -56,9 +58,11 @@ function DetailRow({
   value: React.ReactNode;
 }) {
   return (
-    <div className="flex flex-row gap-1 min-w-0 items-center">
-      <dt className="text-[13px] font-medium text-muted-foreground">{label}:</dt>
-      <dd className="font-mono text-foreground text-[13px] break-all tabular-nums">
+    <div className="grid grid-cols-[minmax(0,8rem)_1fr] gap-x-4 gap-y-0.5 min-w-0 items-baseline sm:grid-cols-[minmax(0,9rem)_1fr]">
+      <dt className="text-[12px] font-medium text-muted-foreground truncate">
+        {label}
+      </dt>
+      <dd className="font-mono text-[13px] text-foreground break-all tabular-nums">
         {value ?? EMPTY}
       </dd>
     </div>
@@ -67,17 +71,22 @@ function DetailRow({
 
 function DetailSectionBlock({
   title,
+  icon: Icon,
   children,
 }: {
   title: string;
+  icon?: React.ComponentType<{ className?: string }>;
   children: React.ReactNode;
 }) {
   return (
-    <div className="mt-4 pt-2 border-t border-border/60 [&:first-child]:mt-0 [&:first-child]:pt-0 [&:first-child]:border-t-0">
-      <span className="text-[13px] font-medium text-muted-foreground uppercase tracking-wider block mb-2 bg-primary/10 px-2 py-1 rounded-md">
-        {title}
-      </span>
-      <dl className="flex flex-col gap-2.5">
+    <div className="pt-4 first:pt-0">
+      <div className="flex items-center gap-2 mb-3">
+        {Icon && <Icon className="h-3.5 w-3.5 text-muted-foreground" />}
+        <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-widest">
+          {title}
+        </span>
+      </div>
+      <dl className="flex flex-col gap-2.5 pl-0">
         {children}
       </dl>
     </div>
@@ -260,8 +269,8 @@ const FeeOnTransfer = () => {
 
   if (chunk.feeOnTransferError) {
     return (
-      <div className="text-muted-foreground flex items-start gap-2 w-fit mt-4 text-xs bg-red-500/10 border border-red-500/20 px-3 py-2 rounded-md">
-        <AlertCircle className="w-3.5 h-3.5 text-red-500 mt-0.5" />
+      <div className="text-muted-foreground flex items-start gap-2 w-full text-xs bg-red-500/10 border border-red-500/20 px-3 py-2 rounded-lg">
+        <AlertCircle className="w-3.5 h-3.5 text-red-500 mt-0.5 shrink-0" />
         <p className="text-red-500 break-all flex-1">
           Transfer Fee Estimation Error: {chunk.feeOnTransferError}
         </p>
@@ -271,9 +280,9 @@ const FeeOnTransfer = () => {
 
   if (BN(chunk.feeOnTransfer).isZero()) {
     return (
-      <div className="text-muted-foreground flex items-center gap-2 w-fit mt-4 text-xs bg-primary/10 border border-primary/20 px-4 py-1 rounded-md">
-        <CheckIcon className="w-3.5 h-3.5 text-primary" />
-        <span className="text-primary">No fee on transfer</span>
+      <div className="text-muted-foreground flex items-center gap-2 w-fit text-xs bg-emerald-500/10 border border-emerald-500/20 px-3 py-1.5 rounded-lg">
+        <CheckIcon className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-500" />
+        <span className="text-emerald-700 dark:text-emerald-400 font-medium">No fee on transfer</span>
       </div>
     );
   }
@@ -352,7 +361,7 @@ function ExpectedOutput() {
 
 function ChunkDetailsTimingSection() {
   return (
-    <DetailSectionBlock title="Timing">
+    <DetailSectionBlock title="Timing" icon={Clock}>
       <CreatedAt />
       <UpdatedAt />
       <DueTime />
@@ -361,14 +370,14 @@ function ChunkDetailsTimingSection() {
 }
 function ChunkDetailsFillSection() {
   return (
-    <DetailSectionBlock title="Fill">
+    <DetailSectionBlock title="Fill" icon={Zap}>
+      <InputAmount />
+      <OutputAmount />
+      <MinOutputAmount />
       <Block />
       <TxHash />
       <Executor />
       <Swapper />
-      <InputAmount />
-      <OutputAmount />
-      <MinOutputAmount />
       <Exchange />
     </DetailSectionBlock>
   );
@@ -376,7 +385,7 @@ function ChunkDetailsFillSection() {
 
 function ChunkDetailsOracleSection() {
   return (
-    <DetailSectionBlock title="Oracle & pricing">
+    <DetailSectionBlock title="Oracle & pricing" icon={Database}>
       <OracleName />
       <OracleAddress />
       <OracleTimestamp />
@@ -384,7 +393,6 @@ function ChunkDetailsOracleSection() {
       <OutputTokenPrice />
       <ExpectedOutput />
       <ExchangeRate />
-
     </DetailSectionBlock>
   );
 }
@@ -392,19 +400,21 @@ function ChunkDetailsOracleSection() {
 function ChunkDetailsSection({ chunk }: { chunk: ParsedOrderChunk }) {
   return (
     <ChunkDetailsContext.Provider value={chunk}>
-      <div className="rounded-xl border border-border/80 bg-muted/30 p-4 mt-3">
-        <div className="flex items-center gap-2 mb-3">
-          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary/10">
-            <FileText className="h-3.5 w-3.5 text-primary" />
+      <div className="rounded-xl border border-border/60 bg-gradient-to-b from-muted/20 to-muted/5 p-4 sm:p-5 shadow-sm">
+        <div className="flex items-center gap-2.5 mb-4 pb-3 border-b border-border/50">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 ring-1 ring-primary/10">
+            <FileText className="h-4 w-4 text-primary" />
           </div>
-          <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+          <span className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">
             Chunk details
           </span>
         </div>
-        <div>
+        <div className="space-y-0 divide-y divide-border/40">
+          <ChunkDetailsFillSection />
           <ChunkDetailsTimingSection />
           <ChunkDetailsOracleSection />
-          <ChunkDetailsFillSection />
+        </div>
+        <div className="mt-4 pt-4 border-t border-border/40">
           <FeeOnTransfer />
         </div>
       </div>
@@ -586,28 +596,36 @@ const ChunkCardPendingOrFailed = ({
       : "text-amber-500";
   const label = isFailed ? "Failed" : isCancelled ? "Cancelled" : "Pending";
 
+  const hoverBorder = isFailed
+    ? "hover:border-red-500/30"
+    : isCancelled
+      ? "hover:border-border"
+      : "hover:border-amber-500/30";
+
   return (
-    <details className="group rounded-xl border border-border/80 bg-card shadow-sm hover:border-primary/25 transition-all duration-200 overflow-hidden">
-      <summary className="flex flex-col items-start gap-3 px-4 py-3 cursor-pointer list-none select-none hover:bg-muted/30 transition-colors">
-        <div className="flex items-center justify-center gap-2 w-full">
-          <span className="text-sm font-semibold text-foreground tabular-nums shrink-0">
-            Chunk #{chunk.index}
-          </span>
-          <div
-            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-xs font-medium shrink-0 ${badgeStyles}`}
-          >
-            {isFailed ? (
-              <AlertCircle className="w-3 h-3 text-red-500" />
-            ) : isCancelled ? (
-              <XCircle className={`w-3 h-3 ${iconColor}`} />
-            ) : (
-              <Loader2 className={`w-3 h-3 ${iconColor} animate-spin`} />
-            )}
-            <span className={labelColor}>{label}</span>
+    <details className={`group rounded-xl border border-border/60 bg-card/50 shadow-sm ${hoverBorder} hover:shadow-md transition-all duration-200 overflow-hidden`}>
+      <summary className="flex flex-col gap-3 px-4 py-3.5 cursor-pointer list-none select-none hover:bg-muted/20 transition-colors">
+        <div className="flex items-center justify-between w-full">
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-semibold text-foreground tabular-nums">
+              Chunk #{chunk.index}
+            </span>
+            <div
+              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-xs font-medium ${badgeStyles}`}
+            >
+              {isFailed ? (
+                <AlertCircle className="w-3 h-3 text-red-500" />
+              ) : isCancelled ? (
+                <XCircle className={`w-3 h-3 ${iconColor}`} />
+              ) : (
+                <Loader2 className={`w-3 h-3 ${iconColor} animate-spin`} />
+              )}
+              <span className={labelColor}>{label}</span>
+            </div>
           </div>
-          <ChevronDown className="w-4 h-4 text-muted-foreground shrink-0 transition-transform duration-200 group-open:rotate-180 group-hover:scale-110 ml-auto" />
+          <ChevronDown className="w-4 h-4 text-muted-foreground shrink-0 transition-transform duration-200 group-open:rotate-180" />
         </div>
-        <span className="min-w-0 flex-1 truncate text-right">
+        <div className="min-w-0 w-full">
           <ChunkSummaryLine
             inAmount={inAmountRaw}
             inToken={chunk.inToken}
@@ -615,14 +633,14 @@ const ChunkCardPendingOrFailed = ({
             outToken={chunk.outToken}
             chainId={chunk.chainId ?? chainId ?? 0}
           />
-        </span>
+        </div>
       </summary>
-      <div className="px-4 pb-4 pt-0 flex flex-col gap-3.5 border-t border-border/60">
-        <div className="text-sm text-muted-foreground leading-relaxed mt-2">
+      <div className="px-4 pb-4 pt-3 border-t border-border/50 bg-muted/5">
+        <div className="text-sm text-muted-foreground leading-relaxed">
           <ChunkDescriptionDisplay parsed={parsedDescription} />
         </div>
         {chunk.dueTime && (
-          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+          <div className="flex items-center gap-1.5 text-xs text-muted-foreground mt-3">
             <Clock className="w-3.5 h-3.5 shrink-0" />
             <span>Due: {toMoment(chunk.dueTime).format("lll")}</span>
           </div>
@@ -646,30 +664,30 @@ function ChunkSummaryLine({
   chainId?: number;
 }) {
   return (
-    <div className="flex items-center gap-2.5 flex-wrap">
-      <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-muted/40 border border-border/50">
-        <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
-          Sell
+    <div className="flex items-center gap-2 flex-wrap w-full">
+      <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-muted/30 border border-border/40 shadow-sm min-w-0 flex-1">
+        <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest shrink-0">
+          In
         </span>
         <TokenAmount
           amountRaw={inAmount}
           address={inToken?.address}
           chainId={chainId ?? 0}
           usd=""
-          className="pointer-events-none"
+          className="pointer-events-none font-medium"
         />
       </div>
-      <ArrowRight className="w-4 h-4 text-muted-foreground shrink-0" />
-      <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-muted/40 border border-border/50">
-        <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
-          Buy
+      <ArrowRight className="w-4 h-4 text-muted-foreground/70 shrink-0" />
+      <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-muted/30 border border-border/40 shadow-sm min-w-0 flex-1">
+        <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest shrink-0">
+          Out
         </span>
         <TokenAmount
           amountRaw={outAmount}
           address={outToken?.address}
           chainId={chainId ?? 0}
           usd=""
-          className="pointer-events-none"
+          className="pointer-events-none font-medium"
         />
       </div>
     </div>
@@ -681,24 +699,24 @@ const ChunkCard = ({ chunk }: { chunk: ParsedOrderChunk }) => {
 
   return (
     <details
-      className="group rounded-xl border border-border/80 bg-card shadow-sm hover:border-primary/25 transition-all duration-200 overflow-hidden"
+      className="group rounded-xl border border-border/60 bg-card/50 shadow-sm hover:border-emerald-500/30 hover:shadow-md transition-all duration-200 overflow-hidden"
       open={open}
       onToggle={(e) => setOpen((e.target as HTMLDetailsElement).open)}
     >
-      <summary className="flex gap-3 px-4 py-3 cursor-pointer list-none select-none hover:bg-muted/30 transition-colors flex-col items-start justify-start">
+      <summary className="flex flex-col gap-3 px-4 py-3.5 cursor-pointer list-none select-none hover:bg-muted/20 transition-colors">
         <div className="flex items-center gap-3 justify-between w-full">
           <div className="flex items-center gap-2">
-            <span className="text-sm font-semibold text-foreground tabular-nums shrink-0">
+            <span className="text-sm font-semibold text-foreground tabular-nums">
               Chunk #{chunk.index}
             </span>
-            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-green-500/25 bg-green-500/10 text-xs font-medium shrink-0">
-              <CheckCircle2 className="w-3 h-3 text-green-600 dark:text-green-500" />
-              <span className="text-green-700 dark:text-green-400">Filled</span>
+            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 text-xs font-medium">
+              <CheckCircle2 className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
+              <span className="text-emerald-700 dark:text-emerald-400">Filled</span>
             </div>
           </div>
-          <ChevronDown className="w-4 h-4 text-muted-foreground shrink-0 transition-transform duration-200 group-open:rotate-180 group-hover:scale-110" />
+          <ChevronDown className="w-4 h-4 text-muted-foreground shrink-0 transition-transform duration-200 group-open:rotate-180" />
         </div>
-        <span className="min-w-0 flex-1 truncate text-right">
+        <div className="min-w-0 w-full">
           <ChunkSummaryLine
             inAmount={chunk.inAmount ?? "0"}
             inToken={chunk.inToken}
@@ -706,10 +724,10 @@ const ChunkCard = ({ chunk }: { chunk: ParsedOrderChunk }) => {
             outToken={chunk.outToken}
             chainId={chunk.chainId ?? 0}
           />
-        </span>
+        </div>
       </summary>
       {open && (
-        <div className="px-4 pb-4 pt-0 flex flex-col gap-3.5 border-t border-border/60">
+        <div className="px-4 pb-4 pt-1 border-t border-border/50 bg-muted/5">
           <ChunkDetailsSection chunk={chunk} />
         </div>
       )}
