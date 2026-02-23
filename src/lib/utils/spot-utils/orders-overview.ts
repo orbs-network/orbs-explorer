@@ -1,6 +1,6 @@
-import { ListOrder } from "./types";
-import { PARTNERS } from "./partners";
-import { Partners, Status } from "./types";
+import { ListOrder } from "../../types";
+import { PARTNERS } from "../../partners";
+import { Partners, Status } from "../../types";
 
 /** Raw status string from ListOrder.metadata.status. */
 export function getListOrderStatus(order: ListOrder): string {
@@ -46,9 +46,13 @@ export type PartnerStats = {
   totalOrders: number;
   totalUsd: number;
   filledOrders: number;
+  filledUsd: number;
   partiallyFilledOrders: number;
+  partiallyFilledUsd: number;
   errorOrders: number;
+  errorUsd: number;
   pendingOrders: number;
+  pendingUsd: number;
 };
 
 type SpotConfig = Record<
@@ -200,9 +204,13 @@ export function aggregateOrdersByPartner(
       totalOrders: number;
       totalUsd: number;
       filled: number;
+      filledUsd: number;
       partiallyFilled: number;
+      partiallyFilledUsd: number;
       error: number;
+      errorUsd: number;
       pending: number;
+      pendingUsd: number;
     }
   >();
 
@@ -218,9 +226,13 @@ export function aggregateOrdersByPartner(
         totalOrders: 0,
         totalUsd: 0,
         filled: 0,
+        filledUsd: 0,
         partiallyFilled: 0,
+        partiallyFilledUsd: 0,
         error: 0,
+        errorUsd: 0,
         pending: 0,
+        pendingUsd: 0,
       });
     }
 
@@ -230,10 +242,19 @@ export function aggregateOrdersByPartner(
     row.totalUsd += usd;
 
     const status = classifyListOrderStatus(order);
-    if (status === Status.COMPLETED) row.filled += 1;
-    else if (status === Status.PARTIALLY_COMPLETED) row.partiallyFilled += 1;
-    else if (status === Status.PENDING) row.pending += 1;
-    else row.error += 1;
+    if (status === Status.COMPLETED) {
+      row.filled += 1;
+      row.filledUsd += usd;
+    } else if (status === Status.PARTIALLY_COMPLETED) {
+      row.partiallyFilled += 1;
+      row.partiallyFilledUsd += usd;
+    } else if (status === Status.PENDING) {
+      row.pending += 1;
+      row.pendingUsd += usd;
+    } else {
+      row.error += 1;
+      row.errorUsd += usd;
+    }
   }
 
   return Array.from(byPartner.entries()).map(([partnerId, row]) => ({
@@ -242,9 +263,13 @@ export function aggregateOrdersByPartner(
     totalOrders: row.totalOrders,
     totalUsd: row.totalUsd,
     filledOrders: row.filled,
+    filledUsd: row.filledUsd,
     partiallyFilledOrders: row.partiallyFilled,
+    partiallyFilledUsd: row.partiallyFilledUsd,
     errorOrders: row.error,
+    errorUsd: row.errorUsd,
     pendingOrders: row.pending,
+    pendingUsd: row.pendingUsd,
   }));
 }
 
@@ -303,17 +328,31 @@ export function ordersToPartnerStats(
 ): PartnerStats {
   let totalUsd = 0;
   let filled = 0;
+  let filledUsd = 0;
   let partiallyFilled = 0;
+  let partiallyFilledUsd = 0;
   let error = 0;
+  let errorUsd = 0;
   let pending = 0;
+  let pendingUsd = 0;
 
   for (const order of orders) {
-    totalUsd += parseFloat(order.totalUSDAmount) || 0;
+    const usd = parseFloat(order.totalUSDAmount) || 0;
+    totalUsd += usd;
     const status = classifyListOrderStatus(order);
-    if (status === Status.COMPLETED) filled += 1;
-    else if (status === Status.PARTIALLY_COMPLETED) partiallyFilled += 1;
-    else if (status === Status.PENDING) pending += 1;
-    else error += 1;
+    if (status === Status.COMPLETED) {
+      filled += 1;
+      filledUsd += usd;
+    } else if (status === Status.PARTIALLY_COMPLETED) {
+      partiallyFilled += 1;
+      partiallyFilledUsd += usd;
+    } else if (status === Status.PENDING) {
+      pending += 1;
+      pendingUsd += usd;
+    } else {
+      error += 1;
+      errorUsd += usd;
+    }
   }
 
   return {
@@ -324,8 +363,12 @@ export function ordersToPartnerStats(
     totalOrders: orders.length,
     totalUsd,
     filledOrders: filled,
+    filledUsd,
     partiallyFilledOrders: partiallyFilled,
+    partiallyFilledUsd,
     errorOrders: error,
+    errorUsd,
     pendingOrders: pending,
+    pendingUsd,
   };
 }

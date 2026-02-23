@@ -2,7 +2,7 @@
 
 import { useMemo } from "react";
 import { Page } from "@/components/page";
-import { useOrdersDashboard } from "@/lib/hooks/use-orders-dashboard";
+import { useSpotOverview } from "@/lib/hooks/twap-hooks/use-spot-overview";
 import {
   PartnerStatsCard,
 } from "@/components/twap/orders-overview/partner-stats-card";
@@ -16,7 +16,7 @@ import { OrdersOverview } from "@/components/twap/orders-overview/orders-overvie
 
 export default function TwapOverviewPage() {
   const { isLoading, isError, error, stats, partnerCards, ordersByPartnerChainKey } =
-    useOrdersDashboard();
+    useSpotOverview();
   const allOrders = useMemo(
     () => Object.values(ordersByPartnerChainKey ?? {}).flat(),
     [ordersByPartnerChainKey]

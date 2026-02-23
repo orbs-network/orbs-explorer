@@ -1,8 +1,8 @@
 import { useQueries } from "@tanstack/react-query";
 import { useMemo } from "react";
-import { getAllOrdersForExchangeAndChain } from "../api";
-import { REACT_QUERY_KEYS } from "../consts";
-import { useSpotConfig } from "./use-twap-config";
+import { getAllOrdersForExchangeAndChain } from "../../api";
+import { REACT_QUERY_KEYS } from "../../consts";
+import { useSpotConfig } from "../use-twap-config";
 import {
   getPartnerChainPairs,
   getTopPairsByVolume,
@@ -10,11 +10,11 @@ import {
   partnerChainKey,
   PartnerCard,
   PartnerStats,
-} from "../orders-dashboard";
-import { ListOrder } from "../types";
-import { getChains } from "../utils/utils";
+} from "../../utils/spot-utils/orders-overview";
+import { ListOrder } from "../../types";
+import { getChains } from "../../utils/utils";
 
-export function useOrdersDashboard() {
+export function useSpotOverview() {
   const { data: config, isLoading: configLoading } = useSpotConfig();
 
   const partnerChains = useMemo(

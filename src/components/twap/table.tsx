@@ -6,7 +6,8 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowRight, Clock, Copy } from "lucide-react";
 import { OrderStatusBadge } from "./order-status-badge";
 import { useNetwork } from "@/lib/hooks/use-network";
-import { abbreviate, parseListOrderStatus, shortenAddress } from "@/lib/utils/utils";
+import { Amount } from "@/components/ui/amount";
+import { parseListOrderStatus, shortenAddress } from "@/lib/utils/utils";
 import { VirtualTable } from "../virtual-table";
 import { useSpotOrdersPaginated } from "@/lib/hooks/twap-hooks/use-spot-orders";
 import { map } from "lodash";
@@ -33,11 +34,14 @@ const Timestamp = ({ item }: { item: ListOrder }) => {
 };
 
 const TradeUSDValue = ({ item }: { item: ListOrder }) => {
-  const amountF = abbreviate(item.totalUSDAmount || 0, 2);
-
+  const hasAmount = BN(item.totalUSDAmount || 0).gt(0);
   return (
-    <span className={BN(item.totalUSDAmount || 0).gt(0) ? "text-foreground font-medium" : "text-muted-foreground"}>
-      {BN(item.totalUSDAmount || 0).gt(0) ? `$${amountF}` : "-"}
+    <span className={hasAmount ? "text-foreground font-medium" : "text-muted-foreground"}>
+      {hasAmount ? (
+        <Amount amount={item.totalUSDAmount || "0"} prefix="$" />
+      ) : (
+        "-"
+      )}
     </span>
   );
 };

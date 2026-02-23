@@ -1,13 +1,13 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import type { PartnerStats } from "@/lib/orders-dashboard";
+import type { PartnerStats } from "@/lib/utils/spot-utils/orders-overview";
 import {
   isListOrderCompleted,
   isListOrderPartiallyCompleted,
   isListOrderPending,
   isListOrderError,
-} from "@/lib/orders-dashboard";
+} from "@/lib/utils/spot-utils/orders-overview";
 import type { ListOrder } from "@/lib/types";
 import { Amount } from "@/components/ui/amount";
 import {

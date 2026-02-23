@@ -2,13 +2,13 @@
 
 import { useState, useMemo } from "react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import type { PartnerCard, PartnerStats } from "@/lib/orders-dashboard";
+import type { PartnerCard, PartnerStats } from "@/lib/utils/spot-utils/orders-overview";
 import {
   isListOrderCompleted,
   isListOrderPartiallyCompleted,
   isListOrderPending,
   isListOrderError,
-} from "@/lib/orders-dashboard";
+} from "@/lib/utils/spot-utils/orders-overview";
 import type { ListOrder } from "@/lib/types";
 import {
   CheckCircle2,
@@ -165,28 +165,28 @@ function ChainStatsContent({
       )}
       {statRow(
         "Filled",
-        stats.filledOrders,
+        `${stats.filledOrders} · $${abbreviate(stats.filledUsd, 2)}`,
         <CheckCircle2 className="h-4 w-4 text-emerald-500" />,
         "text-emerald-600 dark:text-emerald-400",
         stats.filledOrders > 0 ? onOpenFilled : undefined
       )}
       {statRow(
         "Partially filled",
-        stats.partiallyFilledOrders,
+        `${stats.partiallyFilledOrders} · $${abbreviate(stats.partiallyFilledUsd, 2)}`,
         <AlertCircle className="h-4 w-4 text-amber-500" />,
         "text-amber-600 dark:text-amber-400",
         stats.partiallyFilledOrders > 0 ? onOpenPartial : undefined
       )}
       {statRow(
         "Error / failed",
-        stats.errorOrders,
+        `${stats.errorOrders} · $${abbreviate(stats.errorUsd, 2)}`,
         <XCircle className="h-4 w-4 text-destructive" />,
         "text-destructive",
         stats.errorOrders > 0 ? onOpenError : undefined
       )}
       {statRow(
         "Pending",
-        stats.pendingOrders,
+        `${stats.pendingOrders} · $${abbreviate(stats.pendingUsd, 2)}`,
         <Clock className="h-4 w-4 text-muted-foreground" />,
         "text-muted-foreground",
         stats.pendingOrders > 0 ? onOpenPending : undefined

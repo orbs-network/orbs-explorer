@@ -5,8 +5,8 @@ import { TokenAmount, TokenAmountFormatted } from "@/components/token-amount";
 import { TransactionDisplay } from "@/components/transaction-display";
 import { useFormatNumber } from "@/lib/hooks/use-number-format";
 import { Token, SpotOrderType, ChunkStatus } from "@/lib/types";
+import { Amount } from "@/components/ui/amount";
 import {
-  abbreviate,
   formatDuration,
   getOrderProgress,
   parseOrderStatus,
@@ -401,7 +401,7 @@ const FilledFee = () => {
 
   return (
     <TransactionDisplay.SectionItem label="Fee" missingValue={BN(feeUsd).isZero()}>
-      <>${abbreviate(feeUsd, 2)}</>
+      <Amount amount={String(feeUsd)} prefix="$" />
     </TransactionDisplay.SectionItem>
   );
 };

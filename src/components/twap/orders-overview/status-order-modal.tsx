@@ -174,6 +174,12 @@ export function StatusOrdersModal({
     [sorted, filterQuery]
   );
 
+  const totalUsd = useMemo(
+    () =>
+      filtered.reduce((sum, o) => sum + parseFloat(o.totalUSDAmount || "0"), 0),
+    [filtered]
+  );
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="w-[calc(100vw-1.5rem)] max-w-2xl h-[85vh] max-h-[calc(100dvh-2rem)] sm:max-h-[85vh] flex flex-col gap-0 overflow-hidden">
@@ -195,10 +201,22 @@ export function StatusOrdersModal({
           />
         </div>
 
-        <p className="text-muted-foreground text-xs mt-2 shrink-0">
-          {filtered.length === sorted.length
-            ? `${sorted.length} order${sorted.length === 1 ? "" : "s"}`
-            : `${filtered.length} of ${sorted.length} order${filtered.length === 1 ? "" : "s"}`}
+        <p className="text-muted-foreground text-xs mt-2 shrink-0 flex items-center gap-2">
+          <span>
+            {filtered.length === sorted.length
+              ? `${sorted.length} order${sorted.length === 1 ? "" : "s"}`
+              : `${filtered.length} of ${sorted.length} order${filtered.length === 1 ? "" : "s"}`}
+          </span>
+          {filtered.length > 0 && (
+            <>
+              <span className="text-border">·</span>
+              <Amount
+                amount={String(totalUsd)}
+                prefix="Total: $"
+                className="text-foreground font-medium"
+              />
+            </>
+          )}
         </p>
 
         <div className="flex-1 min-h-0 flex flex-col mt-3 -mx-1 px-1 overflow-hidden">

@@ -56,8 +56,8 @@ function DetailRow({
   value: React.ReactNode;
 }) {
   return (
-    <div className="flex flex-col gap-1 min-w-0">
-      <dt className="text-[13px] font-medium text-muted-foreground">{label}</dt>
+    <div className="flex flex-row gap-1 min-w-0 items-center">
+      <dt className="text-[13px] font-medium text-muted-foreground">{label}:</dt>
       <dd className="font-mono text-foreground text-[13px] break-all tabular-nums">
         {value ?? EMPTY}
       </dd>
@@ -77,7 +77,7 @@ function DetailSectionBlock({
       <span className="text-[13px] font-medium text-muted-foreground uppercase tracking-wider block mb-2 bg-primary/10 px-2 py-1 rounded-md">
         {title}
       </span>
-      <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2.5">
+      <dl className="flex flex-col gap-2.5">
         {children}
       </dl>
     </div>
@@ -313,7 +313,7 @@ function ExchangeRate() {
     <DetailRow
       label="Rate"
       value={
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1 w-full">
           <TokenAmountFormatted
             amount="1"
             token={chunk.inToken}
@@ -382,8 +382,9 @@ function ChunkDetailsOracleSection() {
       <OracleTimestamp />
       <InputTokenPrice />
       <OutputTokenPrice />
-      <ExchangeRate />
       <ExpectedOutput />
+      <ExchangeRate />
+
     </DetailSectionBlock>
   );
 }

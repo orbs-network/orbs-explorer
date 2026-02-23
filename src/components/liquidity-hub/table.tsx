@@ -6,7 +6,8 @@ import { ArrowRight, Clock } from "lucide-react";
 import { useNetwork } from "@/lib/hooks/use-network";
 import { usePartner } from "@/lib/hooks/use-partner";
 import { useToken } from "@/lib/hooks/use-token";
-import { abbreviate, shortenAddress } from "@/lib/utils/utils";
+import { Amount } from "@/components/ui/amount";
+import { shortenAddress } from "@/lib/utils/utils";
 import { useLHSwaps } from "@/lib/liquidity-hub/queries";
 import { LiquidityHubSwap } from "@/lib/liquidity-hub/types";
 import { ROUTES } from "@/lib/routes";
@@ -34,11 +35,14 @@ const TimestampCell = ({ item }: { item: LiquidityHubSwap }) => {
 
 const UsdValueCell = ({ item }: { item: LiquidityHubSwap }) => {
   const value = item.amountInUSD || item.dollarValue2 || 0;
-  const formatted = abbreviate(value, 2);
 
   return (
     <span className={value > 0 ? "text-foreground font-medium" : "text-muted-foreground"}>
-      {value > 0 ? `$${formatted}` : "-"}
+      {value > 0 ? (
+        <Amount amount={String(value)} prefix="$" />
+      ) : (
+        "-"
+      )}
     </span>
   );
 };
@@ -95,7 +99,11 @@ const FeesCell = ({ item }: { item: LiquidityHubSwap }) => {
   
   return (
     <span className={feeOutAmountUsd ? "text-foreground" : "text-muted-foreground"}>
-      {feeOutAmountUsd ? `$${abbreviate(feeOutAmountUsd, 2)}` : "-"}
+      {feeOutAmountUsd ? (
+        <Amount amount={String(feeOutAmountUsd)} prefix="$" />
+      ) : (
+        "-"
+      )}
     </span>
   );
 };
