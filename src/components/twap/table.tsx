@@ -137,18 +137,25 @@ const headerLabels = map(desktopRows, (row) => ({
 }));
 
 export function TwapOrdersTable() {
-  const { push } = useRouter();
+  const router = useRouter();
   const searchParams = useSearchParams();
   const isDev = searchParams.get("dev") === "true";
   const { orders, isLoading, isFetchingNextPage, fetchNextPage } =
     useSpotOrdersPaginated();
 
-  const onSelect = useCallback(
+  const navigateToOrder = useCallback(
     (order: ListOrder) => {
       const search = typeof window !== "undefined" ? window.location.search : "";
-      push(`${ROUTES.TWAP.ORDER(order.hash)}${search}`);
+      router.push(`${ROUTES.TWAP.ORDER(order.hash)}${search}`);
     },
-    [push],
+    [router],
+  );
+
+  const prefetchOrder = useCallback(
+    (order: ListOrder) => {
+      router.prefetch(ROUTES.TWAP.ORDER(order.hash));
+    },
+    [router],
   );
 
   return (
@@ -159,7 +166,9 @@ export function TwapOrdersTable() {
       tableItems={orders}
       headerLabels={headerLabels}
       desktopRows={desktopRows}
-      onSelect={onSelect}
+      onSelect={navigateToOrder}
+      onMobileRowClick={navigateToOrder}
+      onRowHover={prefetchOrder}
       title="TWAP Orders"
       headerAction={
         <div className="flex items-center gap-2">

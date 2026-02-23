@@ -25,6 +25,7 @@ export function VirtualTable<T>({
   desktopRows,
   onMobileRowClick,
   onSelect,
+  onRowHover,
   title = "Recent Orders",
   headerAction,
 }: {
@@ -34,6 +35,7 @@ export function VirtualTable<T>({
   tableItems: T[];
   onMobileRowClick?: (item: T) => void;
   onSelect?: (item: T) => void;
+  onRowHover?: (item: T) => void;
   title?: string;
   headerAction?: React.ReactNode;
   headerLabels: {
@@ -55,6 +57,7 @@ export function VirtualTable<T>({
         rows={desktopRows}
         tableItems={tableItems}
         onMobileRowClick={onMobileRowClick}
+        onRowHover={onRowHover}
         onEndReached={fetchNextPage}
         isFetchingNextPage={isFetchingNextPage}
         isLoading={isLoading}
@@ -113,7 +116,23 @@ export function VirtualTable<T>({
             components={{
               Table: Table,
               TableHead: TableHeader,
-              TableRow: TableRow,
+              TableRow: ({ children, ...props }) => {
+                const rowProps = props as { "data-item-index"?: number; "data-index"?: number };
+                const index = rowProps["data-item-index"] ?? rowProps["data-index"];
+                const item = index != null ? tableItems[index] : undefined;
+                return (
+                  <TableRow
+                    {...props}
+                    onMouseEnter={
+                      item && onRowHover
+                        ? () => onRowHover(item)
+                        : undefined
+                    }
+                  >
+                    {children}
+                  </TableRow>
+                );
+              },
               TableBody: TableBody,
             }}
             fixedHeaderContent={() => (
@@ -166,6 +185,7 @@ const MobileTable = <T,>({
   tableItems,
   headerLabels,
   onMobileRowClick,
+  onRowHover,
   onEndReached,
   isFetchingNextPage,
   isLoading,
@@ -176,6 +196,7 @@ const MobileTable = <T,>({
   tableItems: T[];
   headerLabels: { text: string; className?: string }[];
   onMobileRowClick?: (item: T) => void;
+  onRowHover?: (item: T) => void;
   onEndReached?: () => void;
   isFetchingNextPage?: boolean;
   isLoading?: boolean;
@@ -274,6 +295,7 @@ const MobileTable = <T,>({
                 tableItem={tableItem}
                 headerLabels={headerLabels}
                 onMobileRowClick={onMobileRowClick}
+                onRowHover={onRowHover}
               />
             );
           }}
@@ -288,16 +310,20 @@ const MobileItem = <T,>({
   tableItem,
   headerLabels,
   onMobileRowClick,
+  onRowHover,
 }: {
   rows: { Component: React.ComponentType<{ item: T }>; className?: string }[];
   tableItem: T;
   headerLabels: { text: string; className?: string }[];
   onMobileRowClick?: (item: T) => void;
+  onRowHover?: (item: T) => void;
 }) => {
   return (
     <Card
       className="mb-2 border-border hover:border-primary/30 transition-colors cursor-pointer"
       onClick={() => onMobileRowClick?.(tableItem)}
+      onMouseEnter={() => onRowHover?.(tableItem)}
+      onTouchStart={() => onRowHover?.(tableItem)}
     >
       <CardContent className="p-3">
         <div className="flex flex-col gap-2">
