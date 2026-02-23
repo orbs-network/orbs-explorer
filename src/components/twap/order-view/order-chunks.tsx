@@ -9,7 +9,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { ParsedOrderChunk, Token } from "@/lib/types";
+import { ParsedOrderChunk, Token, OrderChunk } from "@/lib/types";
 import { toMoment } from "@/lib/utils/utils";
 import {
   parseChunkDescription,
@@ -28,9 +28,12 @@ import {
   CheckIcon,
   Zap,
   Database,
+  Code,
 } from "lucide-react";
 import { useSpotOrderChunks } from "@/lib/hooks/twap-hooks/use-spot-order-chunks";
 import { createContext, useContext, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { ClientReactJson } from "@/components/client-json-view";
 import { useOrderViewContext } from "./use-order-view-context";
 import { useFormatNumber } from "@/lib/hooks/use-number-format";
 import BN from "bignumber.js";
@@ -422,9 +425,47 @@ function ChunkDetailsSection({ chunk }: { chunk: ParsedOrderChunk }) {
   );
 }
 
+function RawChunkModal({
+  chunkIndex,
+  rawChunk,
+  trigger,
+}: {
+  chunkIndex: number;
+  rawChunk: OrderChunk;
+  trigger: React.ReactNode;
+}) {
+  const [open, setOpen] = useState(false);
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>{trigger}</DialogTrigger>
+      <DialogContent className="max-w-4xl max-h-[85vh] overflow-hidden flex flex-col">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Code className="h-4 w-4" />
+            Chunk #{chunkIndex} — Raw Object
+          </DialogTitle>
+        </DialogHeader>
+        <div className="flex-1 overflow-auto rounded-lg bg-[#1e1e1e] p-4 min-h-[200px]">
+          <ClientReactJson
+            src={rawChunk as unknown as object}
+            theme="monokai"
+            collapsed={1}
+            displayDataTypes={false}
+            enableClipboard
+            style={{ backgroundColor: "transparent" }}
+          />
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 export function OrderChunks() {
-  const { hash } = useOrderViewContext();
-  const { chunks, order } = useSpotOrderChunks(hash);
+  const { hash, order } = useOrderViewContext();
+  const searchParams = useSearchParams();
+  const isDev = searchParams.get("dev") === "true";
+  const { chunks, order: spotOrder } = useSpotOrderChunks(hash);
+  const rawChunks = order?.metadata?.chunks ?? [];
   const { successChunks, failedChunks, pendingChunks, expectedChunks } = chunks;
 
   return (
@@ -458,8 +499,8 @@ export function OrderChunks() {
               </div>
               <span className="capitalize">
               {failedChunks.length > 0
-                ? `${order?.type} Order Fills (cancelled)`
-                : `${order?.type} Order Fills`}
+                ? `${spotOrder?.type} Order Fills (cancelled)`
+                : `${spotOrder?.type} Order Fills`}
               </span>
             </DialogTitle>
             <p className="text-sm text-muted-foreground pl-11">
@@ -477,14 +518,21 @@ export function OrderChunks() {
             </p>
           </DialogHeader>
           <div className="flex flex-col gap-4">
-            {successChunks.map((chunk, index) => (
-              <ChunkCard key={`success-${chunk.index}`} chunk={chunk} />
+            {successChunks.map((chunk) => (
+              <ChunkCard
+                key={`success-${chunk.index}`}
+                chunk={chunk}
+                isDev={isDev}
+                rawChunk={rawChunks.find((c) => c.index === chunk.index)}
+              />
             ))}
             {pendingChunks.map((chunk) => (
               <ChunkCardPendingOrFailed
                 key={`pending-${chunk.index}`}
                 chunk={chunk}
                 variant="pending"
+                isDev={isDev}
+                rawChunk={rawChunks.find((c) => c.index === chunk.index)}
               />
             ))}
             {failedChunks.map((chunk) => (
@@ -492,6 +540,8 @@ export function OrderChunks() {
                 key={`failed-${chunk.index}`}
                 chunk={chunk}
                 variant="failed"
+                isDev={isDev}
+                rawChunk={rawChunks.find((c) => c.index === chunk.index)}
               />
             ))}
           </div>
@@ -559,9 +609,13 @@ function ChunkDescriptionDisplay({
 const ChunkCardPendingOrFailed = ({
   chunk,
   variant,
+  isDev,
+  rawChunk,
 }: {
   chunk: ParsedOrderChunk;
   variant: "pending" | "failed" | "cancelled";
+  isDev?: boolean;
+  rawChunk?: OrderChunk;
 }) => {
   const { dstToken, chainId, chunkAmount, minOutAmountPerChunk } =
     useOrderViewContext();
@@ -612,8 +666,29 @@ const ChunkCardPendingOrFailed = ({
             <span className="text-sm font-semibold text-foreground tabular-nums">
               Chunk #{chunk.index}
             </span>
+            {isDev && rawChunk && (
+              <div
+                onClick={(e) => e.stopPropagation()}
+                onPointerDown={(e) => e.stopPropagation()}
+                className="shrink-0"
+              >
+                <RawChunkModal
+                  chunkIndex={chunk.index}
+                  rawChunk={rawChunk}
+                  trigger={
+                    <button
+                      type="button"
+                      className="p-1.5 rounded border border-border/60 bg-muted/50 hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+                      aria-label="View raw chunk"
+                    >
+                      <Code className="h-3.5 w-3.5" />
+                    </button>
+                  }
+                />
+              </div>
+            )}
             <div
-              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-xs font-medium ${badgeStyles}`}
+              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-xs font-medium shrink-0 ${badgeStyles}`}
             >
               {isFailed ? (
                 <AlertCircle className="w-3 h-3 text-red-500" />
@@ -696,7 +771,15 @@ function ChunkSummaryLine({
   );
 }
 
-const ChunkCard = ({ chunk }: { chunk: ParsedOrderChunk }) => {
+const ChunkCard = ({
+  chunk,
+  isDev,
+  rawChunk,
+}: {
+  chunk: ParsedOrderChunk;
+  isDev?: boolean;
+  rawChunk?: OrderChunk;
+}) => {
   const [open, setOpen] = useState(false);
 
   return (
@@ -711,7 +794,28 @@ const ChunkCard = ({ chunk }: { chunk: ParsedOrderChunk }) => {
             <span className="text-sm font-semibold text-foreground tabular-nums">
               Chunk #{chunk.index}
             </span>
-            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 text-xs font-medium">
+            {isDev && rawChunk && (
+              <div
+                onClick={(e) => e.stopPropagation()}
+                onPointerDown={(e) => e.stopPropagation()}
+                className="shrink-0"
+              >
+                <RawChunkModal
+                  chunkIndex={chunk.index}
+                  rawChunk={rawChunk}
+                  trigger={
+                    <button
+                      type="button"
+                      className="p-1.5 rounded border border-border/60 bg-muted/50 hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+                      aria-label="View raw chunk"
+                    >
+                      <Code className="h-3.5 w-3.5" />
+                    </button>
+                  }
+                />
+              </div>
+            )}
+            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 text-xs font-medium shrink-0">
               <CheckCircle2 className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
               <span className="text-emerald-700 dark:text-emerald-400">Filled</span>
             </div>
