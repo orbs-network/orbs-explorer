@@ -1,4 +1,11 @@
-import { Token, ParsedOrderChunk, Order, OrderChunk, Status, ChunkStatus } from "@/lib/types";
+import {
+  Token,
+  ParsedOrderChunk,
+  Order,
+  OrderChunk,
+  Status,
+  ChunkStatus,
+} from "@/lib/types";
 import { useMemo } from "react";
 import { useSpotOrder } from "./use-spot-order";
 import BN from "bignumber.js";
@@ -16,7 +23,10 @@ function computeExpectedOutputInOutTokenDecimals(
 ): string {
   const inAmountUi = BN(inAmountRaw).dividedBy(BN(10).pow(srcDecimals));
   const expectedOutUi = inAmountUi.multipliedBy(exchangeRate);
-  return expectedOutUi.multipliedBy(BN(10).pow(dstDecimals)).decimalPlaces(0).toFixed();
+  return expectedOutUi
+    .multipliedBy(BN(10).pow(dstDecimals))
+    .decimalPlaces(0)
+    .toFixed();
 }
 
 export type GetOrderChunksContext = {
@@ -47,12 +57,19 @@ export function parseOrderChunks(
   const chunks: ParsedOrderChunk[] =
     chunkList
       ?.map((chunk: OrderChunk) => {
-        
-        const oracle  = chunk.oraclePricingData?.[0];      
+        const oracle = chunk.oraclePricingData?.[0];
         const description = chunk.description?.trim() || undefined;
-        const inputTokenUsd = BN(oracle?.message.input.value.toString() ?? "0").dividedBy(1e18).toFixed();
-        const outputTokenUsd = BN(oracle?.message.output.value.toString() ?? "0").dividedBy(1e18).toFixed();
-        const exchangeRate = BN(inputTokenUsd).div(BN(outputTokenUsd)).toFixed();
+        const inputTokenUsd = BN(oracle?.message.input.value.toString() ?? "0")
+          .dividedBy(1e18)
+          .toFixed();
+        const outputTokenUsd = BN(
+          oracle?.message.output.value.toString() ?? "0",
+        )
+          .dividedBy(1e18)
+          .toFixed();
+        const exchangeRate = BN(inputTokenUsd)
+          .div(BN(outputTokenUsd))
+          .toFixed();
         const inAmount = chunk.inAmount ?? "0";
         const outAmount = chunk.outAmount ?? "0";
         const solverOutAmount = chunk.solverReportedOutput?.outputAmount ?? "0";
@@ -64,16 +81,23 @@ export function parseOrderChunks(
         );
         const outAmountDiff = BN(expectedOutputOracle).isZero()
           ? "0"
-          : BN(solverOutAmount).minus(BN(expectedOutputOracle)).div(BN(expectedOutputOracle)).multipliedBy(100).toFixed();
-        const feeOnTransfer = chunk.transferFeeEstimation?.inputTokenFee ?? '0';
-        
+          : BN(solverOutAmount)
+              .minus(BN(expectedOutputOracle))
+              .div(BN(expectedOutputOracle))
+              .multipliedBy(100)
+              .toFixed();
+        const feeOnTransfer = chunk.transferFeeEstimation?.inputTokenFee ?? "0";
+
         return {
           inAmount,
           outAmount: chunk.outAmount ?? "0",
           feesUsd: chunk.displayOnlyFee?.replace("$", "") || "0",
-          status: orderStatus === Status.CANCELLED ? "cancelled" : 
-          orderStatus === Status.FAILED ? "failed" :
-          chunk.status,
+          status:
+            orderStatus === Status.CANCELLED
+              ? "cancelled"
+              : orderStatus === Status.FAILED
+                ? "failed"
+                : chunk.status,
           dueTime: chunk.displayOnlyDueTime,
           updatedAt: chunk.timestamp,
           createdAt: chunk.createdAt,
@@ -103,8 +127,12 @@ export function parseOrderChunks(
           exchangeRate,
           expectedOutputOracle,
           outAmountDiff,
-          inputTotalUsd: BN(toAmountUI(inAmount, srcToken?.decimals ?? 0)).multipliedBy(inputTokenUsd).toFixed(),
-          outputTotalUsd: BN(toAmountUI(outAmount, dstToken?.decimals ?? 0)).multipliedBy(outputTokenUsd).toFixed(),
+          inputTotalUsd: BN(toAmountUI(inAmount, srcToken?.decimals ?? 0))
+            .multipliedBy(inputTokenUsd)
+            .toFixed(),
+          outputTotalUsd: BN(toAmountUI(outAmount, dstToken?.decimals ?? 0))
+            .multipliedBy(outputTokenUsd)
+            .toFixed(),
           feeOnTransfer,
           feeOnTransferError: chunk.transferFeeEstimation?.error ?? "",
         };
@@ -114,25 +142,34 @@ export function parseOrderChunks(
   return {
     expectedChunks: order?.metadata.expectedChunks,
     successChunks: chunks.filter((c) => c.status === ChunkStatus.SUCCESS),
-    failedChunks: chunks.filter((c) => c.status === ChunkStatus.FAILED || c.status === Status.CANCELLED),
+    failedChunks: chunks.filter(
+      (c) => c.status === ChunkStatus.FAILED || c.status === Status.CANCELLED,
+    ),
     pendingChunks: chunks.filter(
-      (c) => c.status !== ChunkStatus.SUCCESS && c.status !== ChunkStatus.FAILED && c.status !== Status.CANCELLED,
+      (c) =>
+        c.status !== ChunkStatus.SUCCESS &&
+        c.status !== ChunkStatus.FAILED &&
+        c.status !== Status.CANCELLED,
     ),
     chunks,
   };
 }
 
 export function useSpotOrderChunks(hash?: string): {
-  isLoading: boolean;
+  order: ReturnType<typeof useSpotOrder>;
   chunks: OrderChunksResult;
 } {
-  const { originalOrder, isLoading, srcToken, dstToken, chainId, status } =
-    useSpotOrder(hash);
+  const order = useSpotOrder(hash);
 
   return useMemo(() => {
     return {
-      isLoading,
-      chunks: parseOrderChunks(originalOrder, { srcToken, dstToken, chainId, status }),
+      order,
+      chunks: parseOrderChunks(order?.originalOrder, {
+        srcToken: order?.srcToken,
+        dstToken: order?.dstToken,
+        chainId: order?.chainId,
+        status: order?.status,
+      }),
     };
-  }, [originalOrder, srcToken, dstToken, chainId, isLoading, status]);
+  }, [order]);
 }

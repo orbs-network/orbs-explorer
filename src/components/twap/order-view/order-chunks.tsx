@@ -424,7 +424,7 @@ function ChunkDetailsSection({ chunk }: { chunk: ParsedOrderChunk }) {
 
 export function OrderChunks() {
   const { hash } = useOrderViewContext();
-  const { chunks } = useSpotOrderChunks(hash);
+  const { chunks, order } = useSpotOrderChunks(hash);
   const { successChunks, failedChunks, pendingChunks, expectedChunks } = chunks;
 
   return (
@@ -456,9 +456,11 @@ export function OrderChunks() {
               <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10">
                 <Layers className="h-5 w-5 text-primary" />
               </div>
+              <span className="capitalize">
               {failedChunks.length > 0
-                ? "Order Fills (cancelled)"
-                : "Order Fills"}
+                ? `${order?.type} Order Fills (cancelled)`
+                : `${order?.type} Order Fills`}
+              </span>
             </DialogTitle>
             <p className="text-sm text-muted-foreground pl-11">
               {successChunks.length} of {expectedChunks} chunks filled

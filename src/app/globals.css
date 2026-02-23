@@ -116,6 +116,35 @@
   --sidebar-ring: hsl(212 100% 67%);
 }
 
+/* Custom scrollbars */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: hsl(214 20% 70% / 0.8) transparent;
+}
+.dark * {
+  scrollbar-color: hsl(215 20% 45% / 0.6) transparent;
+}
+*::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+*::-webkit-scrollbar-thumb {
+  background: hsl(214 20% 70% / 0.6);
+  border-radius: 4px;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background: hsl(214 20% 60% / 0.8);
+}
+.dark *::-webkit-scrollbar-thumb {
+  background: hsl(215 20% 45% / 0.5);
+}
+.dark *::-webkit-scrollbar-thumb:hover {
+  background: hsl(215 20% 55% / 0.7);
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;

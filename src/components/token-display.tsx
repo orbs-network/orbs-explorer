@@ -22,9 +22,9 @@ export const TokenDisplay = ({
     <Link
       href={`${explorer}/address/${address}`}
       target="_blank"
-      className={cn("inline-flex items-center gap-0 px-2 py-1 bg-primary/10 text-primary text-[13px] font-medium rounded-md hover:bg-primary/20 transition-colors", className)}
+      className={cn("inline-flex items-center gap-0 text-[13px] font-medium rounded-md hover:underline", className)}
     >
-      <Avatar className={cn("", isLogoLoaded ? "w-5 h-5 mr-2" : "w-0 h-0")}>
+      <Avatar className={cn("", isLogoLoaded ? "w-4.5 h-4.5 mr-2" : "w-0 h-0")}>
         <AvatarImage
           src={token?.logoUrl}
           onLoad={() => setIsLogoLoaded(true)}

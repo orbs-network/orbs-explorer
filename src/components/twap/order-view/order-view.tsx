@@ -454,7 +454,7 @@ const ExecutionRate = () => {
   
   return (
     <TransactionDisplay.SectionItem
-      label="Execution Rate"
+      label="Rate"
       missingValue={BN(executionRate || 0).isZero()}
     >
       <PriceRate
