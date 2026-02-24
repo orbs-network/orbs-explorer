@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import type { LHPartnerStats } from "@/lib/liquidity-hub-dashboard";
+import type { LHPartnerStats } from "@/lib/liquidity-hub";
 import type { LiquidityHubSwap } from "@/lib/liquidity-hub/types";
 import {
   CheckCircle2,

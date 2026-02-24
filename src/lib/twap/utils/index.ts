@@ -1,14 +1,13 @@
-import { Order, Status, SpotOrderType, Token, ChunkStatus } from "../../types";
+import type { Order } from "../types";
+import { ChunkStatus, Status, SpotOrderType } from "../types";
 import { URL_QUERY_KEYS } from "../../consts";
-import { isValidWalletAddress, isNumeric, toAmountUI } from "../utils";
+import { isValidWalletAddress } from "../../utils/utils";
 import { isHash, maxUint256 } from "viem";
 import moment from "moment";
 import BN from "bignumber.js";
 
-
 export const resolveOrderIdentifier = (identifier: string) => {
   const parsedIdentifiers = identifier.split(",");
-
   const result: Record<string, string[] | undefined> = {};
 
   for (const value of parsedIdentifiers) {
@@ -24,16 +23,13 @@ export const resolveOrderIdentifier = (identifier: string) => {
         value,
       ];
     }
-
   }
 
   return result;
 };
 
 export const millisToDuration = (value?: number) => {
-  if (!value) {
-    return "";
-  }
+  if (!value) return "";
   const time = moment.duration(value);
   const days = time.days();
   const hours = time.hours();
@@ -41,23 +37,12 @@ export const millisToDuration = (value?: number) => {
   const seconds = time.seconds();
 
   const arr: string[] = [];
-
-  if (days) {
-    arr.push(`${days} days `);
-  }
-  if (hours) {
-    arr.push(`${hours} hours `);
-  }
-  if (minutes) {
-    arr.push(`${minutes} minutes`);
-  }
-  if (seconds) {
-    arr.push(`${seconds} seconds`);
-  }
+  if (days) arr.push(`${days} days `);
+  if (hours) arr.push(`${hours} hours `);
+  if (minutes) arr.push(`${minutes} minutes`);
+  if (seconds) arr.push(`${seconds} seconds`);
   return arr.join(" ");
 };
-
-
 
 const getSpotOrderIsTakeProfit = (order?: Order) => {
   return BN(order?.order.witness.output.stop || "0").gte(maxUint256);
@@ -66,52 +51,50 @@ const getSpotOrderIsTakeProfit = (order?: Order) => {
 export const getSpotOrderType = (order?: Order) => {
   const isLimitPrice = BN(order?.order.witness.output.limit || "0").gt(1);
   const isTakeProfit = getSpotOrderIsTakeProfit(order);
-  const isStopLoss = BN(order?.order.witness.output.stop || "0").lt(maxUint256) && BN(order?.order.witness.output.stop || "0").gt(0);
+  const isStopLoss =
+    BN(order?.order.witness.output.stop || "0").lt(maxUint256) &&
+    BN(order?.order.witness.output.stop || "0").gt(0);
   const chunks = order?.metadata.chunks;
   const isTWAP = (chunks?.length || 0) > 1;
-  if (isTakeProfit) {
-    return SpotOrderType.TAKE_PROFIT;
-  }
+  if (isTakeProfit) return SpotOrderType.TAKE_PROFIT;
   if (isLimitPrice) {
-    if(isStopLoss) {
-      return SpotOrderType.STOP_LOSS_LIMIT;
-    }
-    if(isTWAP) {
-      return SpotOrderType.TWAP_LIMIT;
-    }
+    if (isStopLoss) return SpotOrderType.STOP_LOSS_LIMIT;
+    if (isTWAP) return SpotOrderType.TWAP_LIMIT;
     return SpotOrderType.LIMIT;
   }
-
-  if(isStopLoss) {
-    return SpotOrderType.STOP_LOSS_MARKET;
-  }
-
+  if (isStopLoss) return SpotOrderType.STOP_LOSS_MARKET;
   return SpotOrderType.TWAP_MARKET;
 };
 
-
 export const getSpotOrderTriggerPricePerChunk = (order?: Order) => {
   if (getSpotOrderIsTakeProfit(order)) {
-    return order?.order.witness.output.limit || "0"; 
+    return order?.order.witness.output.limit || "0";
   }
   return order?.order.witness.output.stop || "0";
 };
 
 export const getSpotOrderLimitPrice = (order?: Order) => {
   const isTakeProfit = getSpotOrderIsTakeProfit(order);
-  if (isTakeProfit) {
-    return '0'
-  }
+  if (isTakeProfit) return "0";
   return order?.order.witness.output.limit || "0";
 };
 
-/**
- * Known Solidity errors (from SettlementLib, CosignatureLib, RePermit, Executor, ResolutionLib).
- * Description may contain %s placeholders filled from error params when present.
- */
-const KNOWN_CHUNK_ERRORS: { signature: string; name: string; description: string }[] = [
-  { signature: "InsufficientPostSwapBalance(uint256,uint256,uint256,uint256)", name: "InsufficientPostSwapBalance", description: "Swap output insufficient: balance=%s, resolved=%s, fees=%s, required=%s" },
-  { signature: "InvalidCosignature()", name: "InvalidCosignature", description: "Invalid cosignature" },
+const KNOWN_CHUNK_ERRORS: {
+  signature: string;
+  name: string;
+  description: string;
+}[] = [
+  {
+    signature: "InsufficientPostSwapBalance(uint256,uint256,uint256,uint256)",
+    name: "InsufficientPostSwapBalance",
+    description:
+      "Swap output insufficient: balance=%s, resolved=%s, fees=%s, required=%s",
+  },
+  {
+    signature: "InvalidCosignature()",
+    name: "InvalidCosignature",
+    description: "Invalid cosignature",
+  },
   { signature: "InvalidCosignatureInputToken()", name: "InvalidCosignatureInputToken", description: "Cosignature input token mismatch" },
   { signature: "InvalidCosignatureOutputToken()", name: "InvalidCosignatureOutputToken", description: "Cosignature output token mismatch" },
   { signature: "InvalidCosignatureZeroInputValue()", name: "InvalidCosignatureZeroInputValue", description: "Cosignature has zero input value" },
@@ -138,12 +121,9 @@ export type ParsedChunkDescription =
   | { type: "error"; text: string }
   | { type: "text"; text: string };
 
-/**
- * Parses API chunk description into structured data for rendering with Amount components.
- */
 export function parseChunkDescription(
   description: string | undefined,
-  outputTokenSymbol?: string,
+  outputTokenSymbol?: string
 ): ParsedChunkDescription {
   if (!description?.trim()) {
     return { type: "text", text: "No details available." };
@@ -153,26 +133,28 @@ export function parseChunkDescription(
   const sym = outputTokenSymbol?.trim() ?? "";
 
   const triggerMatch = d.match(
-    /Trigger price not met,\s*current output\s+([\d.]+)\s*>\s*trigger\s+([\d.]+)\s*-\s*([\d.]+)%/i,
+    /Trigger price not met,\s*current output\s+([\d.]+)\s*>\s*trigger\s+([\d.]+)\s*-\s*([\d.]+)%/i
   );
   if (triggerMatch) {
     const [, current, trigger, pct] = triggerMatch;
-    return { type: "trigger", current, trigger, pct, symbol: sym };
+    return { type: "trigger", current: current!, trigger: trigger!, pct: pct!, symbol: sym };
   }
 
   const priceMatch = d.match(
-    /Price can't meet condition:\s*expected\s+([\d.]+),\s*got\s+([\d.]+)\s*\([^)]+\)\s*-\s*([\d.]+)%/i,
+    /Price can't meet condition:\s*expected\s+([\d.]+),\s*got\s+([\d.]+)\s*\([^)]+\)\s*-\s*([\d.]+)%/i
   );
   if (priceMatch) {
     const [, expected, got, pct] = priceMatch;
-    return { type: "limit_price", got, expected, pct, symbol: sym };
+    return { type: "limit_price", got: got!, expected: expected!, pct: pct!, symbol: sym };
   }
 
   for (const err of KNOWN_CHUNK_ERRORS) {
     if (d.includes(err.signature) || d.includes(err.name)) {
       const hasPlaceholders = err.description.includes("%s");
       if (hasPlaceholders) {
-        const paramsMatch = d.match(new RegExp(`${escapeRegExp(err.name)}\\s*\\(([^)]+)\\)`));
+        const paramsMatch = d.match(
+          new RegExp(`${escapeRegExp(err.name)}\\s*\\(([^)]+)\\)`)
+        );
         const params = paramsMatch
           ? paramsMatch[1].split(",").map((s) => s.trim())
           : [];
@@ -212,27 +194,27 @@ function escapeRegExp(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
-
 export const getOrderFilledAmounts = (order?: Order) => {
-  if (!order) return {
-    srcFilledAmount: '',
-    dstFilledAmount: '',
-    feeUsd: '',
-  };
+  if (!order)
+    return {
+      srcFilledAmount: "",
+      dstFilledAmount: "",
+      feeUsd: "",
+    };
   const filledChunks = order.metadata.chunks.filter(
-    (chunk) => chunk.status === ChunkStatus.SUCCESS,
+    (chunk) => chunk.status === ChunkStatus.SUCCESS
   );
   return {
     srcFilledAmount: filledChunks
-      .reduce((acc, chunk) => acc.plus(chunk.inAmount || '0'), new BN(0))
+      .reduce((acc, chunk) => acc.plus(chunk.inAmount || "0"), new BN(0))
       .toFixed(0),
     dstFilledAmount: filledChunks
-      .reduce((acc, chunk) => acc.plus(chunk.outAmount || '0'), new BN(0))
+      .reduce((acc, chunk) => acc.plus(chunk.outAmount || "0"), new BN(0))
       .toFixed(0),
     feeUsd: filledChunks
       .reduce(
         (acc, chunk) => acc.plus(chunk.displayOnlyFee?.replace("$", "") || 0),
-        new BN(0),
+        new BN(0)
       )
       .decimalPlaces(2)
       .toString(),
@@ -241,20 +223,19 @@ export const getOrderFilledAmounts = (order?: Order) => {
 
 export const getOrderExecutionRate = (
   srcFilledAmountFormatted: string,
-  dstFilledAmountFormatted: string,
+  dstFilledAmountFormatted: string
 ) => {
-  if (!BN(srcFilledAmountFormatted || 0).gt(0) || !BN(dstFilledAmountFormatted || 0).gt(0))
+  if (
+    !BN(srcFilledAmountFormatted || 0).gt(0) ||
+    !BN(dstFilledAmountFormatted || 0).gt(0)
+  )
     return "";
-  return BN(dstFilledAmountFormatted).div(srcFilledAmountFormatted).toFixed()
+  return BN(dstFilledAmountFormatted).div(srcFilledAmountFormatted).toFixed();
 };
-
-
 
 export const getMinAmountPerChunk = (order?: Order) => {
   const isTakeProfit = getSpotOrderIsTakeProfit(order);
-  if (isTakeProfit) {
-    return "0";
-  }
+  if (isTakeProfit) return "0";
   return order?.order.witness.output.limit || "0";
 };
 
@@ -270,20 +251,24 @@ export const parseOrderType = (type: SpotOrderType) => {
 
 export const getOrderLimitPriceRate = (
   chunkAmountFormatted: string,
-  minOutAmountFormatted: string,
+  minOutAmountFormatted: string
 ) => {
-  if (!BN(chunkAmountFormatted || 0).gt(0) || !BN(minOutAmountFormatted || 0).gt(0))
+  if (
+    !BN(chunkAmountFormatted || 0).gt(0) ||
+    !BN(minOutAmountFormatted || 0).gt(0)
+  )
     return "";
   return BN(minOutAmountFormatted).div(chunkAmountFormatted).toString();
 };
 
-
-
 export const getOrderTriggerPriceRate = (
   chunkAmountFormatted: string,
-  triggerPriceFormatted: string,
+  triggerPriceFormatted: string
 ) => {
-  if (BN(chunkAmountFormatted || 0).lte(0) || BN(triggerPriceFormatted || 0).lte(0))
+  if (
+    BN(chunkAmountFormatted || 0).lte(0) ||
+    BN(triggerPriceFormatted || 0).lte(0)
+  )
     return "";
   return BN(triggerPriceFormatted).div(chunkAmountFormatted).toString();
 };

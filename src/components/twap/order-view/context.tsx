@@ -1,5 +1,5 @@
-import { useSpotOrder } from "@/lib/hooks/twap-hooks/use-spot-order";
-import { Order } from "@/lib/types";
+import { useSpotOrder } from "@/lib/twap";
+import type { Order } from "@/lib/twap";
 import { createContext } from "react";
 
 type OrderContextType = ReturnType<typeof useSpotOrder> & {

@@ -8,13 +8,13 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import type { ListOrder } from "@/lib/types";
+import type { ListOrder } from "@/lib/twap";
 import { ExternalLink, Search, ArrowRight, ChevronRight } from "lucide-react";
 import Link from "next/link";
 import { ROUTES } from "@/lib/routes";
 import { Virtuoso } from "react-virtuoso";
 import { useToken } from "@/lib/hooks/use-token";
-import { useSpotPartnerListOrder } from "@/lib/hooks/twap-hooks/use-spot-partner";
+import { useSpotPartnerListOrder } from "@/lib/twap";
 import { Amount } from "@/components/ui/amount";
 import BN from "bignumber.js";
 import moment from "moment";

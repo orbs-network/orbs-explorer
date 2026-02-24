@@ -2,7 +2,7 @@
 
 import { useMemo } from "react";
 import { Page } from "@/components/page";
-import { useSpotOverview } from "@/lib/hooks/twap-hooks/use-spot-overview";
+import { useSpotOverview } from "@/lib/twap";
 import {
   PartnerStatsCard,
 } from "@/components/twap/orders-overview/partner-stats-card";

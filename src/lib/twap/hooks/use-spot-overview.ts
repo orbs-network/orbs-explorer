@@ -8,10 +8,10 @@ import {
   getTopPairsByVolume,
   ordersToPartnerStats,
   partnerChainKey,
-  PartnerCard,
-  PartnerStats,
-} from "../../utils/spot-utils/orders-overview";
-import { ListOrder } from "../../types";
+  type PartnerCard,
+  type PartnerStats,
+} from "../utils/orders-overview";
+import type { ListOrder } from "../types";
 import { getChains } from "../../utils/utils";
 
 export function useSpotOverview() {
@@ -45,7 +45,7 @@ export function useSpotOverview() {
           signal,
         }),
       enabled: !!config && partnerChains.length > 0,
-      staleTime: 1000 * 60 * 60 * 24, // 24 hours
+      staleTime: 1000 * 60 * 60 * 24,
     })),
   });
 
@@ -55,7 +55,6 @@ export function useSpotOverview() {
   const isError = orderQueries.some((q) => q.isError);
   const error = orderQueries.find((q) => q.isError)?.error;
 
-  /** One entry per partner+chain for overview and backward compat. */
   const stats: PartnerStats[] = useMemo(() => {
     if (!partnerChains.length) return [];
     return partnerChains
@@ -70,12 +69,19 @@ export function useSpotOverview() {
       .sort((a, b) => b.totalOrders - a.totalOrders);
   }, [partnerChains, orderQueries, chainNameById]);
 
-  /** Grouped by partner for one card per partner with chain tabs. */
   const partnerCards: PartnerCard[] = useMemo(() => {
     if (!partnerChains.length) return [];
     const byPartner = new Map<
       string,
-      { partnerName: string; chains: { chainId: number; chainName: string; adapter: string; queryIndex: number }[] }
+      {
+        partnerName: string;
+        chains: {
+          chainId: number;
+          chainName: string;
+          adapter: string;
+          queryIndex: number;
+        }[];
+      }
     >();
     partnerChains.forEach((p, i) => {
       const existing = byPartner.get(p.partnerId);
@@ -130,7 +136,8 @@ export function useSpotOverview() {
   const ordersByPartnerChainKey = useMemo(() => {
     const map: Record<string, ListOrder[]> = {};
     partnerChains.forEach((p, i) => {
-      map[partnerChainKey(p.partnerId, p.chainId)] = orderQueries[i]?.data ?? [];
+      map[partnerChainKey(p.partnerId, p.chainId)] =
+        orderQueries[i]?.data ?? [];
     });
     return map;
   }, [partnerChains, orderQueries]);

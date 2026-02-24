@@ -1,6 +1,12 @@
-import { ListOrder } from "../../types";
+import type { ListOrder } from "../types";
+import { Status } from "../types";
 import { PARTNERS } from "../../partners";
-import { Partners, Status } from "../../types";
+import { Partners } from "../../types";
+
+type SpotConfig = Record<
+  string,
+  { dex?: Record<string, { adapter?: string }> }
+>;
 
 /** Raw status string from ListOrder.metadata.status. */
 export function getListOrderStatus(order: ListOrder): string {
@@ -40,7 +46,6 @@ export function classifyListOrderStatus(order: ListOrder): Status {
 export type PartnerStats = {
   partnerId: string;
   partnerName: string;
-  /** When set, card is for this partner on this chain (e.g. "Pangolin Monad") */
   chainId?: number;
   chainName?: string;
   totalOrders: number;
@@ -55,24 +60,29 @@ export type PartnerStats = {
   pendingUsd: number;
 };
 
-type SpotConfig = Record<
-  string,
-  { dex?: Record<string, { adapter?: string }> }
->;
-
 export type PartnerWithAdapter = {
   partnerId: string;
   partnerName: string;
   adapter: string;
 };
 
-/** One card per partner per chain (e.g. Pangolin Monad, Pangolin Avalanche). */
 export type PartnerChainPair = {
   partnerId: string;
   partnerName: string;
   adapter: string;
   chainId: number;
 };
+
+function getPartnerName(partnerId: string): string {
+  let id = partnerId;
+  if (id === "spooky") id = Partners.Spookyswap;
+  const p = PARTNERS.find((item) => item.id.toLowerCase() === id.toLowerCase());
+  return p?.name ?? formatPartnerId(partnerId);
+}
+
+function formatPartnerId(partnerId: string): string {
+  return partnerId.charAt(0).toUpperCase() + partnerId.slice(1).toLowerCase();
+}
 
 export function getPartnersWithAdapters(
   config: SpotConfig | null
@@ -83,10 +93,7 @@ export function getPartnersWithAdapters(
   for (const chainConfig of Object.values(config)) {
     if (!chainConfig?.dex) continue;
     for (const [partnerId, dexConfig] of Object.entries(chainConfig.dex)) {
-      if (
-        typeof dexConfig === "object" &&
-        dexConfig.adapter
-      ) {
+      if (typeof dexConfig === "object" && dexConfig.adapter) {
         const adapter = dexConfig.adapter.toLowerCase();
         if (!byAdapter.has(adapter)) {
           byAdapter.set(adapter, {
@@ -102,8 +109,9 @@ export function getPartnersWithAdapters(
   return Array.from(byAdapter.values());
 }
 
-/** Returns one entry per (partner, chain) for overview cards. */
-export function getPartnerChainPairs(config: SpotConfig | null): PartnerChainPair[] {
+export function getPartnerChainPairs(
+  config: SpotConfig | null
+): PartnerChainPair[] {
   if (!config) return [];
   const pairs: PartnerChainPair[] = [];
 
@@ -129,7 +137,6 @@ export function partnerChainKey(partnerId: string, chainId: number): string {
   return `${partnerId}-${chainId}`;
 }
 
-/** Top pair by totalUSDAmount volume. */
 export type TopPair = {
   inputToken: string;
   outputToken: string;
@@ -137,7 +144,6 @@ export type TopPair = {
   orderCount: number;
 };
 
-/** One chain's stats + orders for use inside a partner card tab. */
 export type PartnerChainEntry = {
   chainId: number;
   chainName: string;
@@ -146,23 +152,11 @@ export type PartnerChainEntry = {
   topPairs: TopPair[];
 };
 
-/** One card per partner: partner info + list of chains (each with stats + orders). */
 export type PartnerCard = {
   partnerId: string;
   partnerName: string;
   chains: PartnerChainEntry[];
 };
-
-function getPartnerName(partnerId: string): string {
-  let id = partnerId;
-  if (id === "spooky") id = Partners.Spookyswap;
-  const p = PARTNERS.find((item) => item.id.toLowerCase() === id.toLowerCase());
-  return p?.name ?? formatPartnerId(partnerId);
-}
-
-function formatPartnerId(partnerId: string): string {
-  return partnerId.charAt(0).toUpperCase() + partnerId.slice(1).toLowerCase();
-}
 
 export function getPartnerByAdapter(
   config: SpotConfig | null,
@@ -280,14 +274,18 @@ export function getLast7DaysDate(): Date {
   return d;
 }
 
-/** Top N token pairs by totalUSDAmount volume. Uses canonical pair key (sorted addresses). */
 export function getTopPairsByVolume(
   orders: ListOrder[],
   limit = 3
 ): TopPair[] {
   const byPair = new Map<
     string,
-    { inputToken: string; outputToken: string; totalUsd: number; orderCount: number }
+    {
+      inputToken: string;
+      outputToken: string;
+      totalUsd: number;
+      orderCount: number;
+    }
   >();
 
   for (const order of orders) {
@@ -319,7 +317,6 @@ export function getTopPairsByVolume(
     .slice(0, limit);
 }
 
-/** Aggregate a single partner's orders into PartnerStats. Optionally include chain for card title "PartnerName ChainName". */
 export function ordersToPartnerStats(
   orders: ListOrder[],
   partnerId: string,

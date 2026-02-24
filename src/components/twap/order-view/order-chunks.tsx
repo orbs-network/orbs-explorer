@@ -14,7 +14,7 @@ import { toMoment } from "@/lib/utils/utils";
 import {
   parseChunkDescription,
   type ParsedChunkDescription,
-} from "@/lib/utils/spot-utils";
+} from "@/lib/twap";
 import {
   CheckCircle2,
   Clock,
@@ -30,7 +30,7 @@ import {
   Database,
   Code,
 } from "lucide-react";
-import { useSpotOrderChunks } from "@/lib/hooks/twap-hooks/use-spot-order-chunks";
+import { useSpotOrderChunks } from "@/lib/twap";
 import { createContext, useContext, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { ClientReactJson } from "@/components/client-json-view";

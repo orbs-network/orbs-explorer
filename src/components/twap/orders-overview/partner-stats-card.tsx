@@ -2,14 +2,15 @@
 
 import { useState, useMemo } from "react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import type { PartnerCard, PartnerStats } from "@/lib/utils/spot-utils/orders-overview";
 import {
+  type PartnerCard,
+  type PartnerStats,
+  type ListOrder,
   isListOrderCompleted,
   isListOrderPartiallyCompleted,
   isListOrderPending,
   isListOrderError,
-} from "@/lib/utils/spot-utils/orders-overview";
-import type { ListOrder } from "@/lib/types";
+} from "@/lib/twap";
 import {
   CheckCircle2,
   AlertCircle,

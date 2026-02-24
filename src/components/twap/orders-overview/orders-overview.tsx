@@ -1,14 +1,14 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import type { PartnerStats } from "@/lib/utils/spot-utils/orders-overview";
+import type { PartnerStats } from "@/lib/twap";
 import {
   isListOrderCompleted,
   isListOrderPartiallyCompleted,
   isListOrderPending,
   isListOrderError,
-} from "@/lib/utils/spot-utils/orders-overview";
-import type { ListOrder } from "@/lib/types";
+} from "@/lib/twap";
+import type { ListOrder } from "@/lib/twap";
 import { Amount } from "@/components/ui/amount";
 import {
   CheckCircle2,

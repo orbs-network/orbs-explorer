@@ -3,7 +3,7 @@ import { getSpotOrder } from "../api";
 import { useRouter } from "next/navigation";
 import { isHash } from "viem";
 import { toast } from "sonner";
-import { getLiquidityHubTx } from "../api/get-liquidity-hub-tx";
+import { getLiquidityHubTx } from "../liquidity-hub";
 import { ROUTES } from "../routes";
 
 export function useAppSearch() {

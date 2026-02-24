@@ -1,11 +1,11 @@
 import { useMemo } from "react";
 import { useSpotConfig } from "./use-spot-config";
-import { PARTNERS } from "@/lib/partners";
-import { ListOrder } from "@/lib/types";
+import { PARTNERS } from "../../partners";
+import type { ListOrder } from "../types";
 
 const getPartner = (partner: string) => {
   return PARTNERS.find((item) =>
-    item.identifiers.some((i) => i.toLowerCase() === partner.toLowerCase()),
+    item.identifiers.some((i) => i.toLowerCase() === partner.toLowerCase())
   );
 };
 
@@ -15,23 +15,28 @@ const EMPTY_PARTNER = {
   config: null,
 };
 
-export const useSpotPartner = (adapterOrPartnerId?: string, partnerChainId?: number) => {
+export function useSpotPartner(
+  adapterOrPartnerId?: string,
+  partnerChainId?: number
+) {
   const { data: config } = useSpotConfig();
 
-  
   return useMemo(() => {
     if (!adapterOrPartnerId || !config) return EMPTY_PARTNER;
-    const target = adapterOrPartnerId.toLowerCase();    
+    const target = adapterOrPartnerId.toLowerCase();
 
     for (const [chainId, chainConfig] of Object.entries(config)) {
-      if (!chainConfig?.dex || (partnerChainId && Number(chainId) !== partnerChainId)) continue;
+      if (
+        !chainConfig?.dex ||
+        (partnerChainId && Number(chainId) !== partnerChainId)
+      )
+        continue;
 
       for (const [partner, dexConfig] of Object.entries(chainConfig.dex)) {
-
-        
         if (
-          typeof dexConfig === "object" &&
-          dexConfig.adapter?.toLowerCase() === target || partner.toLowerCase() === target
+          (typeof dexConfig === "object" &&
+            dexConfig.adapter?.toLowerCase() === target) ||
+          partner.toLowerCase() === target
         ) {
           return {
             chainId: Number(chainId),
@@ -44,9 +49,8 @@ export const useSpotPartner = (adapterOrPartnerId?: string, partnerChainId?: num
 
     return EMPTY_PARTNER;
   }, [adapterOrPartnerId, config]);
-};
+}
 
-
-export const useSpotPartnerListOrder = (order?: ListOrder) => {
+export function useSpotPartnerListOrder(order?: ListOrder) {
   return useSpotPartner(order?.exchangeAdapter, order?.order.witness.chainId);
 }

@@ -20,7 +20,7 @@ import _ from "lodash";
 import { isHash } from "viem";
 import { parseTimestampFromQuery } from "../utils/utils";
 import { getPartnerChains } from "./helpers";
-import { getLiquidityHubTx } from "../api/get-liquidity-hub-tx";
+import { getLiquidityHubTx } from "./api";
 type ClientLog = { userAgent?: string; ua?: string } | undefined;
 
 export const useLHSwaps = () => {

@@ -1,25 +1,16 @@
-import {
-  Token,
-  ParsedOrderChunk,
-  Order,
-  OrderChunk,
-  Status,
-  ChunkStatus,
-} from "@/lib/types";
+import type { ParsedOrderChunk, Order, OrderChunk } from "../types";
+import { Status, ChunkStatus } from "../types";
+import type { Token } from "../../types";
 import { useMemo } from "react";
 import { useSpotOrder } from "./use-spot-order";
 import BN from "bignumber.js";
-import { toAmountUI } from "@/lib/utils/utils";
+import { toAmountUI } from "../../utils/utils";
 
-/**
- * Computes expected output amount in out-token raw units from input amount and exchange rate.
- * Uses src token decimals for input and dst token decimals for output.
- */
 function computeExpectedOutputInOutTokenDecimals(
   inAmountRaw: string,
   exchangeRate: string,
   srcDecimals: number,
-  dstDecimals: number,
+  dstDecimals: number
 ): string {
   const inAmountUi = BN(inAmountRaw).dividedBy(BN(10).pow(srcDecimals));
   const expectedOutUi = inAmountUi.multipliedBy(exchangeRate);
@@ -44,12 +35,9 @@ export type OrderChunksResult = {
   chunks: ParsedOrderChunk[];
 };
 
-/**
- * Pure function: computes parsed chunks and grouped lists from order.
- */
 export function parseOrderChunks(
   order: Order | undefined,
-  context: GetOrderChunksContext,
+  context: GetOrderChunksContext
 ): OrderChunksResult {
   const { srcToken, dstToken, chainId, status: orderStatus } = context;
   const chunkList = order?.metadata.chunks;
@@ -59,11 +47,13 @@ export function parseOrderChunks(
       ?.map((chunk: OrderChunk) => {
         const oracle = chunk.oraclePricingData?.[0];
         const description = chunk.description?.trim() || undefined;
-        const inputTokenUsd = BN(oracle?.message.input.value.toString() ?? "0")
+        const inputTokenUsd = BN(
+          oracle?.message.input.value.toString() ?? "0"
+        )
           .dividedBy(1e18)
           .toFixed();
         const outputTokenUsd = BN(
-          oracle?.message.output.value.toString() ?? "0",
+          oracle?.message.output.value.toString() ?? "0"
         )
           .dividedBy(1e18)
           .toFixed();
@@ -71,14 +61,14 @@ export function parseOrderChunks(
           .div(BN(outputTokenUsd))
           .toFixed();
         const inAmount = chunk.inAmount ?? "0";
-        
         const outAmount = chunk.outAmount ?? "0";
-        const solverOutAmount = chunk.solverReportedOutput?.outputAmount ?? "0";
+        const solverOutAmount =
+          chunk.solverReportedOutput?.outputAmount ?? "0";
         const expectedOutputOracle = computeExpectedOutputInOutTokenDecimals(
           inAmount,
           exchangeRate,
           srcToken?.decimals ?? 0,
-          dstToken?.decimals ?? 0,
+          dstToken?.decimals ?? 0
         );
         const outAmountDiff = BN(expectedOutputOracle).isZero()
           ? "0"
@@ -87,7 +77,8 @@ export function parseOrderChunks(
               .div(BN(expectedOutputOracle))
               .multipliedBy(100)
               .toFixed();
-        const feeOnTransfer = chunk.transferFeeEstimation?.inputTokenFee ?? "0";
+        const feeOnTransfer =
+          chunk.transferFeeEstimation?.inputTokenFee ?? "0";
 
         return {
           inAmount,
@@ -128,10 +119,14 @@ export function parseOrderChunks(
           exchangeRate,
           expectedOutputOracle,
           outAmountDiff,
-          inputTotalUsd: BN(toAmountUI(inAmount, srcToken?.decimals ?? 0))
+          inputTotalUsd: BN(
+            toAmountUI(inAmount, srcToken?.decimals ?? 0)
+          )
             .multipliedBy(inputTokenUsd)
             .toFixed(),
-          outputTotalUsd: BN(toAmountUI(outAmount, dstToken?.decimals ?? 0))
+          outputTotalUsd: BN(
+            toAmountUI(outAmount, dstToken?.decimals ?? 0)
+          )
             .multipliedBy(outputTokenUsd)
             .toFixed(),
           feeOnTransfer,
@@ -144,13 +139,14 @@ export function parseOrderChunks(
     expectedChunks: order?.metadata.expectedChunks,
     successChunks: chunks.filter((c) => c.status === ChunkStatus.SUCCESS),
     failedChunks: chunks.filter(
-      (c) => c.status === ChunkStatus.FAILED || c.status === Status.CANCELLED,
+      (c) =>
+        c.status === ChunkStatus.FAILED || c.status === Status.CANCELLED
     ),
     pendingChunks: chunks.filter(
       (c) =>
         c.status !== ChunkStatus.SUCCESS &&
         c.status !== ChunkStatus.FAILED &&
-        c.status !== Status.CANCELLED,
+        c.status !== Status.CANCELLED
     ),
     chunks,
   };

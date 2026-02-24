@@ -1,7 +1,7 @@
-import { PARTNERS } from "./partners";
-import { LIQUIDITY_HUB_PARTNER_CHAINS } from "./liquidity-hub/partner-chains";
-import type { LiquidityHubSwap } from "./liquidity-hub/types";
-import type { Partners } from "./types";
+import { PARTNERS } from "../partners";
+import { LIQUIDITY_HUB_PARTNER_CHAINS } from "./partner-chains";
+import type { LiquidityHubSwap } from "./types";
+import type { Partners } from "../types";
 
 export type LHPartnerStats = {
   partnerId: string;
@@ -21,12 +21,12 @@ function getPartnerName(partnerId: string): string {
   const id = partnerId.toLowerCase();
   const p = PARTNERS.find(
     (item) =>
-      item.id.toLowerCase() === id || item.identifiers.some((i) => i.toLowerCase() === id)
+      item.id.toLowerCase() === id ||
+      item.identifiers.some((i) => i.toLowerCase() === id)
   );
   return p?.name ?? partnerId;
 }
 
-/** List of partners that have Liquidity Hub (from partner-chains). */
 export function getLHPartners(): LHPartnerWithId[] {
   const ids = Object.keys(LIQUIDITY_HUB_PARTNER_CHAINS) as Partners[];
   return ids.map((id) => ({
@@ -40,7 +40,6 @@ function isSuccessSwap(swap: LiquidityHubSwap): boolean {
   return s === "success" || s === "succeeded";
 }
 
-/** Aggregate swaps for a single partner into LHPartnerStats. */
 export function swapsToPartnerStats(
   swaps: LiquidityHubSwap[],
   partnerId: string,
@@ -65,16 +64,23 @@ export function swapsToPartnerStats(
   };
 }
 
-/** Match swap to partner by dex (dex can be partner id or identifier). */
-export function swapBelongsToPartner(swap: LiquidityHubSwap, partnerId: string): boolean {
+export function swapBelongsToPartner(
+  swap: LiquidityHubSwap,
+  partnerId: string
+): boolean {
   const dex = (swap.dex ?? "").toLowerCase();
   const p = PARTNERS.find(
     (item) =>
       item.id.toLowerCase() === partnerId.toLowerCase() ||
-      item.identifiers.some((i) => i.toLowerCase() === partnerId.toLowerCase())
+      item.identifiers.some(
+        (i) => i.toLowerCase() === partnerId.toLowerCase()
+      )
   );
   if (!p) return dex === partnerId.toLowerCase();
-  return p.id.toLowerCase() === dex || p.identifiers.some((i) => i.toLowerCase() === dex);
+  return (
+    p.id.toLowerCase() === dex ||
+    p.identifiers.some((i) => i.toLowerCase() === dex)
+  );
 }
 
 export function getLast7DaysDate(): Date {

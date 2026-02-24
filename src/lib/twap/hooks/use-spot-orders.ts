@@ -1,21 +1,19 @@
-import { useInfiniteQuery, useMutation, useQuery } from "@tanstack/react-query";
+import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { REACT_QUERY_KEYS } from "../../consts";
-import { useQueryFilterParams } from "../use-query-filter-params";
-import { getSpotOrder, getSpotOrders } from "../../api";
+import { useQueryFilterParams } from "../../hooks/use-query-filter-params";
+import { getSpotOrder, getSpotOrders } from "../api";
 import { useMemo } from "react";
 import { uniqBy } from "lodash";
 import { useSpotPartner } from "./use-spot-partner";
-import { useTwapSinkApiUrl } from "../use-twap-sink-url";
-import { Partners, Status } from "../../types";
+import { useTwapSinkApiUrl } from "../../hooks/use-twap-sink-url";
+import { Status } from "../types";
 import { zeroAddress } from "viem";
 
-export const useSpotOrdersPaginated = () => {
+export function useSpotOrdersPaginated() {
   const { query: queryParams } = useQueryFilterParams();
   const partnerId = queryParams.partner_id?.[0];
   const partner = useSpotPartner(partnerId);
-
   const sinkApiUrl = useTwapSinkApiUrl();
-  
 
   const query = useInfiniteQuery({
     queryKey: [
@@ -29,9 +27,10 @@ export const useSpotOrdersPaginated = () => {
       queryParams.order_status,
     ],
     queryFn: async ({ signal, pageParam = 0 }) => {
+      const exchange = !partnerId
+        ? ""
+        : partner?.config?.adapter || zeroAddress;
 
-      const exchange = !partnerId ? '' :  partner?.config?.adapter || zeroAddress;
-        
       const orders = await getSpotOrders({
         signal,
         page: pageParam,
@@ -48,31 +47,29 @@ export const useSpotOrdersPaginated = () => {
     },
     initialPageParam: 0,
     getNextPageParam: (lastPage, pages) => {
-      return lastPage.length > 0 ? pages.length : undefined; // Return next page number or undefined if no more pages
+      return lastPage.length > 0 ? pages.length : undefined;
     },
-    getPreviousPageParam: (firstPage) => {
-      return firstPage ? undefined : 0; // Modify based on how you paginate backwards
-    },
+    getPreviousPageParam: () => undefined,
     refetchInterval: 60_000,
   });
+
   return useMemo(() => {
     const allOrders = uniqBy(query.data?.pages.flat() || [], "hash");
     const statuses = queryParams.order_status;
-    const orders =
-      statuses?.length
-        ? allOrders.filter((o) =>
-            statuses.includes(o.metadata?.displayOnlyStatus ?? "")
-          )
-        : allOrders;
+    const orders = statuses?.length
+      ? allOrders.filter((o) =>
+          statuses.includes(o.metadata?.displayOnlyStatus ?? "")
+        )
+      : allOrders;
     return { ...query, orders };
   }, [query, queryParams.order_status]);
-};
+}
 
-export const useSpotOrderQuery = (hash?: string) => {
+export function useSpotOrderQuery(hash?: string) {
   const sinkApiUrl = useTwapSinkApiUrl();
   const queryKey = useMemo(
     () => [REACT_QUERY_KEYS.spotOrder, hash, sinkApiUrl],
-    [hash, sinkApiUrl],
+    [hash, sinkApiUrl]
   );
   return useQuery({
     queryKey,
@@ -92,4 +89,4 @@ export const useSpotOrderQuery = (hash?: string) => {
         : false;
     },
   });
-};
+}

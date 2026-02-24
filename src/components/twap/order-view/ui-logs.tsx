@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { DialogHeader } from "@/components/ui/dialog";
-import { useSpotOrderUiLogs } from "@/lib/hooks/twap-hooks/use-spot-order-ui-logs";
+import { useSpotOrderUiLogs } from "@/lib/twap";
 import { Dialog, DialogTrigger, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Code, Minimize2, Maximize2 } from "lucide-react";
 import { useState } from "react";

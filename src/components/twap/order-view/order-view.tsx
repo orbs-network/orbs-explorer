@@ -4,7 +4,7 @@ import { TokenDisplay } from "@/components/token-display";
 import { TokenAmount, TokenAmountFormatted } from "@/components/token-amount";
 import { TransactionDisplay } from "@/components/transaction-display";
 import { useFormatNumber } from "@/lib/hooks/use-number-format";
-import { Token, SpotOrderType, ChunkStatus } from "@/lib/types";
+import { type Token, SpotOrderType, ChunkStatus } from "@/lib/types";
 import { Amount } from "@/components/ui/amount";
 import {
   formatDuration,
@@ -36,12 +36,12 @@ import { Network } from "@/components/ui/network";
 import { Partner } from "@/components/ui/partner";
 import { OrderStatusBadge } from "../order-status-badge";
 
-import { useSpotOrder } from "@/lib/hooks/twap-hooks/use-spot-order";
+import { useSpotOrder } from "@/lib/twap";
 import { OrderViewContext } from "./context";
 import { useOrderViewContext } from "./use-order-view-context";
 import { SpotOrderUiLogs } from "./ui-logs";
 import { OriginalOrder } from "./original-order";
-import { parseOrderType } from "@/lib/utils/spot-utils";
+import { parseOrderType } from "@/lib/twap";
 import { useSearchParams } from "next/navigation";
 import { ExplorerLink } from "@/components/explorer-link";
 

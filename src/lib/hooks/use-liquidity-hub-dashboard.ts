@@ -10,7 +10,7 @@ import {
   swapsToPartnerStats,
   swapBelongsToPartner,
   LHPartnerStats,
-} from "../liquidity-hub-dashboard";
+} from "../liquidity-hub/dashboard";
 
 const LIMIT = 1000;
 
