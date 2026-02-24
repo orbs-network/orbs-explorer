@@ -89,9 +89,7 @@ function DetailSectionBlock({
           {title}
         </span>
       </div>
-      <dl className="flex flex-col gap-2.5 pl-0">
-        {children}
-      </dl>
+      <dl className="flex flex-col gap-2.5 pl-0">{children}</dl>
     </div>
   );
 }
@@ -285,7 +283,9 @@ const FeeOnTransfer = () => {
     return (
       <div className="text-muted-foreground flex items-center gap-2 w-fit text-xs bg-emerald-500/10 border border-emerald-500/20 px-3 py-1.5 rounded-lg">
         <CheckIcon className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-500" />
-        <span className="text-emerald-700 dark:text-emerald-400 font-medium">No fee on transfer</span>
+        <span className="text-emerald-700 dark:text-emerald-400 font-medium">
+          No fee on transfer
+        </span>
       </div>
     );
   }
@@ -468,6 +468,8 @@ export function OrderChunks() {
   const rawChunks = order?.metadata?.chunks ?? [];
   const { successChunks, failedChunks, pendingChunks, expectedChunks } = chunks;
 
+  const orderName = spotOrder.type.replaceAll("_", " ");
+
   return (
     <TransactionDisplay.SectionItem label="Fills">
       <Dialog>
@@ -498,9 +500,9 @@ export function OrderChunks() {
                 <Layers className="h-5 w-5 text-primary" />
               </div>
               <span className="capitalize">
-              {failedChunks.length > 0
-                ? `${spotOrder?.type} Order Fills (cancelled)`
-                : `${spotOrder?.type} Order Fills`}
+                {failedChunks.length > 0
+                  ? `${orderName} Order Fills (cancelled)`
+                  : `${orderName} Order Fills`}
               </span>
             </DialogTitle>
             <p className="text-sm text-muted-foreground pl-11">
@@ -580,9 +582,17 @@ function ChunkDescriptionDisplay({
     return (
       <>
         Trigger price not met, current output{" "}
-        <Amount amount={parsed.current} className="font-semibold" decimalAmount />
+        <Amount
+          amount={parsed.current}
+          className="font-semibold"
+          decimalAmount
+        />
         {sym(parsed)} &gt; trigger{" "}
-        <Amount amount={parsed.trigger} className="font-semibold" decimalAmount />
+        <Amount
+          amount={parsed.trigger}
+          className="font-semibold"
+          decimalAmount
+        />
         {sym(parsed)} — <Amount amount={parsed.pct} className="font-semibold" />
         %
       </>
@@ -595,7 +605,11 @@ function ChunkDescriptionDisplay({
         Limit price not met: current price{" "}
         <Amount amount={parsed.got} className="font-semibold" decimalAmount />
         {sym(parsed)} is below your limit{" "}
-        <Amount amount={parsed.expected} className="font-semibold" decimalAmount />
+        <Amount
+          amount={parsed.expected}
+          className="font-semibold"
+          decimalAmount
+        />
         {sym(parsed)} — <Amount amount={parsed.pct} className="font-semibold" />
         % of target. This chunk will fill when the market reaches your limit
         price.
@@ -617,20 +631,13 @@ const ChunkCardPendingOrFailed = ({
   isDev?: boolean;
   rawChunk?: OrderChunk;
 }) => {
-  const { dstToken, chainId, chunkAmount, minOutAmountPerChunk } =
-    useOrderViewContext();
+  const { dstToken, chainId } = useOrderViewContext();
   const parsedDescription = parseChunkDescription(
     chunk.description,
     dstToken?.symbol,
   );
-  const inAmountRaw =
-    chunk.inAmount && chunk.inAmount !== "0"
-      ? chunk.inAmount
-      : (chunkAmount?.raw ?? "0");
-  const outAmountRaw =
-    chunk.outAmount && chunk.outAmount !== "0"
-      ? chunk.outAmount
-      : (minOutAmountPerChunk?.raw ?? "0");
+  const inAmountRaw = chunk.inAmount;
+  const outAmountRaw = chunk.outAmount;
 
   const isFailed = variant === "failed";
   const isCancelled = variant === "cancelled";
@@ -659,7 +666,9 @@ const ChunkCardPendingOrFailed = ({
       : "hover:border-amber-500/30";
 
   return (
-    <details className={`group rounded-xl border border-border/60 bg-card/50 shadow-sm ${hoverBorder} hover:shadow-md transition-all duration-200 overflow-hidden`}>
+    <details
+      className={`group rounded-xl border border-border/60 bg-card/50 shadow-sm ${hoverBorder} hover:shadow-md transition-all duration-200 overflow-hidden`}
+    >
       <summary className="flex flex-col gap-3 px-4 py-3.5 cursor-pointer list-none select-none hover:bg-muted/20 transition-colors">
         <div className="flex items-center justify-between w-full">
           <div className="flex items-center gap-2">
@@ -702,15 +711,6 @@ const ChunkCardPendingOrFailed = ({
           </div>
           <ChevronDown className="w-4 h-4 text-muted-foreground shrink-0 transition-transform duration-200 group-open:rotate-180" />
         </div>
-        <div className="min-w-0 w-full">
-          <ChunkSummaryLine
-            inAmount={inAmountRaw}
-            inToken={chunk.inToken}
-            outAmount={outAmountRaw}
-            outToken={chunk.outToken}
-            chainId={chunk.chainId ?? chainId ?? 0}
-          />
-        </div>
       </summary>
       <div className="px-4 pb-4 pt-3 border-t border-border/50 bg-muted/5">
         <div className="text-sm text-muted-foreground leading-relaxed">
@@ -726,6 +726,10 @@ const ChunkCardPendingOrFailed = ({
     </details>
   );
 };
+
+function hasAmount(amount?: string): boolean {
+  return Boolean(amount && amount !== "0");
+}
 
 function ChunkSummaryLine({
   inAmount,
@@ -754,7 +758,9 @@ function ChunkSummaryLine({
           className="pointer-events-none font-medium"
         />
       </div>
+
       <ArrowRight className="w-4 h-4 text-muted-foreground/70 shrink-0" />
+
       <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-muted/30 border border-border/40 shadow-sm min-w-0 flex-1">
         <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest shrink-0">
           Out
@@ -817,7 +823,9 @@ const ChunkCard = ({
             )}
             <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 text-xs font-medium shrink-0">
               <CheckCircle2 className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
-              <span className="text-emerald-700 dark:text-emerald-400">Filled</span>
+              <span className="text-emerald-700 dark:text-emerald-400">
+                Filled
+              </span>
             </div>
           </div>
           <ChevronDown className="w-4 h-4 text-muted-foreground shrink-0 transition-transform duration-200 group-open:rotate-180" />

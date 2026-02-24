@@ -71,6 +71,7 @@ export function parseOrderChunks(
           .div(BN(outputTokenUsd))
           .toFixed();
         const inAmount = chunk.inAmount ?? "0";
+        
         const outAmount = chunk.outAmount ?? "0";
         const solverOutAmount = chunk.solverReportedOutput?.outputAmount ?? "0";
         const expectedOutputOracle = computeExpectedOutputInOutTokenDecimals(
