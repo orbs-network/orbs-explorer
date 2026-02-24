@@ -1,6 +1,6 @@
 import axios from "axios";
 import _, { flatten } from "lodash";
-import { ListOrder, Order } from "../types";
+import { ListOrder, Order, SpotConfig } from "../types";
 import { queryInitialData } from "../liquidity-hub/elastic-queries/main";
 import { TWAP_ELASTIC_CLIENT_URL } from "../consts";
 
@@ -43,7 +43,7 @@ const getOrders = async ({
   filters: Filters;
   baseUrl?: string;
 }) => {
-  const callback = async (chainId?: number): Promise<ListOrder[]> => {
+  const callback = async (): Promise<ListOrder[]> => {
     const filtersQuery = handleFilters(filters);
 
     const response = await axios.get(
@@ -248,22 +248,13 @@ export const getSpotOrder = async ({
   return response.data.orders[0] as Order;
 };
 
-export const getSpotConfig = async () => {
+export const getSpotConfig = async (): Promise<SpotConfig> => {
   const res = await axios.get(
     "https://raw.githubusercontent.com/orbs-network/spot/master/script/input/config.json",
   );
   return res.data;
 };
 
-export const getTokenLogo = async (address: string, chainId: number) => {
-  const response = await axios.get(
-    `https://api.coingecko.com/api/v3/coins/${chainId}/contract/${address}`,
-    {
-      method: "GET",
-    },
-  );
-  return response.data.image.small;
-};
 
 export const normalizeSessions = (sessions: any[]) => {
   return _.map(sessions, (session) => {

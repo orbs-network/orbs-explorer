@@ -1,5 +1,5 @@
 {
   "crons": [
-    { "path": "/api/cron/twap", "schedule": "0 2 * * *" }
+    { "path": "/api/cron/telegram-error-alerts", "schedule": "*/10 * * * *" }
   ]
 }

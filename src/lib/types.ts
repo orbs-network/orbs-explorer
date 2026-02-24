@@ -117,6 +117,7 @@ export interface OrderChunk {
   exchange?: `0x${string}`;
   executor?: `0x${string}`;
   extraTitle?: string;
+  extraTitleTranslated?: string;
   inAmount?: string; // big integer as decimal string (missing when chunk not yet filled)
   inToken?: `0x${string}`;
   index: number;
@@ -220,9 +221,17 @@ export interface ChainDexes {
   [partner: string]: TwapConfig;
 }
 
-export interface ChainTwapConfig {
+
+
+export interface ChainSpotConfig {
   dex?: ChainDexes;
 }
+
+
+export interface SpotConfig {
+  [chainId: string]: ChainSpotConfig;
+}
+
 
 export interface SaltConfig {
   wm: string;

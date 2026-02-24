@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { useSpotConfig } from "../use-twap-config";
+import { useSpotConfig } from "./use-spot-config";
 import { PARTNERS } from "@/lib/partners";
 import { ListOrder } from "@/lib/types";
 

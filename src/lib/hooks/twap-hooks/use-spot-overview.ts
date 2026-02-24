@@ -2,7 +2,7 @@ import { useQueries } from "@tanstack/react-query";
 import { useMemo } from "react";
 import { getAllOrdersForExchangeAndChain } from "../../api";
 import { REACT_QUERY_KEYS } from "../../consts";
-import { useSpotConfig } from "../use-twap-config";
+import { useSpotConfig } from "./use-spot-config";
 import {
   getPartnerChainPairs,
   getTopPairsByVolume,

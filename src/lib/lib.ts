@@ -1,5 +1,6 @@
 import { createPublicClient, http } from "viem";
 import * as chains from "viem/chains";
+import { PARTNERS } from "./partners";
 
 const getChain = (chainId?: number) => {
   if (!chainId) return undefined;
@@ -15,4 +16,11 @@ export const getPublicClient = (chainId: number) => {
       `${process.env.NEXT_PUBLIC_RPC_URL}/rpc?chainId=${chainId}&appId=debug-tool`
     ),
   }) as ReturnType<typeof createPublicClient>;
+};
+
+
+export const getPartner = (id?: string) => {
+  if (!id) return undefined;
+  
+  return PARTNERS.find((p) => p.identifiers.some(i => i.toLowerCase() === id.toLowerCase()));
 };

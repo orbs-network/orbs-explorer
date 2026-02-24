@@ -3,7 +3,6 @@ import { useMemo } from "react";
 import _ from "lodash";
 import { Token } from "../types";
 import * as chains from 'viem/chains'
-import { getTokenLogo } from "../api";
 import { getChain, isNativeAddress } from "../utils/utils";
 import { zeroAddress } from "viem";
 

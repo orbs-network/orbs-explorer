@@ -20,6 +20,9 @@
 # production
 /build
 
+# telegram error alerts state (API route)
+.telegram-seen-errors.json
+
 # misc
 .DS_Store
 *.pem
@@ -39,3 +42,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# telegram error alerts scripts (local/dev only)
+/scripts/
