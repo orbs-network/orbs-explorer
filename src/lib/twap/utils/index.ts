@@ -1,10 +1,11 @@
-import type { Order } from "../types";
+import type { Order, SpotConfig } from "../types";
 import { ChunkStatus, Status, SpotOrderType } from "../types";
 import { URL_QUERY_KEYS } from "../../consts";
 import { isValidWalletAddress } from "../../utils/utils";
 import { isHash, maxUint256 } from "viem";
 import moment from "moment";
 import BN from "bignumber.js";
+import { getPartner } from "@/lib/lib";
 
 export const resolveOrderIdentifier = (identifier: string) => {
   const parsedIdentifiers = identifier.split(",");
@@ -284,3 +285,43 @@ export const getOrderStatus = (order?: Order): Status => {
   if (s.includes("completed")) return Status.COMPLETED;
   return Status.PENDING;
 };
+
+
+const EMPTY_PARTNER = {
+  chainId: 0,
+  partner: null,
+  config: null,
+};
+
+export function getSpotPartnerConfig(
+  config: SpotConfig,
+  adapterOrPartnerId: string,
+  partnerChainId: number
+) {
+  if (!adapterOrPartnerId || !config) return EMPTY_PARTNER;
+  const target = adapterOrPartnerId.toLowerCase();
+
+  for (const [chainId, chainConfig] of Object.entries(config)) {
+    if (
+      !chainConfig?.dex ||
+      (partnerChainId && Number(chainId) !== partnerChainId)
+    )
+      continue;
+
+    for (const [partner, dexConfig] of Object.entries(chainConfig.dex)) {
+      if (
+        (typeof dexConfig === "object" &&
+          dexConfig.adapter?.toLowerCase() === target) ||
+        partner.toLowerCase() === target
+      ) {
+        return {
+          chainId: Number(chainId),
+          partner: getPartner(partner),
+          config: dexConfig,
+        };
+      }
+    }
+  }
+
+  return EMPTY_PARTNER;
+}
