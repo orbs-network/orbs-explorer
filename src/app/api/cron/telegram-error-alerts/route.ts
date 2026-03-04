@@ -13,7 +13,7 @@ import { getSpotPartnerConfig } from "@/lib/twap";
 
 const SINK_API_URL = "https://order-sink.orbs.network";
 const EXPLORER_BASE = "https://orbs-explorer.vercel.app";
-const PAGE_LIMIT = 400;
+const PAGE_LIMIT = 50;
 const REDIS_KEY = "telegram:seen:chunk-errors";
 const TELEGRAM_DELAY_MS = 1_000;
 const MAX_EXTRA_TITLE_LENGTH = 200;
@@ -61,12 +61,35 @@ async function markSeen(key: string): Promise<void> {
 // ---------------------------------------------------------------------------
 
 async function fetchOrders(): Promise<Order[]> {
-  const res = await fetch(
-    `${SINK_API_URL}/orders?page=0&limit=${PAGE_LIMIT}`
-  );
-  if (!res.ok) throw new Error(`API error ${res.status}`);
-  const data = (await res.json()) as { orders?: unknown[] };
-  return (data.orders ?? []) as Order[];
+  try {
+    const all: Order[] = [];
+    let page = 0;
+    let hasMore = true;
+
+    while (hasMore) {
+      const res = await fetch(
+        `${SINK_API_URL}/orders?page=${page}&limit=${PAGE_LIMIT}`
+      );
+      if (!res.ok) {
+        const body = await res.text();
+        const message = `API error ${res.status}: ${body}`;
+        console.error(message);
+        throw new Error(message);
+      }
+      const data = (await res.json()) as { orders?: unknown[] };
+      const orders = (data.orders ?? []) as Order[];
+      all.push(...orders);
+      hasMore = orders.length === PAGE_LIMIT;
+      page++;
+    }
+
+    return all;
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    const stack = err instanceof Error ? err.stack : undefined;
+    console.error("fetchOrders failed:", message, stack ?? "");
+    throw err;
+  }
 }
 
 // ---------------------------------------------------------------------------
