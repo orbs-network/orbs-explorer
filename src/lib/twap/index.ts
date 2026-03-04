@@ -2,4 +2,6 @@ export * from "./types";
 export * from "./api";
 export * from "./utils";
 export * from "./utils/orders-overview";
-export * from "./hooks/index";
+export * from "./hooks";
+export * from "./v1-types";
+export * from "./v1-api";

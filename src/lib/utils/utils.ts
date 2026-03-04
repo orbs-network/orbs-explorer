@@ -138,6 +138,12 @@ export const getChain = (chainId?: number) => {
   return Object.values(chains).find((chain) => chain.id === chainId);
 };
 
+export function getExplorerTxUrl(chainId: number, txHash: string): string {
+  const chain = getChain(chainId);
+  const base = chain?.blockExplorers?.default?.url;
+  return base ? `${base}/tx/${txHash}` : "#";
+}
+
 export const getOrderProgress = (order: Order) => {
   const totalChunks = order.metadata.expectedChunks;
   const filledChunks = order.metadata.chunks.filter(
