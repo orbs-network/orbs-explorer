@@ -224,7 +224,7 @@ export const getSpotOrder = async ({
 
 export const getSpotConfig = async (): Promise<SpotConfig> => {
   const res = await axios.get(
-    "https://raw.githubusercontent.com/orbs-network/spot/master/script/input/config.json"
+    "https://raw.githubusercontent.com/orbs-network/spot/master/config.json"
   );
   return res.data;
 };
