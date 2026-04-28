@@ -36,6 +36,7 @@ const NAV_LINKS = [
   { href: ROUTES.HOME, label: "Home" },
   { href: ROUTES.TWAP.ROOT, label: "TWAP", children: TWAP_CHILDREN },
   { href: ROUTES.LIQUIDITY_HUB.ROOT, label: "Liquidity Hub", children: LIQUIDITY_HUB_CHILDREN },
+  { href: ROUTES.PERPETUAL_HUB.ROOT, label: "Perpetual Hub" },
 ];
 
 function ThemeToggle() {
@@ -219,4 +220,3 @@ export function Navbar() {
     </header>
   );
 }
-
