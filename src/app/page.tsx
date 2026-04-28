@@ -1,6 +1,6 @@
 import { SearchInput } from "@/components/search-input";
 import { ROUTES } from "@/lib/routes";
-import { ArrowRight, Layers, RefreshCw, Search } from "lucide-react";
+import { ArrowRight, BarChart3, Layers, RefreshCw, Search } from "lucide-react";
 import Link from "next/link";
 
 export default function Home() {
@@ -50,7 +50,7 @@ export default function Home() {
       {/* Features Section */}
       <div className="border-t border-border bg-background-secondary/50 px-3 py-8 sm:px-4 sm:py-12">
         <div className="max-w-4xl mx-auto w-full">
-          <div className="grid md:grid-cols-2 gap-4 sm:gap-6">
+          <div className="grid md:grid-cols-3 gap-4 sm:gap-6">
             {/* Liquidity Hub Card */}
             <div className="group relative p-6 rounded-xl bg-card border border-border hover:border-primary/50 transition-all duration-300">
               <div className="flex items-start gap-4">
@@ -92,6 +92,30 @@ export default function Home() {
                   </p>
                   <div className="flex items-center gap-1 text-sm text-primary group-hover:gap-2 transition-all duration-300">
                     <span>Explore TWAP</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </div>
+                </div>
+              </div>
+            </Link>
+
+            <Link
+              href={ROUTES.PERPETUAL_HUB.ROOT}
+              className="group relative p-6 rounded-xl bg-card border border-border hover:border-primary/50 transition-all duration-300"
+            >
+              <div className="flex items-start gap-4">
+                <div className="p-3 rounded-lg bg-primary/10 text-primary">
+                  <BarChart3 className="w-6 h-6" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-lg font-semibold text-foreground mb-2">
+                    Perpetual Hub
+                  </h3>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Monitor perps operations, rollups, TEE state, hedger exposure,
+                    and proof health.
+                  </p>
+                  <div className="flex items-center gap-1 text-sm text-primary group-hover:gap-2 transition-all duration-300">
+                    <span>Explore Perpetual Hub</span>
                     <ArrowRight className="w-4 h-4" />
                   </div>
                 </div>
