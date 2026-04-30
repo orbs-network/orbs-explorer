@@ -74,11 +74,16 @@ export type PerpetualHubUserCurrent = {
 export type PerpetualHubUserDetail = {
   address: string;
   current?: PerpetualHubUserCurrent;
+  accounting?: {
+    totalDeposits?: string;
+    totalWithdrawals?: string;
+    totalCommissionPaid?: string;
+    totalFundingPaid?: string;
+    realizedPnl?: string;
+  };
   history: {
     events: PerpetualHubOperation[];
     totalEvents: number;
-    orders: PerpetualHubOperation[];
-    totalOrders: number;
     trades: PerpetualHubTrade[];
     totalTrades: number;
     transactions: PerpetualHubOperation[];

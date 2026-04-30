@@ -23,6 +23,7 @@ import {
   XCircle,
 } from "lucide-react";
 import { usePerpetualHubSummary } from "@/lib/perpetual-hub";
+import { getPerpetualHubRollupByRoot } from "@/lib/perpetual-hub/api";
 import type {
   PerpetualHubOperation,
   PerpetualHubHedgerPosition,
@@ -657,15 +658,21 @@ export function UserLookupResults({ data }: { data: PerpetualHubUserDetail }) {
           tone="positive"
         />
         <MetricCard
-          label="Margin Used"
-          value={formatUsd(amountToUsd(current?.marginUsed))}
-          icon={Gauge}
-        />
-        <MetricCard
           label="Unrealized PnL"
           value={formatUsd(amountToUsd(current?.unrealizedPnl))}
           icon={TrendingUp}
           tone={amountToUsd(current?.unrealizedPnl) >= 0 ? "positive" : "danger"}
+        />
+        <MetricCard
+          label="Realized PnL"
+          value={formatUsd(amountToUsd(data.accounting?.realizedPnl))}
+          icon={TrendingUp}
+          tone={amountToUsd(data.accounting?.realizedPnl) >= 0 ? "positive" : "danger"}
+        />
+        <MetricCard
+          label="Margin Used"
+          value={formatUsd(amountToUsd(current?.marginUsed))}
+          icon={Gauge}
         />
         <MetricCard
           label="Positions"
@@ -693,12 +700,7 @@ export function UserLookupResults({ data }: { data: PerpetualHubUserDetail }) {
       <UserPositionsTable positions={positions} />
       <UserOrdersTable orders={pendingOrders} />
 
-      <div className="grid gap-3 sm:grid-cols-3">
-        <MetricCard
-          label="Order History"
-          value={formatNumber(data.history.totalOrders)}
-          icon={Activity}
-        />
+      <div className="grid gap-3 sm:grid-cols-2">
         <MetricCard
           label="Transactions"
           value={formatNumber(data.history.totalTransactions)}
@@ -712,25 +714,14 @@ export function UserLookupResults({ data }: { data: PerpetualHubUserDetail }) {
         />
       </div>
 
-      <div className="grid gap-4 xl:grid-cols-2">
-        <div className="space-y-2">
-          <h3 className="text-sm font-semibold text-muted-foreground">
-            Recent User Events
-          </h3>
-          <RecentEventsTable
-            events={data.history.events}
-            emptyLabel="No user events"
-          />
-        </div>
-        <div className="space-y-2">
-          <h3 className="text-sm font-semibold text-muted-foreground">
-            Order History
-          </h3>
-          <RecentEventsTable
-            events={data.history.orders}
-            emptyLabel="No order history"
-          />
-        </div>
+      <div className="space-y-2">
+        <h3 className="text-sm font-semibold text-muted-foreground">
+          Recent User Events
+        </h3>
+        <RecentEventsTable
+          events={data.history.events}
+          emptyLabel="No user events"
+        />
       </div>
 
       <div className="grid gap-4 xl:grid-cols-2">
@@ -915,6 +906,9 @@ export function PerpetualHubDashboard() {
     usePerpetualHubSummary();
   const [rollupLookup, setRollupLookup] = useState("");
   const [seqLookup, setSeqLookup] = useState("");
+  const [rootLookup, setRootLookup] = useState("");
+  const [rootLookupError, setRootLookupError] = useState("");
+  const [isRootLookupLoading, setIsRootLookupLoading] = useState(false);
   const [userLookup, setUserLookup] = useState("");
   const [userLookupError, setUserLookupError] = useState("");
 
@@ -964,6 +958,28 @@ export function PerpetualHubDashboard() {
     }
   }
 
+  async function handleRootLookup(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const root = rootLookup.trim();
+    if (!/^0x[a-fA-F0-9]{64}$/.test(root)) {
+      setRootLookupError("Enter a valid 0x state root");
+      return;
+    }
+
+    setRootLookupError("");
+    setIsRootLookupLoading(true);
+    try {
+      const result = await getPerpetualHubRollupByRoot(root);
+      router.push(ROUTES.PERPETUAL_HUB.ROLLUP(result.rollup.id));
+    } catch (error) {
+      setRootLookupError(
+        error instanceof Error ? error.message : "Rollup root not found"
+      );
+    } finally {
+      setIsRootLookupLoading(false);
+    }
+  }
+
   function handleUserLookup(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const address = userLookup.trim();
@@ -972,7 +988,7 @@ export function PerpetualHubDashboard() {
       return;
     }
     setUserLookupError("");
-    window.open(ROUTES.PERPETUAL_HUB.USER(address), "_blank", "noopener,noreferrer");
+    router.push(ROUTES.PERPETUAL_HUB.USER(address));
   }
 
   if (isLoading) {
@@ -1136,12 +1152,6 @@ export function PerpetualHubDashboard() {
               />
               <MetricCard label="Platform Fees" value={formatUsd(data.risk.platformFeesCollected)} icon={CircleDollarSign} />
             </div>
-            {data.risk.unavailableMetrics.length > 0 && (
-              <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 px-4 py-3 text-sm text-muted-foreground">
-                Missing from reflected API state:{" "}
-                {data.risk.unavailableMetrics.join(", ")}.
-              </div>
-            )}
             <ExposureTable rows={data.risk.exposureBySymbol} />
           </Section>
         </TabsContent>
@@ -1179,7 +1189,7 @@ export function PerpetualHubDashboard() {
               <MetricCard label="Latest Seq" value={`#${formatNumber(data.rollups.latestSequence)}`} icon={Database} tone="info" />
               <MetricCard label="Total Ops" value={formatNumber(data.rollups.totalOps)} icon={Activity} />
             </div>
-            <div className="grid gap-3 lg:grid-cols-2">
+            <div className="grid gap-3 lg:grid-cols-3">
               <form onSubmit={handleRollupLookup} className="flex gap-2">
                 <div className="relative min-w-0 flex-1">
                   <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -1212,7 +1222,27 @@ export function PerpetualHubDashboard() {
                   Open
                 </Button>
               </form>
+              <form onSubmit={handleRootLookup} className="flex gap-2">
+                <div className="relative min-w-0 flex-1">
+                  <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    value={rootLookup}
+                    onChange={(event) => {
+                      setRootLookup(event.target.value);
+                      if (rootLookupError) setRootLookupError("");
+                    }}
+                    placeholder="Go to new root"
+                    className="pl-9 font-mono"
+                  />
+                </div>
+                <Button type="submit" variant="outline" disabled={isRootLookupLoading}>
+                  {isRootLookupLoading ? <Spinner size={14} /> : "Open"}
+                </Button>
+              </form>
             </div>
+            {rootLookupError && (
+              <p className="text-sm text-destructive">{rootLookupError}</p>
+            )}
             <RollupList latest={data.rollups.latest} />
           </Section>
         </TabsContent>
