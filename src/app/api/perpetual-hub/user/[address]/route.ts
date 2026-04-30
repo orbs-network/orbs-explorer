@@ -10,7 +10,6 @@ type FetchResult<T> = { data?: T; error?: string };
 
 type PaginatedOperations = {
   events?: PerpetualHubOperation[];
-  orders?: PerpetualHubOperation[];
   transactions?: PerpetualHubOperation[];
   total?: number;
 };
@@ -18,6 +17,17 @@ type PaginatedOperations = {
 type PaginatedTrades = {
   trades?: PerpetualHubTrade[];
   total?: number;
+};
+
+type ReflectedState = {
+  users?: Array<{
+    user?: string;
+    totalDeposits?: string;
+    totalWithdrawals?: string;
+    totalCommissionPaid?: string;
+    totalFundingPaid?: string;
+    realizedPnl?: string;
+  }>;
 };
 
 const DEFAULT_BACKEND_URL = "https://perpsapi.orbs.network";
@@ -64,9 +74,9 @@ export async function GET(
   const [
     current,
     events,
-    orders,
     trades,
     transactions,
+    reflectedState,
   ] = await Promise.all([
     fetchJson<PerpetualHubUserCurrent>(
       `${backendUrl}/api/v1/user/${encodedAddress}`
@@ -74,26 +84,24 @@ export async function GET(
     fetchJson<PaginatedOperations>(
       `${backendUrl}/api/v1/events?user=${encodedAddress}&limit=20&offset=0`
     ),
-    fetchJson<PaginatedOperations>(
-      `${backendUrl}/api/v1/user/${encodedAddress}/orders/history?limit=20&offset=0`
-    ),
     fetchJson<PaginatedTrades>(
       `${backendUrl}/api/v1/user/${encodedAddress}/trades?limit=20&offset=0`
     ),
     fetchJson<PaginatedOperations>(
       `${backendUrl}/api/v1/user/${encodedAddress}/transactions?limit=20&offset=0`
     ),
+    fetchJson<ReflectedState>(`${backendUrl}/get-last-state`),
   ]);
 
   const errors = [
     current.error && `Current state: ${current.error}`,
     events.error && `Events: ${events.error}`,
-    orders.error && `Order history: ${orders.error}`,
     trades.error && `Trades: ${trades.error}`,
     transactions.error && `Transactions: ${transactions.error}`,
+    reflectedState.error && `Reflected state: ${reflectedState.error}`,
   ].filter(Boolean) as string[];
 
-  if (current.error && events.error && orders.error && trades.error && transactions.error) {
+  if (current.error && events.error && trades.error && transactions.error) {
     return NextResponse.json(
       { error: "User data unavailable", details: errors },
       { status: 502 }
@@ -103,11 +111,12 @@ export async function GET(
   const detail: PerpetualHubUserDetail = {
     address,
     current: current.data,
+    accounting: reflectedState.data?.users?.find(
+      (user) => user.user?.toLowerCase() === address.toLowerCase()
+    ),
     history: {
       events: events.data?.events ?? [],
       totalEvents: events.data?.total ?? 0,
-      orders: orders.data?.orders ?? [],
-      totalOrders: orders.data?.total ?? 0,
       trades: trades.data?.trades ?? [],
       totalTrades: trades.data?.total ?? 0,
       transactions: transactions.data?.transactions ?? [],

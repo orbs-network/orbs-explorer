@@ -1,5 +1,6 @@
 import type {
   PerpetualHubRollupDetail,
+  PerpetualHubRollup,
   PerpetualHubStateDetail,
   PerpetualHubSummary,
   PerpetualHubUserDetail,
@@ -44,6 +45,19 @@ export async function getPerpetualHubUser(
   const response = await fetch(`/api/perpetual-hub/user/${address}`, { signal });
   if (!response.ok) {
     throw new Error(`Failed to load Perpetual Hub user (${response.status})`);
+  }
+  return response.json();
+}
+
+export async function getPerpetualHubRollupByRoot(
+  root: string,
+  signal?: AbortSignal
+): Promise<{ rollup: PerpetualHubRollup }> {
+  const response = await fetch(`/api/perpetual-hub/rollup-root/${root}`, {
+    signal,
+  });
+  if (!response.ok) {
+    throw new Error(`Failed to find rollup root (${response.status})`);
   }
   return response.json();
 }
