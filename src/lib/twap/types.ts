@@ -157,6 +157,7 @@ export interface TriggerPriceOrderWitness {
   reactor: `0x${string}`;
   slippage: number;
   swapper: `0x${string}`;
+  chainId: number;
 }
 
 export interface TwapConfig {

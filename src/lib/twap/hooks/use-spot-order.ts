@@ -27,7 +27,8 @@ const parseValue = (value: string | undefined, decimals?: number) => {
 export function useSpotOrder(hash?: string) {
   const { data: order, isLoading } = useSpotOrderQuery(hash);
   const { chainId, partner, config } = useSpotPartner(
-    order?.order.witness.exchange.adapter
+    order?.order.witness.exchange.adapter,
+    order?.order.witness.chainId
   );
   const srcToken = useToken(order?.order.witness.input.token, chainId).data;
   const dstToken = useToken(order?.order.witness.output.token, chainId).data;

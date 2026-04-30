@@ -102,6 +102,8 @@ export const useUser = () => {
     prompt: "",
   });
 
+
+  
   return {
     user,
     loginSilently,
