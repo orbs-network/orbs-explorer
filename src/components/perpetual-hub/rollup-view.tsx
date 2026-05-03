@@ -6,6 +6,7 @@ import {
   Activity,
   ArrowLeft,
   Database,
+  ExternalLink,
   Hash,
   Layers,
   ShieldCheck,
@@ -33,6 +34,14 @@ function truncate(value?: string, chars = 6) {
   if (value.startsWith("0x") && value.length > 14) return shortenAddress(value, chars);
   if (value.length <= chars * 2 + 3) return value;
   return `${value.slice(0, chars)}...${value.slice(-chars)}`;
+}
+
+function arbiscanTxUrl(txHash: string) {
+  return `https://arbiscan.io/tx/${txHash}`;
+}
+
+function isUserAddress(value?: string) {
+  return Boolean(value && /^0x[a-fA-F0-9]{40}$/.test(value));
 }
 
 function MetricCard({
@@ -98,9 +107,21 @@ export function PerpetualHubRollupView({ id }: { id: string }) {
             </h1>
             <Badge variant="outline">{rollup.status}</Badge>
           </div>
-          <p className="mt-1 font-mono text-sm text-muted-foreground">
-            {rollup.txHash || "-"}
-          </p>
+          <div className="mt-1 font-mono text-sm text-muted-foreground">
+            {rollup.txHash ? (
+              <a
+                href={arbiscanTxUrl(rollup.txHash)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 break-all text-primary hover:underline"
+              >
+                {rollup.txHash}
+                <ExternalLink className="h-3.5 w-3.5 shrink-0" />
+              </a>
+            ) : (
+              "-"
+            )}
+          </div>
         </div>
         <Button variant="outline" size="sm" asChild>
           <Link href={ROUTES.PERPETUAL_HUB.ROOT}>
@@ -205,8 +226,17 @@ export function PerpetualHubRollupView({ id }: { id: string }) {
                   <td className="px-4 py-3">
                     <Badge variant="outline">{operation.operationType}</Badge>
                   </td>
-                  <td className="px-4 py-3 font-mono text-primary">
-                    {truncate(operation.userAddress)}
+                  <td className="px-4 py-3 font-mono">
+                    {isUserAddress(operation.userAddress) ? (
+                      <Link
+                        href={ROUTES.PERPETUAL_HUB.USER(operation.userAddress)}
+                        className="text-primary hover:underline"
+                      >
+                        {truncate(operation.userAddress)}
+                      </Link>
+                    ) : (
+                      truncate(operation.userAddress)
+                    )}
                   </td>
                   <td className="px-4 py-3">{operation.symbol || "-"}</td>
                   <td className="px-4 py-3">

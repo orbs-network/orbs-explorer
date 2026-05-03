@@ -288,6 +288,34 @@ function summarizeRisk(state?: ReflectedState) {
   };
 }
 
+function enrichEventsWithRollups(
+  events: PerpetualHubOperation[],
+  rollups: NonNullable<RollupsResponse["rollups"]>
+) {
+  const rollupsByID = new Map(rollups.map((rollup) => [rollup.id, rollup]));
+
+  return events.map((event) => {
+    const directRollup = event.rollupId
+      ? rollupsByID.get(event.rollupId)
+      : undefined;
+    const sequenceRollup = event.teeSequence
+      ? rollups.find(
+          (rollup) =>
+            event.teeSequence! > rollup.oldSequence &&
+            event.teeSequence! <= rollup.newSequence
+        )
+      : undefined;
+    const rollup = directRollup ?? sequenceRollup;
+    if (!rollup) return event;
+
+    return {
+      ...event,
+      rollupId: event.rollupId ?? rollup.id,
+      rollupTxHash: rollup.txHash,
+    };
+  });
+}
+
 export async function GET() {
   const backendUrl = getBackendUrl();
 
@@ -301,6 +329,7 @@ export async function GET() {
     rejectedEvents,
     rejectedSample,
     rollups,
+    eventRollups,
     proofs,
     hedger,
   ] = await Promise.all([
@@ -319,6 +348,7 @@ export async function GET() {
       `${backendUrl}/api/v1/events?status=REJECTED&limit=100&offset=0`
     ),
     fetchJson<RollupsResponse>(`${backendUrl}/api/v1/rollups?limit=10&offset=0`),
+    fetchJson<RollupsResponse>(`${backendUrl}/api/v1/rollups?limit=100&offset=0`),
     fetchJson<ProofsResponse>(`${backendUrl}/api/v1/proofs?limit=100&offset=0`),
     fetchJson<HedgerStatus>(`${backendUrl}/api/v1/hedger/binance-status`),
   ]);
@@ -330,11 +360,16 @@ export async function GET() {
     chainState.error && `Chain state: ${chainState.error}`,
     events.error && `Events: ${events.error}`,
     rollups.error && `Rollups: ${rollups.error}`,
+    eventRollups.error && `Event rollups: ${eventRollups.error}`,
     proofs.error && `Proofs: ${proofs.error}`,
     hedger.error && `Hedger: ${hedger.error}`,
   ].filter(Boolean) as string[];
 
-  const recentEvents = events.data?.events ?? [];
+  const eventRollupItems = eventRollups.data?.rollups ?? rollups.data?.rollups ?? [];
+  const recentEvents = enrichEventsWithRollups(
+    events.data?.events ?? [],
+    eventRollupItems
+  );
   const successTotal = successEvents.data?.total ?? 0;
   const rejectedTotal = rejectedEvents.data?.total ?? 0;
   const totalEvents =

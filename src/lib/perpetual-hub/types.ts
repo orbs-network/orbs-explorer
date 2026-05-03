@@ -14,6 +14,8 @@ export type PerpetualHubOperation = {
   timestamp: number;
   teeSequence?: number;
   stateRoot?: string;
+  rollupId?: number;
+  rollupTxHash?: string;
 };
 
 export type PerpetualHubTrade = {

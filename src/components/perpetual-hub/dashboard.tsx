@@ -106,6 +106,46 @@ function eventNotional(event: PerpetualHubOperation) {
   return Math.abs(normalizedQuantity * normalizedPrice);
 }
 
+function eventDetails(event: PerpetualHubOperation) {
+  const details: { label: string; value: string; tone?: "positive" | "danger" }[] = [];
+  const quantity = quantityToUnits(event.quantity);
+  const price = priceToUsd(event.price);
+  const amount = amountToUsd(event.amount);
+  const fee = amountToUsd(event.fee);
+  const realizedPnl = amountToUsd(event.realizedPnl);
+
+  if (event.operationType === "CHANGE_LEVERAGE" && event.amount) {
+    details.push({ label: "Lev", value: `${event.amount}x` });
+  }
+  if (event.operationType === "CANCEL_ORDER" && event.amount) {
+    details.push({ label: "Order", value: event.amount });
+  }
+  if (amount && !["CHANGE_LEVERAGE", "CANCEL_ORDER"].includes(event.operationType)) {
+    details.push({ label: "Amount", value: formatUsd(amount) });
+  }
+  if (quantity) {
+    details.push({ label: "Qty", value: formatCompact(quantity, 4) });
+  }
+  if (price) {
+    details.push({ label: "Price", value: formatUsd(price, 4) });
+  }
+  if (fee) {
+    details.push({ label: "Fee", value: formatUsd(fee) });
+  }
+  if (event.realizedPnl) {
+    details.push({
+      label: "PnL",
+      value: formatUsd(realizedPnl),
+      tone: realizedPnl >= 0 ? "positive" : "danger",
+    });
+  }
+  if (event.rejectReason) {
+    details.push({ label: "Reject", value: event.rejectReason, tone: "danger" });
+  }
+
+  return details;
+}
+
 function formatPercent(value?: number) {
   return `${((value ?? 0) * 100).toFixed(1)}%`;
 }
@@ -114,6 +154,14 @@ function formatTimestamp(timestamp?: number) {
   if (!timestamp) return "Never";
   const milliseconds = timestamp < 10_000_000_000 ? timestamp * 1000 : timestamp;
   return moment(milliseconds).format("MMM D, HH:mm:ss");
+}
+
+function arbiscanTxUrl(txHash: string) {
+  return `https://arbiscan.io/tx/${txHash}`;
+}
+
+function isUserAddress(value?: string) {
+  return Boolean(value && /^0x[a-fA-F0-9]{40}$/.test(value));
 }
 
 function truncate(value?: string, chars = 5) {
@@ -390,9 +438,11 @@ function HedgerPositionsTable({
 function RecentEventsTable({
   events,
   emptyLabel = "No recent events",
+  showRollupColumns = false,
 }: {
   events: PerpetualHubOperation[];
   emptyLabel?: string;
+  showRollupColumns?: boolean;
 }) {
   if (!events.length) {
     return (
@@ -412,48 +462,122 @@ function RecentEventsTable({
             <tr>
               <th className="px-4 py-3 text-left font-medium">Time</th>
               <th className="px-4 py-3 text-right font-medium">SeqNo</th>
+              {showRollupColumns && (
+                <th className="px-4 py-3 text-right font-medium">RollupID</th>
+              )}
               <th className="px-4 py-3 text-left font-medium">Type</th>
               <th className="px-4 py-3 text-left font-medium">User</th>
               <th className="px-4 py-3 text-left font-medium">Symbol</th>
               <th className="px-4 py-3 text-right font-medium">Notional</th>
+              <th className="px-4 py-3 text-left font-medium">Details</th>
+              {showRollupColumns && (
+                <th className="px-4 py-3 text-left font-medium">Tx</th>
+              )}
               <th className="px-4 py-3 text-left font-medium">Status</th>
             </tr>
           </thead>
           <tbody>
-            {events.slice(0, 12).map((event) => (
-              <tr key={event.id} className="border-b last:border-b-0">
-                <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">
-                  {formatTimestamp(event.timestamp)}
-                </td>
-                <td className="px-4 py-3 text-right font-mono text-muted-foreground">
-                  {event.teeSequence ? (
-                    <Link
-                      href={ROUTES.PERPETUAL_HUB.STATE(event.teeSequence)}
-                      className="text-primary hover:underline"
-                    >
-                      #{formatNumber(event.teeSequence)}
-                    </Link>
-                  ) : (
-                    "-"
+            {events.slice(0, 12).map((event) => {
+              const details = eventDetails(event);
+              return (
+                <tr key={event.id} className="border-b last:border-b-0">
+                  <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">
+                    {formatTimestamp(event.timestamp)}
+                  </td>
+                  <td className="px-4 py-3 text-right font-mono text-muted-foreground">
+                    {event.teeSequence ? (
+                      <Link
+                        href={ROUTES.PERPETUAL_HUB.STATE(event.teeSequence)}
+                        className="text-primary hover:underline"
+                      >
+                        #{formatNumber(event.teeSequence)}
+                      </Link>
+                    ) : (
+                      "-"
+                    )}
+                  </td>
+                  {showRollupColumns && (
+                    <td className="px-4 py-3 text-right font-mono text-muted-foreground">
+                      {event.rollupId ? (
+                        <Link
+                          href={ROUTES.PERPETUAL_HUB.ROLLUP(event.rollupId)}
+                          className="text-primary hover:underline"
+                        >
+                          #{event.rollupId}
+                        </Link>
+                      ) : (
+                        "-"
+                      )}
+                    </td>
                   )}
-                </td>
-                <td className="px-4 py-3">
-                  <Badge variant="outline">{event.operationType}</Badge>
-                </td>
-                <td className="px-4 py-3 font-mono text-primary">
-                  {truncate(event.userAddress)}
-                </td>
-                <td className="px-4 py-3">{event.symbol || "-"}</td>
-                <td className="px-4 py-3 text-right font-mono">
-                  {formatUsd(eventNotional(event))}
-                </td>
-                <td className="px-4 py-3">
-                  {event.status === "SUCCESS"
-                    ? statusBadge("ok", "Success")
-                    : statusBadge("bad", event.status || "Rejected")}
-                </td>
-              </tr>
-            ))}
+                  <td className="px-4 py-3">
+                    <Badge variant="outline">{event.operationType}</Badge>
+                  </td>
+                  <td className="px-4 py-3 font-mono">
+                    {isUserAddress(event.userAddress) ? (
+                      <Link
+                        href={ROUTES.PERPETUAL_HUB.USER(event.userAddress)}
+                        className="text-primary hover:underline"
+                      >
+                        {truncate(event.userAddress)}
+                      </Link>
+                    ) : (
+                      truncate(event.userAddress)
+                    )}
+                  </td>
+                  <td className="px-4 py-3">{event.symbol || "-"}</td>
+                  <td className="px-4 py-3 text-right font-mono">
+                    {formatUsd(eventNotional(event))}
+                  </td>
+                  <td className="max-w-[360px] px-4 py-3">
+                    {details.length ? (
+                      <div className="flex flex-wrap gap-1.5">
+                        {details.map((detail) => (
+                          <Badge
+                            key={`${detail.label}-${detail.value}`}
+                            variant="outline"
+                            className={cn(
+                              "max-w-full gap-1 font-mono text-xs",
+                              detail.tone === "positive" &&
+                                "border-emerald-500/40 text-emerald-500 bg-emerald-500/10",
+                              detail.tone === "danger" &&
+                                "border-destructive/50 text-destructive bg-destructive/10"
+                            )}
+                          >
+                            <span className="text-muted-foreground">{detail.label}</span>
+                            <span className="truncate">{detail.value}</span>
+                          </Badge>
+                        ))}
+                      </div>
+                    ) : (
+                      <span className="text-muted-foreground">-</span>
+                    )}
+                  </td>
+                  {showRollupColumns && (
+                    <td className="px-4 py-3 font-mono">
+                      {event.rollupTxHash ? (
+                        <a
+                          href={arbiscanTxUrl(event.rollupTxHash)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 text-primary hover:underline"
+                        >
+                          {truncate(event.rollupTxHash, 4)}
+                          <ExternalLink className="h-3.5 w-3.5" />
+                        </a>
+                      ) : (
+                        "-"
+                      )}
+                    </td>
+                  )}
+                  <td className="px-4 py-3">
+                    {event.status === "SUCCESS"
+                      ? statusBadge("ok", "Success")
+                      : statusBadge("bad", event.status || "Rejected")}
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
@@ -1249,7 +1373,7 @@ export function PerpetualHubDashboard() {
 
         <TabsContent value="events" className="mt-0 space-y-6">
           <Section title="Recent Events" icon={ExternalLink}>
-            <RecentEventsTable events={data.activity.recentEvents} />
+            <RecentEventsTable events={data.activity.recentEvents} showRollupColumns />
           </Section>
 
           {data.activity.topRejectReasons.length > 0 && (
