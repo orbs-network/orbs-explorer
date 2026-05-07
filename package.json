@@ -10,7 +10,8 @@
     "lint": "next lint",
     "screenshot": "node scripts/screenshot.mjs",
     "screenshot:install": "playwright install chromium",
-    "screenshot:pr": "./scripts/pr-screenshots.sh"
+    "screenshot:pr": "./scripts/pr-screenshots.sh",
+    "screenshot:upload": "./scripts/screenshot-upload.sh"
   },
   "dependencies": {
     "@radix-ui/react-avatar": "^1.1.10",

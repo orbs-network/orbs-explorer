@@ -48,6 +48,7 @@ next-env.d.ts
 /scripts/*
 !/scripts/screenshot.mjs
 !/scripts/pr-screenshots.sh
+!/scripts/screenshot-upload.sh
 
 # pr screenshots (generated locally, attached to PRs manually)
 /.screenshots/
