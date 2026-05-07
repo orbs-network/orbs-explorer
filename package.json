@@ -7,7 +7,10 @@
     "cron": "./scripts/run-cron.sh",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "screenshot": "node scripts/screenshot.mjs",
+    "screenshot:install": "playwright install chromium",
+    "screenshot:pr": "./scripts/pr-screenshots.sh"
   },
   "dependencies": {
     "@radix-ui/react-avatar": "^1.1.10",
@@ -51,6 +54,7 @@
     "@types/node-telegram-bot-api": "^0.64.13",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "playwright": "^1.59.1",
     "prettier": "^3.8.0",
     "tailwindcss": "^4",
     "tw-animate-css": "^1.3.7",
