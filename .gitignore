@@ -43,5 +43,12 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# telegram error alerts scripts (local/dev only)
-/scripts/
+# scripts: opt-in tracking. Local-only helper scripts (cron etc.) live here too,
+# so we exclude everything by default and re-include the tracked tooling.
+/scripts/*
+!/scripts/screenshot.mjs
+!/scripts/pr-screenshots.sh
+!/scripts/screenshot-upload.sh
+
+# pr screenshots (generated locally, attached to PRs manually)
+/.screenshots/
