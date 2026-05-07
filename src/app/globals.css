@@ -116,6 +116,35 @@
   --sidebar-ring: hsl(212 100% 67%);
 }
 
+/* Explorer (data-theme="explorer"): scoped token override.
+   Persistent dark, distinct accent, tighter radii, denser surfaces.
+   Same Radix primitives, different feel. */
+[data-theme="explorer"] {
+  --radius: 0.375rem;
+  --background: hsl(220 25% 4%);
+  --background-secondary: hsl(220 22% 7%);
+  --foreground: hsl(220 15% 96%);
+  --card: hsl(220 22% 7%);
+  --card-foreground: hsl(220 15% 96%);
+  --popover: hsl(220 22% 9%);
+  --popover-foreground: hsl(220 15% 96%);
+  --primary: hsl(174 80% 50%);
+  --primary-foreground: hsl(220 25% 4%);
+  --secondary: hsl(220 22% 12%);
+  --secondary-foreground: hsl(220 15% 90%);
+  --muted: hsl(220 22% 11%);
+  --muted-foreground: hsl(220 12% 62%);
+  --accent: hsl(220 22% 14%);
+  --accent-foreground: hsl(220 15% 96%);
+  --destructive: hsl(0 70% 55%);
+  --border: hsl(220 22% 14%);
+  --input: hsl(220 22% 14%);
+  --ring: hsl(174 80% 50%);
+  --explorer-success: hsl(150 60% 45%);
+  --explorer-warning: hsl(40 90% 55%);
+  --explorer-pending: hsl(220 12% 60%);
+}
+
 /* Custom scrollbars */
 * {
   scrollbar-width: thin;

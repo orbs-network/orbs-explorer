@@ -60,6 +60,8 @@ export function Navbar() {
   const pathname = usePathname();
   const isHomePage = pathname === ROUTES.HOME;
 
+  if (pathname.startsWith(ROUTES.EXPLORER.ROOT)) return null;
+
   const isActiveLink = (href: string) => {
     if (href === ROUTES.HOME) return pathname === ROUTES.HOME;
     return pathname.startsWith(href);
