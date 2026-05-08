@@ -27,6 +27,15 @@ export function useExplorerBlock(seq: string | number) {
   });
 }
 
+export function useExplorerBatch(id: string | number) {
+  return useQuery({
+    queryKey: ["explorerBatch", String(id)],
+    queryFn: ({ signal }) => getPerpetualHubRollup(id, signal),
+    enabled: String(id).length > 0,
+    staleTime: 30_000,
+  });
+}
+
 type BlockBatchEnrichment = {
   rollup: PerpetualHubRollup;
   op: PerpetualHubOperation | undefined;
