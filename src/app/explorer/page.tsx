@@ -1,10 +1,5 @@
-import { Placeholder } from "@/components/explorer/placeholder";
+import { ExplorerHome } from "@/components/explorer/home/home";
 
 export default function ExplorerHomePage() {
-  return (
-    <Placeholder
-      title="Explorer home"
-      hint="Stats strip and live feeds (Recent Blocks, Recent Batches) land here in PR 2."
-    />
-  );
+  return <ExplorerHome />;
 }
