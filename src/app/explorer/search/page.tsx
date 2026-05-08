@@ -1,8 +1,13 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { ROUTES } from "@/lib/routes";
 import { resolveSearch } from "@/lib/explorer/resolver";
+
+export const metadata: Metadata = {
+  title: "Search — Orbs Explorer",
+};
 
 export default async function ExplorerSearchPage({
   searchParams,

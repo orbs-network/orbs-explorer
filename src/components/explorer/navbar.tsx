@@ -30,8 +30,26 @@ export function ExplorerNavbar() {
     router.push(ROUTES.EXPLORER.SEARCH(q));
   };
 
+  const searchForm = (
+    <form onSubmit={onSubmit} className="w-full">
+      <div className="relative">
+        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        <input
+          type="text"
+          inputMode="search"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Search sequence, address, hash, or batch id"
+          className="h-9 w-full rounded-md border border-border bg-card pl-9 pr-3 font-mono text-xs text-foreground placeholder:text-muted-foreground/70 focus:outline-none focus:ring-1 focus:ring-ring"
+          aria-label="Search the explorer"
+        />
+      </div>
+    </form>
+  );
+
   return (
     <header className="sticky top-0 z-40 border-b border-border bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+      {/* Row 1: logo + (md+) nav + (md+) search */}
       <div className="mx-auto flex h-14 max-w-[1400px] items-center gap-3 px-4 sm:gap-6 sm:px-6">
         <Link
           href={ROUTES.EXPLORER.ROOT}
@@ -40,9 +58,7 @@ export function ExplorerNavbar() {
           <span className="grid h-7 w-7 place-items-center rounded-md bg-primary text-primary-foreground font-mono text-[11px] font-bold">
             O
           </span>
-          <span className="hidden sm:inline font-semibold tracking-tight">
-            Orbs Explorer
-          </span>
+          <span className="font-semibold tracking-tight">Orbs Explorer</span>
         </Link>
 
         <nav className="hidden md:flex items-center gap-1">
@@ -65,22 +81,17 @@ export function ExplorerNavbar() {
           })}
         </nav>
 
-        <form onSubmit={onSubmit} className="ml-auto flex-1 sm:max-w-md">
-          <div className="relative">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <input
-              type="text"
-              inputMode="search"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Sequence, state root, address, batch id, or L1 tx hash"
-              className="h-9 w-full rounded-md border border-border bg-card pl-9 pr-3 font-mono text-xs text-foreground placeholder:text-muted-foreground/70 focus:outline-none focus:ring-1 focus:ring-ring"
-              aria-label="Search the explorer"
-            />
-          </div>
-        </form>
+        <div className="ml-auto hidden md:block w-full max-w-md">
+          {searchForm}
+        </div>
       </div>
 
+      {/* Row 2 (mobile only): search form gets its own full-width row */}
+      <div className="md:hidden border-t border-border px-3 py-2">
+        {searchForm}
+      </div>
+
+      {/* Row 3 (mobile only): nav links */}
       <nav className="md:hidden border-t border-border bg-background/60">
         <div className="mx-auto flex max-w-[1400px] items-center gap-1 px-2 py-1.5">
           {NAV_LINKS.map((link) => {
