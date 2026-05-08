@@ -39,7 +39,6 @@ function safeName(path) {
   if (path === "/" || path === "") return "root";
   return path
     .replace(/^\/+/, "")
-    .replace(/\?.*$/, "")
     .replace(/[^a-z0-9_-]+/gi, "_")
     .replace(/^_+|_+$/g, "")
     .slice(0, 80);
