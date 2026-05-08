@@ -20,3 +20,30 @@ export function formatUsdShort(value: number | string | undefined): string {
   if (!Number.isFinite(n) || n === 0) return "";
   return formatUsdCompact(n);
 }
+
+export function formatNumber(
+  value: number | string | undefined,
+  fractionDigits = 4
+): string {
+  if (value === undefined || value === null) return "—";
+  const n = typeof value === "number" ? value : Number(value);
+  if (!Number.isFinite(n)) return "—";
+  return n.toLocaleString(undefined, { maximumFractionDigits: fractionDigits });
+}
+
+export function formatTimestamp(timestamp: number | undefined): string {
+  if (!timestamp) return "—";
+  const ms = timestamp > 1e12 ? timestamp : timestamp * 1000;
+  return (
+    new Date(ms).toISOString().replace("T", " ").slice(0, 19) + " UTC"
+  );
+}
+
+/** L1 explorer URL for the perp hub's settlement chain (Arbitrum One). */
+export function arbiscanTxUrl(txHash: string): string {
+  return `https://arbiscan.io/tx/${txHash}`;
+}
+
+export function arbiscanBlockUrl(blockNumber: number | string): string {
+  return `https://arbiscan.io/block/${blockNumber}`;
+}
