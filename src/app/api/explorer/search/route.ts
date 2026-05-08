@@ -1,19 +1,16 @@
 import { NextResponse } from "next/server";
-import { classifySearchInput } from "@/lib/explorer/search";
+import { resolveSearch } from "@/lib/explorer/resolver";
 
 export async function GET(request: Request) {
-  const { searchParams } = new URL(request.url);
-  const q = searchParams.get("q") ?? "";
-  const parsed = classifySearchInput(q);
+  const url = new URL(request.url);
+  const q = url.searchParams.get("q") ?? "";
+  const result = await resolveSearch(q, url.origin);
 
-  return NextResponse.json(
-    {
-      ok: false,
-      reason: "not_implemented",
-      input: { raw: parsed.raw, trimmed: parsed.trimmed, kind: parsed.kind },
-      message:
-        "Universal search resolver lands in PR 6. This stub exists so the route is reachable.",
-    },
-    { status: 501 }
-  );
+  if (result.kind === "redirect") {
+    return NextResponse.json(result, { status: 200 });
+  }
+  if (result.kind === "empty") {
+    return NextResponse.json(result, { status: 400 });
+  }
+  return NextResponse.json(result, { status: 404 });
 }
