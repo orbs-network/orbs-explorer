@@ -1,4 +1,4 @@
-import { Placeholder } from "@/components/explorer/placeholder";
+import { ExplorerAddress } from "@/components/explorer/address/address";
 
 export default async function ExplorerAddressPage({
   params,
@@ -6,11 +6,5 @@ export default async function ExplorerAddressPage({
   params: Promise<{ addr: string }>;
 }) {
   const { addr } = await params;
-  return (
-    <Placeholder
-      title="Address"
-      identifier={addr}
-      hint="Balance, positions, orders, and history tabs land here in PR 5."
-    />
-  );
+  return <ExplorerAddress address={addr} />;
 }
