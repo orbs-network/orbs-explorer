@@ -1,4 +1,4 @@
-import { Placeholder } from "@/components/explorer/placeholder";
+import { ExplorerBlock } from "@/components/explorer/block/block";
 
 export default async function ExplorerBlockPage({
   params,
@@ -6,11 +6,5 @@ export default async function ExplorerBlockPage({
   params: Promise<{ seq: string }>;
 }) {
   const { seq } = await params;
-  return (
-    <Placeholder
-      title={`Block #${seq}`}
-      identifier={seq}
-      hint="Transition + State tabs land here in PR 3."
-    />
-  );
+  return <ExplorerBlock seq={seq} />;
 }

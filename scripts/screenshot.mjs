@@ -85,7 +85,18 @@ async function main() {
             waitUntil: "networkidle",
             timeout: 30_000,
           });
-          // Allow async hydration / fonts a beat to settle
+          // Hydration + React Query fetches fire AFTER initial networkidle.
+          // Wait for skeletons to disappear, then settle the network again.
+          // Bounded so a legitimately-loading page doesn't hang the run.
+          try {
+            await page.waitForFunction(
+              () => !document.querySelector(".animate-pulse"),
+              { timeout: 5_000 }
+            );
+            await page.waitForLoadState("networkidle", { timeout: 5_000 });
+          } catch {
+            /* selector may not exist; fall through */
+          }
           await page.waitForTimeout(400);
           await page.screenshot({ path: file, fullPage: true });
           console.log(
