@@ -3,11 +3,14 @@ import {
   getPerpetualHubRollup,
   getPerpetualHubState,
   getPerpetualHubSummary,
+  getPerpetualHubUser,
 } from "@/lib/perpetual-hub/api";
 import type {
   PerpetualHubOperation,
   PerpetualHubRollup,
 } from "@/lib/perpetual-hub/types";
+
+const ADDRESS_RE = /^0x[a-fA-F0-9]{40}$/;
 
 export function useExplorerHome() {
   return useQuery({
@@ -32,6 +35,15 @@ export function useExplorerBatch(id: string | number) {
     queryKey: ["explorerBatch", String(id)],
     queryFn: ({ signal }) => getPerpetualHubRollup(id, signal),
     enabled: String(id).length > 0,
+    staleTime: 30_000,
+  });
+}
+
+export function useExplorerAddress(address: string) {
+  return useQuery({
+    queryKey: ["explorerAddress", address],
+    queryFn: ({ signal }) => getPerpetualHubUser(address, signal),
+    enabled: ADDRESS_RE.test(address),
     staleTime: 30_000,
   });
 }
