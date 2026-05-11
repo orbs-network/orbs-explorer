@@ -1,14 +1,20 @@
+// Scaled numeric fields are returned as `number` by the explorer API routes
+// (see `src/lib/perpetual-hub/scale.ts`). Legacy paths may still emit a
+// string — the union keeps both shapes addressable without forcing every
+// downstream consumer to narrow.
+type ScaledNumber = number | string;
+
 export type PerpetualHubOperation = {
   id: number;
   operationType: string;
   userAddress: string;
   symbol?: string;
   side?: string;
-  quantity?: string;
-  price?: string;
-  amount?: string;
-  fee?: string;
-  realizedPnl?: string;
+  quantity?: ScaledNumber;
+  price?: ScaledNumber;
+  amount?: ScaledNumber;
+  fee?: ScaledNumber;
+  realizedPnl?: ScaledNumber;
   status: string;
   rejectReason?: string;
   timestamp: number;
@@ -22,10 +28,10 @@ export type PerpetualHubTrade = {
   id: number;
   symbol?: string;
   side?: string;
-  quantity?: string;
-  price?: string;
-  fee?: string;
-  realizedPnl?: string;
+  quantity?: ScaledNumber;
+  price?: ScaledNumber;
+  fee?: ScaledNumber;
+  realizedPnl?: ScaledNumber;
   isClose?: boolean;
   timestamp: number;
 };
@@ -33,14 +39,14 @@ export type PerpetualHubTrade = {
 export type PerpetualHubUserPosition = {
   symbol?: string;
   side?: string;
-  quantity?: string;
-  positionAmt?: string;
-  entryPrice?: string;
-  markPrice?: string;
-  notional?: string;
-  unrealizedPnl?: string;
-  liquidationPrice?: string;
-  maintenanceMargin?: string;
+  quantity?: ScaledNumber;
+  positionAmt?: ScaledNumber;
+  entryPrice?: ScaledNumber;
+  markPrice?: ScaledNumber;
+  notional?: ScaledNumber;
+  unrealizedPnl?: ScaledNumber;
+  liquidationPrice?: ScaledNumber;
+  maintenanceMargin?: ScaledNumber;
   leverage?: string | number;
 };
 
@@ -50,9 +56,9 @@ export type PerpetualHubUserOrder = {
   symbol?: string;
   side?: string;
   orderType?: string;
-  quantity?: string;
-  price?: string;
-  stopPrice?: string;
+  quantity?: ScaledNumber;
+  price?: ScaledNumber;
+  stopPrice?: ScaledNumber;
   status?: string;
   timestamp?: number;
 };
@@ -60,16 +66,16 @@ export type PerpetualHubUserOrder = {
 export type PerpetualHubUserCurrent = {
   user?: {
     address: string;
-    balance: string;
+    balance?: ScaledNumber;
     nonce?: number;
   };
   positions: PerpetualHubUserPosition[];
   pendingOrders: PerpetualHubUserOrder[];
-  availableBalance?: string;
-  marginUsed?: string;
-  maintenanceMargin?: string;
-  marginBalance?: string;
-  unrealizedPnl?: string;
+  availableBalance?: ScaledNumber;
+  marginUsed?: ScaledNumber;
+  maintenanceMargin?: ScaledNumber;
+  marginBalance?: ScaledNumber;
+  unrealizedPnl?: ScaledNumber;
   leveragePreferences?: Record<string, number>;
 };
 
@@ -77,11 +83,11 @@ export type PerpetualHubUserDetail = {
   address: string;
   current?: PerpetualHubUserCurrent;
   accounting?: {
-    totalDeposits?: string;
-    totalWithdrawals?: string;
-    totalCommissionPaid?: string;
-    totalFundingPaid?: string;
-    realizedPnl?: string;
+    totalDeposits?: ScaledNumber;
+    totalWithdrawals?: ScaledNumber;
+    totalCommissionPaid?: ScaledNumber;
+    totalFundingPaid?: ScaledNumber;
+    realizedPnl?: ScaledNumber;
   };
   history: {
     events: PerpetualHubOperation[];

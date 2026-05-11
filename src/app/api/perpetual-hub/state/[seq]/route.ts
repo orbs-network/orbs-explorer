@@ -1,4 +1,9 @@
 import { NextResponse } from "next/server";
+import {
+  amountToUsd,
+  priceToUsd,
+  quantityToUnits,
+} from "@/lib/perpetual-hub/scale";
 import type { PerpetualHubStateDetail } from "@/lib/perpetual-hub/types";
 
 type FetchResult<T> = { data?: T; error?: string };
@@ -71,17 +76,12 @@ async function fetchJson<T>(url: string): Promise<FetchResult<T>> {
   }
 }
 
-function toNumber(value: unknown): number {
-  if (typeof value === "number" && Number.isFinite(value)) return value;
-  if (typeof value !== "string") return 0;
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : 0;
-}
-
 function positionNotional(position: ReflectedPosition) {
-  const explicit = Math.abs(toNumber(position.notional));
+  const explicit = Math.abs(amountToUsd(position.notional));
   if (explicit) return explicit;
-  return Math.abs(toNumber(position.positionAmt)) * Math.abs(toNumber(position.entryPrice));
+  const quantity = Math.abs(quantityToUnits(position.positionAmt));
+  const entry = Math.abs(priceToUsd(position.entryPrice));
+  return quantity * entry;
 }
 
 function summarizeState(state: ReflectedState) {
@@ -97,11 +97,12 @@ function summarizeState(state: ReflectedState) {
   const users = (state.users ?? []).map((user) => {
     const userPositions = user.positions ?? [];
     const userPendingOrders = user.pendingOrders?.length ?? 0;
-    totalUserBalance += toNumber(user.balance);
+    const userBalance = amountToUsd(user.balance);
+    totalUserBalance += userBalance;
     pendingOrders += userPendingOrders;
 
     for (const position of userPositions) {
-      const quantity = toNumber(position.positionAmt);
+      const quantity = quantityToUnits(position.positionAmt);
       if (!quantity) continue;
       const notional = positionNotional(position);
       const current = exposure.get(position.symbol) ?? {
@@ -121,7 +122,7 @@ function summarizeState(state: ReflectedState) {
 
     return {
       address: user.user ?? "",
-      balance: toNumber(user.balance),
+      balance: userBalance,
       positions: userPositions.length,
       pendingOrders: userPendingOrders,
     };
@@ -134,10 +135,10 @@ function summarizeState(state: ReflectedState) {
       pendingOrders,
       totalUserBalance,
       openInterest,
-      platformFeesCollected: toNumber(state.platformFeesCollected),
-      hedgerTotalDeposits: toNumber(state.hedger?.totalDeposits),
-      hedgerTotalWithdrawals: toNumber(state.hedger?.totalWithdrawals),
-      hedgerRealizedPnl: toNumber(state.hedger?.realizedPnl),
+      platformFeesCollected: amountToUsd(state.platformFeesCollected),
+      hedgerTotalDeposits: amountToUsd(state.hedger?.totalDeposits),
+      hedgerTotalWithdrawals: amountToUsd(state.hedger?.totalWithdrawals),
+      hedgerRealizedPnl: amountToUsd(state.hedger?.realizedPnl),
     },
     exposureBySymbol: Array.from(exposure.entries())
       .map(([symbol, value]) => ({ symbol, ...value }))

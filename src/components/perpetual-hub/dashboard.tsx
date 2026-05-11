@@ -122,7 +122,7 @@ function eventDetails(event: PerpetualHubOperation) {
     details.push({ label: "Lev", value: `${event.amount}x` });
   }
   if (event.operationType === "CANCEL_ORDER" && event.amount) {
-    details.push({ label: "Order", value: event.amount });
+    details.push({ label: "Order", value: String(event.amount) });
   }
   if (amount && !["CHANGE_LEVERAGE", "CANCEL_ORDER"].includes(event.operationType)) {
     details.push({ label: "Amount", value: formatUsd(amount) });
