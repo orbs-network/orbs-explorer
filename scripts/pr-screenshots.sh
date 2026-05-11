@@ -47,7 +47,9 @@ trap cleanup EXIT INT TERM
 
 start_dev() {
   : > "$DEV_LOG"
-  yarn dev --port "$PORT" >"$DEV_LOG" 2>&1 &
+  # Use npx next dev directly so the script works regardless of which
+  # package manager (yarn / pnpm / npm) is installed on the host.
+  npx next dev --port "$PORT" >"$DEV_LOG" 2>&1 &
   DEV_PID=$!
   local waited=0
   until grep -q "Ready in" "$DEV_LOG"; do
