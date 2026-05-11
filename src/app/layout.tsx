@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Geist, Geist_Mono, Montserrat, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import { QueryProvider } from "./providers/query-provider";
 import { AuthProvider } from "./providers/auth-provider";
@@ -16,6 +16,24 @@ const geistSans = Geist({
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
+});
+
+// Orbs typography — exposed as --font-orbs-sans / --font-orbs-mono.
+// The [data-theme="explorer"] block in globals.css re-maps Geist's
+// --font-geist-sans / --font-geist-mono to these inside the explorer
+// subtree only, so the rest of the app keeps Geist.
+const orbsSans = Montserrat({
+  variable: "--font-orbs-sans",
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+  display: "swap",
+});
+
+const orbsMono = JetBrains_Mono({
+  variable: "--font-orbs-mono",
+  subsets: ["latin"],
+  weight: ["400", "500", "600"],
+  display: "swap",
 });
 
 export const metadata: Metadata = {
@@ -38,7 +56,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-[100dvh] overflow-x-hidden`}
+        className={`${geistSans.variable} ${geistMono.variable} ${orbsSans.variable} ${orbsMono.variable} antialiased min-h-[100dvh] overflow-x-hidden`}
       >
         <ThemeProvider
           attribute="class"

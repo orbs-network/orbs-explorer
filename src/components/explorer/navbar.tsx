@@ -2,6 +2,7 @@
 
 import { ROUTES } from "@/lib/routes";
 import { cn } from "@/lib/utils/utils";
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { Search } from "lucide-react";
@@ -53,12 +54,24 @@ export function ExplorerNavbar() {
       <div className="mx-auto flex h-14 max-w-[1400px] items-center gap-3 px-4 sm:gap-6 sm:px-6">
         <Link
           href={ROUTES.EXPLORER.ROOT}
-          className="flex items-center gap-2 shrink-0"
+          className="flex items-center gap-2.5 shrink-0"
         >
-          <span className="grid h-7 w-7 place-items-center rounded-md bg-primary text-primary-foreground font-mono text-[11px] font-bold">
-            O
+          <Image
+            src="/orbs/orbs-mark.svg"
+            alt=""
+            width={28}
+            height={28}
+            className="shrink-0"
+            priority
+          />
+          <span className="flex flex-col leading-none">
+            <span className="text-[15px] font-semibold tracking-tight text-foreground">
+              Orbs
+            </span>
+            <span className="mt-0.5 font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
+              Explorer
+            </span>
           </span>
-          <span className="font-semibold tracking-tight">Orbs Explorer</span>
         </Link>
 
         <nav className="hidden md:flex items-center gap-1">
