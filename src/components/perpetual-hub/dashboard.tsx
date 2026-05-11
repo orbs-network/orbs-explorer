@@ -7,6 +7,8 @@ import moment from "moment";
 import {
   Activity,
   AlertTriangle,
+  ArrowDown,
+  ArrowUp,
   BarChart3,
   CheckCircle2,
   CircleDollarSign,
@@ -19,15 +21,17 @@ import {
   Search,
   ShieldCheck,
   TrendingUp,
+  Users as UsersIcon,
   Wallet,
   XCircle,
 } from "lucide-react";
-import { usePerpetualHubSummary } from "@/lib/perpetual-hub";
+import { usePerpetualHubSummary, usePerpetualHubUsers } from "@/lib/perpetual-hub";
 import { getPerpetualHubRollupByRoot } from "@/lib/perpetual-hub/api";
 import type {
   PerpetualHubOperation,
   PerpetualHubHedgerPosition,
   PerpetualHubTrade,
+  PerpetualHubUserBalance,
   PerpetualHubUserDetail,
   PerpetualHubUserOrder,
   PerpetualHubUserPosition,
@@ -746,6 +750,340 @@ function UserTradesTable({ trades }: { trades: PerpetualHubTrade[] }) {
   );
 }
 
+type UserBalanceSortKey =
+  | "address"
+  | "wallet"
+  | "available"
+  | "marginUsed"
+  | "maintenanceMargin"
+  | "marginBalance"
+  | "unrealizedPnl"
+  | "positions"
+  | "orders";
+
+const USER_BALANCE_COLUMNS: {
+  key: UserBalanceSortKey;
+  label: string;
+  align?: "left" | "right";
+}[] = [
+  { key: "address", label: "Address", align: "left" },
+  { key: "wallet", label: "Wallet", align: "right" },
+  { key: "available", label: "Available", align: "right" },
+  { key: "marginUsed", label: "Margin Used", align: "right" },
+  { key: "maintenanceMargin", label: "Maint. Margin", align: "right" },
+  { key: "marginBalance", label: "Margin Balance", align: "right" },
+  { key: "unrealizedPnl", label: "Unrealized PnL", align: "right" },
+  { key: "positions", label: "Positions", align: "right" },
+  { key: "orders", label: "Orders", align: "right" },
+];
+
+function UserBalancesTable({
+  rows,
+  sortKey,
+  sortDir,
+  onSort,
+  emptyLabel = "No funded users at this sequence.",
+}: {
+  rows: PerpetualHubUserBalance[];
+  sortKey: UserBalanceSortKey;
+  sortDir: "asc" | "desc";
+  onSort: (key: UserBalanceSortKey) => void;
+  emptyLabel?: string;
+}) {
+  const sorted = useMemo(() => {
+    const copy = [...rows];
+    copy.sort((a, b) => {
+      if (!a.ok && !b.ok) return 0;
+      if (!a.ok) return 1;
+      if (!b.ok) return -1;
+      if (sortKey === "address") {
+        return sortDir === "asc"
+          ? a.address.localeCompare(b.address)
+          : b.address.localeCompare(a.address);
+      }
+      const av = a[sortKey];
+      const bv = b[sortKey];
+      return sortDir === "asc" ? av - bv : bv - av;
+    });
+    return copy;
+  }, [rows, sortKey, sortDir]);
+
+  if (!rows.length) {
+    return (
+      <Card className="rounded-lg py-8">
+        <CardContent className="text-center text-sm text-muted-foreground">
+          {emptyLabel}
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <Card className="overflow-hidden rounded-lg py-0">
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead className="border-b bg-muted/30 text-xs text-muted-foreground">
+            <tr>
+              {USER_BALANCE_COLUMNS.map((column) => {
+                const active = column.key === sortKey;
+                return (
+                  <th
+                    key={column.key}
+                    className={cn(
+                      "px-4 py-3 font-medium",
+                      column.align === "right" ? "text-right" : "text-left"
+                    )}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => onSort(column.key)}
+                      className={cn(
+                        "inline-flex items-center gap-1 whitespace-nowrap transition-colors hover:text-foreground",
+                        column.align === "right" && "ml-auto",
+                        active && "text-primary"
+                      )}
+                    >
+                      {column.label}
+                      {active &&
+                        (sortDir === "asc" ? (
+                          <ArrowUp className="h-3 w-3" />
+                        ) : (
+                          <ArrowDown className="h-3 w-3" />
+                        ))}
+                    </button>
+                  </th>
+                );
+              })}
+            </tr>
+          </thead>
+          <tbody>
+            {sorted.map((row) => {
+              if (!row.ok) {
+                return (
+                  <tr key={row.address} className="border-b last:border-b-0">
+                    <td className="px-4 py-3 font-mono">
+                      <Link
+                        href={ROUTES.PERPETUAL_HUB.USER(row.address)}
+                        className="text-primary hover:underline"
+                      >
+                        {truncate(row.address, 6)}
+                      </Link>
+                    </td>
+                    <td colSpan={8} className="px-4 py-3 text-destructive">
+                      Failed: {row.error}
+                    </td>
+                  </tr>
+                );
+              }
+              const upnlTone =
+                row.unrealizedPnl > 0
+                  ? "text-emerald-500"
+                  : row.unrealizedPnl < 0
+                    ? "text-destructive"
+                    : "text-muted-foreground";
+              return (
+                <tr key={row.address} className="border-b last:border-b-0">
+                  <td className="px-4 py-3 font-mono">
+                    <Link
+                      href={ROUTES.PERPETUAL_HUB.USER(row.address)}
+                      className="text-primary hover:underline"
+                      title={row.address}
+                    >
+                      {truncate(row.address, 6)}
+                    </Link>
+                  </td>
+                  <td className="px-4 py-3 text-right font-mono">
+                    {formatUsd(row.wallet)}
+                  </td>
+                  <td className="px-4 py-3 text-right font-mono">
+                    {formatUsd(row.available)}
+                  </td>
+                  <td
+                    className={cn(
+                      "px-4 py-3 text-right font-mono",
+                      row.marginUsed === 0 && "text-muted-foreground"
+                    )}
+                  >
+                    {formatUsd(row.marginUsed)}
+                  </td>
+                  <td
+                    className={cn(
+                      "px-4 py-3 text-right font-mono",
+                      row.maintenanceMargin === 0 && "text-muted-foreground"
+                    )}
+                  >
+                    {formatUsd(row.maintenanceMargin)}
+                  </td>
+                  <td className="px-4 py-3 text-right font-mono">
+                    {formatUsd(row.marginBalance)}
+                  </td>
+                  <td className={cn("px-4 py-3 text-right font-mono", upnlTone)}>
+                    {formatUsd(row.unrealizedPnl)}
+                  </td>
+                  <td
+                    className={cn(
+                      "px-4 py-3 text-right font-mono",
+                      row.positions === 0 && "text-muted-foreground"
+                    )}
+                  >
+                    {formatNumber(row.positions)}
+                  </td>
+                  <td
+                    className={cn(
+                      "px-4 py-3 text-right font-mono",
+                      row.orders === 0 && "text-muted-foreground"
+                    )}
+                  >
+                    {formatNumber(row.orders)}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </Card>
+  );
+}
+
+function UsersTabContent() {
+  const { data, isLoading, isError, error, refetch, isFetching } =
+    usePerpetualHubUsers();
+  const [sortKey, setSortKey] = useState<UserBalanceSortKey>("marginBalance");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+  const [filter, setFilter] = useState("");
+
+  function handleSort(key: UserBalanceSortKey) {
+    if (key === sortKey) {
+      setSortDir((prev) => (prev === "asc" ? "desc" : "asc"));
+    } else {
+      setSortKey(key);
+      setSortDir(key === "address" ? "asc" : "desc");
+    }
+  }
+
+  const filteredRows = useMemo(() => {
+    if (!data) return [];
+    const term = filter.trim().toLowerCase();
+    if (!term) return data.users;
+    return data.users.filter((row) => row.address.toLowerCase().includes(term));
+  }, [data, filter]);
+
+  if (isLoading) {
+    return (
+      <div className="flex min-h-[280px] flex-col items-center justify-center gap-3">
+        <Spinner size={24} className="text-primary" />
+        <p className="text-sm text-muted-foreground">Loading user balances</p>
+      </div>
+    );
+  }
+
+  if (isError || !data) {
+    return (
+      <Card className="rounded-lg border-destructive/40 bg-destructive/5 py-4">
+        <CardContent className="px-4 text-sm text-destructive">
+          {error instanceof Error ? error.message : "Failed to load user balances"}
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const userCountSub =
+    data.hiddenEmpty > 0
+      ? `${data.fundedUsers} / ${data.totalUsers} (${data.hiddenEmpty} empty hidden)`
+      : `${data.fundedUsers} total`;
+  const filterTerm = filter.trim();
+  const filterMatches = filterTerm ? filteredRows.length : null;
+
+  return (
+    <Section title="User Balances" icon={UsersIcon}>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <p className="text-sm text-muted-foreground">
+          Snapshot of every user from the latest on-chain state. Updated{" "}
+          {moment(data.updatedAt).format("HH:mm:ss")}
+        </p>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => refetch()}
+          disabled={isFetching}
+        >
+          {isFetching ? <Spinner size={14} /> : <RefreshCw className="h-4 w-4" />}
+          Refresh
+        </Button>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="relative min-w-0 flex-1 sm:max-w-md">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            value={filter}
+            onChange={(event) => setFilter(event.target.value)}
+            placeholder="Filter by address"
+            className="pl-9 font-mono"
+          />
+        </div>
+        {filterMatches != null && (
+          <p className="text-xs text-muted-foreground">
+            {formatNumber(filterMatches)} of {formatNumber(data.users.length)} users
+          </p>
+        )}
+      </div>
+
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <MetricCard
+          label="On-Chain Seq"
+          value={`#${formatNumber(data.onChainSeq)}`}
+          icon={Database}
+          tone="info"
+          sub={data.teeSeq != null ? `TEE #${formatNumber(data.teeSeq)}` : undefined}
+        />
+        <MetricCard
+          label="Funded Users"
+          value={formatNumber(data.fundedUsers)}
+          icon={UsersIcon}
+          sub={userCountSub}
+        />
+        <MetricCard
+          label="Pending Ops"
+          value={formatNumber(data.pendingOps ?? 0)}
+          icon={Clock}
+          tone={(data.pendingOps ?? 0) > 0 ? "warning" : "default"}
+        />
+        <MetricCard
+          label="Total Wallet"
+          value={formatUsd(data.totals.wallet)}
+          icon={Wallet}
+          tone="positive"
+        />
+        <MetricCard
+          label="Total Margin Balance"
+          value={formatUsd(data.totals.marginBalance)}
+          icon={CircleDollarSign}
+        />
+        <MetricCard
+          label="Total Unrealized PnL"
+          value={formatUsd(data.totals.unrealizedPnl)}
+          icon={TrendingUp}
+          tone={data.totals.unrealizedPnl >= 0 ? "positive" : "danger"}
+        />
+      </div>
+
+      <UserBalancesTable
+        rows={filteredRows}
+        sortKey={sortKey}
+        sortDir={sortDir}
+        onSort={handleSort}
+        emptyLabel={
+          filterTerm
+            ? "No users match this filter."
+            : "No funded users at this sequence."
+        }
+      />
+    </Section>
+  );
+}
+
 export function UserLookupResults({ data }: { data: PerpetualHubUserDetail }) {
   const current = data.current;
   const address = current?.user?.address ?? data.address;
@@ -1028,13 +1366,14 @@ export function PerpetualHubDashboard() {
   const router = useRouter();
   const { data, isLoading, isError, error, refetch, isFetching } =
     usePerpetualHubSummary();
+  // Prefetch in parallel with the summary so the Users tab is instant on click.
+  usePerpetualHubUsers();
+  const [activeTab, setActiveTab] = useState("overview");
   const [rollupLookup, setRollupLookup] = useState("");
   const [seqLookup, setSeqLookup] = useState("");
   const [rootLookup, setRootLookup] = useState("");
   const [rootLookupError, setRootLookupError] = useState("");
   const [isRootLookupLoading, setIsRootLookupLoading] = useState(false);
-  const [userLookup, setUserLookup] = useState("");
-  const [userLookupError, setUserLookupError] = useState("");
 
   const healthStatus = useMemo(() => {
     if (!data) return statusBadge("idle", "Unknown");
@@ -1104,17 +1443,6 @@ export function PerpetualHubDashboard() {
     }
   }
 
-  function handleUserLookup(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const address = userLookup.trim();
-    if (!/^0x[a-fA-F0-9]{40}$/.test(address)) {
-      setUserLookupError("Enter a valid 0x user address");
-      return;
-    }
-    setUserLookupError("");
-    router.push(ROUTES.PERPETUAL_HUB.USER(address));
-  }
-
   if (isLoading) {
     return (
       <div className="flex min-h-[420px] flex-col items-center justify-center gap-3">
@@ -1170,7 +1498,7 @@ export function PerpetualHubDashboard() {
         errors={data.health.errors}
       />
 
-      <Tabs defaultValue="overview" className="space-y-5">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-5">
         <TabsList className="h-auto w-fit max-w-full flex-wrap gap-1.5 rounded-lg border bg-muted/40 p-1.5">
           <TabsTrigger value="overview" className="gap-2">
             <Activity className="h-4 w-4" />
@@ -1179,6 +1507,10 @@ export function PerpetualHubDashboard() {
           <TabsTrigger value="risk" className="gap-2">
             <Gauge className="h-4 w-4" />
             Risk
+          </TabsTrigger>
+          <TabsTrigger value="users" className="gap-2">
+            <UsersIcon className="h-4 w-4" />
+            Users
           </TabsTrigger>
           <TabsTrigger value="hedger" className="gap-2">
             <Wallet className="h-4 w-4" />
@@ -1214,32 +1546,6 @@ export function PerpetualHubDashboard() {
                 sub={`${formatNumber(data.proofs.totalProofs)} proofs`}
               />
             </div>
-          </Section>
-
-          <Section title="User Lookup" icon={Wallet}>
-            <form onSubmit={handleUserLookup} className="flex max-w-3xl gap-2">
-              <div className="relative min-w-0 flex-1">
-                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  value={userLookup}
-                  onChange={(event) => {
-                    setUserLookup(event.target.value);
-                    if (userLookupError) setUserLookupError("");
-                  }}
-                  placeholder="Search user address"
-                  className="pl-9 font-mono"
-                />
-              </div>
-              <Button type="submit" variant="outline">
-                <Search className="h-4 w-4" />
-                Search
-              </Button>
-            </form>
-
-            {userLookupError && (
-              <p className="text-sm text-destructive">{userLookupError}</p>
-            )}
-
           </Section>
 
           <Section title="Activity" icon={Activity}>
@@ -1278,6 +1584,10 @@ export function PerpetualHubDashboard() {
             </div>
             <ExposureTable rows={data.risk.exposureBySymbol} />
           </Section>
+        </TabsContent>
+
+        <TabsContent value="users" className="mt-0 space-y-6">
+          <UsersTabContent />
         </TabsContent>
 
         <TabsContent value="hedger" className="mt-0 space-y-6">

@@ -4,6 +4,7 @@ import {
   getPerpetualHubState,
   getPerpetualHubSummary,
   getPerpetualHubUser,
+  getPerpetualHubUsers,
 } from "./api";
 
 export function usePerpetualHubSummary() {
@@ -27,6 +28,14 @@ export function usePerpetualHubRollup(id: string | number) {
     queryKey: ["perpetualHubRollup", String(id)],
     queryFn: ({ signal }) => getPerpetualHubRollup(id, signal),
     enabled: String(id).length > 0,
+  });
+}
+
+export function usePerpetualHubUsers() {
+  return useQuery({
+    queryKey: ["perpetualHubUsers"],
+    queryFn: ({ signal }) => getPerpetualHubUsers(signal),
+    refetchInterval: 15_000,
   });
 }
 

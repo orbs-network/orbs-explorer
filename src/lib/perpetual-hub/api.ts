@@ -4,6 +4,7 @@ import type {
   PerpetualHubStateDetail,
   PerpetualHubSummary,
   PerpetualHubUserDetail,
+  PerpetualHubUsers,
 } from "./types";
 
 export async function getPerpetualHubSummary(
@@ -45,6 +46,16 @@ export async function getPerpetualHubUser(
   const response = await fetch(`/api/perpetual-hub/user/${address}`, { signal });
   if (!response.ok) {
     throw new Error(`Failed to load Perpetual Hub user (${response.status})`);
+  }
+  return response.json();
+}
+
+export async function getPerpetualHubUsers(
+  signal?: AbortSignal
+): Promise<PerpetualHubUsers> {
+  const response = await fetch("/api/perpetual-hub/users", { signal });
+  if (!response.ok) {
+    throw new Error(`Failed to load Perpetual Hub users (${response.status})`);
   }
   return response.json();
 }

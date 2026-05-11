@@ -95,6 +95,36 @@ export type PerpetualHubUserDetail = {
   updatedAt: number;
 };
 
+export type PerpetualHubUserBalance = {
+  address: string;
+  ok: boolean;
+  error?: string;
+  wallet: number;
+  available: number;
+  marginUsed: number;
+  maintenanceMargin: number;
+  marginBalance: number;
+  unrealizedPnl: number;
+  positions: number;
+  orders: number;
+};
+
+export type PerpetualHubUsers = {
+  onChainSeq: number;
+  teeSeq: number | null;
+  pendingOps: number | null;
+  totalUsers: number;
+  fundedUsers: number;
+  hiddenEmpty: number;
+  totals: {
+    wallet: number;
+    marginBalance: number;
+    unrealizedPnl: number;
+  };
+  users: PerpetualHubUserBalance[];
+  updatedAt: number;
+};
+
 export type PerpetualHubHedgerPosition = {
   symbol: string;
   positionSide?: string;
