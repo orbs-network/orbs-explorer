@@ -116,33 +116,81 @@
   --sidebar-ring: hsl(212 100% 67%);
 }
 
-/* Explorer (data-theme="explorer"): scoped token override.
-   Persistent dark, distinct accent, tighter radii, denser surfaces.
-   Same Radix primitives, different feel. */
+/* ============================================================
+   Explorer (data-theme="explorer") — Orbs Design System skin.
+   Persistent dark, Orbs lilac accent, Montserrat + JetBrains Mono,
+   sharp 1px hairlines, signature surfaces.
+   ============================================================ */
 [data-theme="explorer"] {
-  --radius: 0.375rem;
-  --background: hsl(220 25% 4%);
-  --background-secondary: hsl(220 22% 7%);
-  --foreground: hsl(220 15% 96%);
-  --card: hsl(220 22% 7%);
-  --card-foreground: hsl(220 15% 96%);
-  --popover: hsl(220 22% 9%);
-  --popover-foreground: hsl(220 15% 96%);
-  --primary: hsl(174 80% 50%);
-  --primary-foreground: hsl(220 25% 4%);
-  --secondary: hsl(220 22% 12%);
-  --secondary-foreground: hsl(220 15% 90%);
-  --muted: hsl(220 22% 11%);
-  --muted-foreground: hsl(220 12% 62%);
-  --accent: hsl(220 22% 14%);
-  --accent-foreground: hsl(220 15% 96%);
-  --destructive: hsl(0 70% 55%);
-  --border: hsl(220 22% 14%);
-  --input: hsl(220 22% 14%);
-  --ring: hsl(174 80% 50%);
-  --explorer-success: hsl(150 60% 45%);
-  --explorer-warning: hsl(40 90% 55%);
-  --explorer-pending: hsl(220 12% 60%);
+  /* Orbs brand palette (raw) */
+  --orbs-light: #f6f6f6;
+  --orbs-dark: #121214;
+  --orbs-indigo: #3346f2;
+  --orbs-cyan: #2cedfc;
+  --orbs-pink: #dc8ae0;
+  --orbs-lilac: #a17ae9;
+  --orbs-periwinkle: #7a89e9;
+  --orbs-coral: #ffadae;
+
+  /* Radii — Orbs uses sharp edges */
+  --radius: 0px;
+
+  /* Surfaces */
+  --background: var(--orbs-dark);                  /* #121214 */
+  --background-secondary: #16161a;
+  --foreground: var(--orbs-light);                 /* #f6f6f6 */
+  --card: #161618;
+  --card-foreground: var(--orbs-light);
+  --popover: #1a1a1d;
+  --popover-foreground: var(--orbs-light);
+
+  /* Accent — lilac. Swap to --orbs-cyan / --orbs-indigo / --orbs-pink to retheme. */
+  --primary: var(--orbs-lilac);
+  --primary-foreground: var(--orbs-dark);
+
+  /* Secondary / muted / accent surfaces — neutral grays per Orbs */
+  --secondary: #1c1c1f;
+  --secondary-foreground: #c5c5c5;
+  --muted: #1a1a1d;
+  --muted-foreground: #8a8a8c;
+  --accent: #1c1c1f;
+  --accent-foreground: var(--orbs-light);
+
+  /* Status — desaturated to match Orbs */
+  --destructive: #d96a6a;
+  --explorer-success: #4fbe8a;
+  --explorer-warning: #e0b86a;
+  --explorer-pending: #8a8a8c;
+
+  /* Hairlines & inputs */
+  --border: #2a2a2e;
+  --input: #2a2a2e;
+  --ring: var(--orbs-lilac);
+
+  /* Font routing — re-map the existing token names so we don't have
+     to touch every Tailwind font-sans / font-mono usage. */
+  --font-geist-sans: var(--font-orbs-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-geist-mono: var(--font-orbs-mono), ui-monospace, "SF Mono", Menlo, monospace;
+}
+
+/* Body type tightening to match Orbs editorial register */
+[data-theme="explorer"] {
+  letter-spacing: -0.01em;
+}
+[data-theme="explorer"] h1,
+[data-theme="explorer"] h2,
+[data-theme="explorer"] h3 {
+  letter-spacing: -0.03em;
+  font-weight: 600;
+}
+
+/* Orbs eyebrow label utility — usable as className="orbs-eyebrow" */
+[data-theme="explorer"] .orbs-eyebrow {
+  font-family: var(--font-geist-mono);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted-foreground);
 }
 
 /* Custom scrollbars */
