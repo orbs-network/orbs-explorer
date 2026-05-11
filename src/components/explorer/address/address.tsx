@@ -138,16 +138,12 @@ function StatsStrip({ data }: { data: PerpetualHubUserDetail }) {
   const c = data.current;
   const positions = c?.positions.length ?? 0;
   const orders = c?.pendingOrders.length ?? 0;
-  // accounting fields are human-readable USD; current.* fields are raw on-chain
-  // scaled values. Prefer accounting where possible.
-  const accounting = data.accounting as
-    | { balance?: string }
-    | undefined;
-  const balance =
-    num(accounting?.balance) ?? scaleMicro(num(c?.user?.balance));
-  const available = scaleMicro(num(c?.availableBalance));
-  const marginUsed = scaleMicro(num(c?.marginUsed));
-  const upnl = scaleMicro(num(c?.unrealizedPnl));
+  // The /api/perpetual-hub/user route already scales raw micro-USD /
+  // 1e8 / 1e18 values at the boundary, so we just coerce to number here.
+  const balance = num(c?.user?.balance);
+  const available = num(c?.availableBalance);
+  const marginUsed = num(c?.marginUsed);
+  const upnl = num(c?.unrealizedPnl);
   return (
     <section
       aria-label="Account state"
@@ -551,7 +547,7 @@ function PnlValue({
   value,
   compact = false,
 }: {
-  value: string | undefined;
+  value: number | string | undefined;
   compact?: boolean;
 }) {
   if (value === undefined || value === null) {
@@ -578,16 +574,6 @@ function num(v: string | number | undefined): number | undefined {
   if (v === undefined || v === null) return undefined;
   const n = typeof v === "number" ? v : Number(v);
   return Number.isFinite(n) ? n : undefined;
-}
-
-/**
- * The perp hub stores balances/margins as integers in micro-USD (1e6 scaling).
- * `accounting.balance` is already human, but `current.*` fields aren't.
- * Apply when reading from `current.*`.
- */
-function scaleMicro(v: number | undefined): number | undefined {
-  if (v === undefined) return undefined;
-  return v / 1e6;
 }
 
 function signedUsd(n: number): string {

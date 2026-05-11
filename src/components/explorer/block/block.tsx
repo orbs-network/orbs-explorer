@@ -539,7 +539,7 @@ function DataRow({
   );
 }
 
-function PnlValue({ value }: { value: string }) {
+function PnlValue({ value }: { value: number | string }) {
   const n = Number(value);
   const tone =
     n > 0
