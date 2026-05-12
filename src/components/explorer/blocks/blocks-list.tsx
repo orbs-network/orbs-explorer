@@ -40,15 +40,12 @@ export function ExplorerBlocksList() {
     if (page > totalPages) setPage(totalPages);
   }, [total, pageSize, page, setPage]);
 
-  const latestSeq = q.data?.events[0]?.teeSequence;
-
   return (
     <div className="flex flex-col gap-4 sm:gap-5">
       <Header />
       <StatsStrip
         total={q.data?.total}
         stats={q.data?.stats}
-        latestSeq={latestSeq}
         isLoading={q.isPending}
       />
       <section className="rounded-md border border-border bg-card">
@@ -106,21 +103,22 @@ function Header() {
 function StatsStrip({
   total,
   stats,
-  latestSeq,
   isLoading,
 }: {
   total: number | undefined;
   stats: PerpetualHubEventListStats | undefined;
-  latestSeq: number | undefined;
   isLoading: boolean;
 }) {
   const typeCount = stats ? Object.keys(stats.byType).length : undefined;
   const topType = stats ? pickTopType(stats.byType) : undefined;
 
+  // 3 cards — keep stats page-state-independent so the strip reads the same
+  // on any page. A per-page "latest seq" was the obvious 4th but it
+  // misleads on pages > 1.
   return (
     <section
       aria-label="Block stats"
-      className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:gap-3"
+      className="grid grid-cols-1 gap-2 sm:grid-cols-3 lg:gap-3"
     >
       <StatCard
         label="Total events"
@@ -129,16 +127,6 @@ function StatsStrip({
             ? "—"
             : total !== undefined
             ? formatInteger(total)
-            : "—"
-        }
-      />
-      <StatCard
-        label="Latest seq"
-        value={
-          isLoading
-            ? "—"
-            : latestSeq !== undefined
-            ? `#${formatInteger(latestSeq)}`
             : "—"
         }
       />
@@ -193,9 +181,11 @@ function BlockTable({ events }: { events: PerpetualHubOperation[] }) {
 
 function BlockRow({ op }: { op: PerpetualHubOperation }) {
   const seq = op.teeSequence;
+  // Mobile shows 4 cells in 4 cols: seq | OpType (stretching) | status | time.
+  // Desktop adds symbol + user as separate columns 3 and 4.
   return (
     <li>
-      <div className="group grid grid-cols-[5.5rem_1fr_auto] items-center gap-3 px-3 py-2 transition-colors hover:bg-muted/40 sm:grid-cols-[5.5rem_minmax(0,1fr)_minmax(0,7rem)_minmax(0,8rem)_auto_auto]">
+      <div className="group grid grid-cols-[5.5rem_minmax(0,1fr)_auto_auto] items-center gap-3 px-3 py-2 transition-colors hover:bg-muted/40 sm:grid-cols-[5.5rem_minmax(0,1fr)_minmax(0,7rem)_minmax(0,8rem)_auto_auto]">
         {seq !== undefined ? (
           <Link
             href={ROUTES.EXPLORER.BLOCK(seq)}
@@ -220,7 +210,6 @@ function BlockRow({ op }: { op: PerpetualHubOperation }) {
         {op.userAddress ? (
           <Link
             href={ROUTES.EXPLORER.ADDRESS(op.userAddress)}
-            onClick={(e) => e.stopPropagation()}
             className="hidden sm:inline truncate font-mono text-xs text-primary hover:underline"
           >
             {truncateHash(op.userAddress)}
@@ -245,13 +234,13 @@ function SkeletonRows({ count }: { count: number }) {
       {Array.from({ length: count }).map((_, i) => (
         <li
           key={i}
-          className="grid grid-cols-[5.5rem_1fr_auto] items-center gap-3 px-3 py-2 sm:grid-cols-[5.5rem_minmax(0,1fr)_minmax(0,7rem)_minmax(0,8rem)_auto_auto]"
+          className="grid grid-cols-[5.5rem_minmax(0,1fr)_auto_auto] items-center gap-3 px-3 py-2 sm:grid-cols-[5.5rem_minmax(0,1fr)_minmax(0,7rem)_minmax(0,8rem)_auto_auto]"
         >
           <span className="block h-3 w-16 animate-pulse rounded bg-muted/60" />
           <span className="block h-3 w-3/4 animate-pulse rounded bg-muted/60" />
           <span className="hidden sm:block h-3 w-20 animate-pulse rounded bg-muted/60" />
           <span className="hidden sm:block h-3 w-24 animate-pulse rounded bg-muted/60" />
-          <span className="hidden sm:block h-3 w-16 animate-pulse rounded bg-muted/60" />
+          <span className="block h-3 w-16 animate-pulse rounded bg-muted/60" />
           <span className="block h-3 w-12 animate-pulse rounded bg-muted/60" />
         </li>
       ))}
