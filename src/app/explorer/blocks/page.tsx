@@ -1,10 +1,5 @@
-import { Placeholder } from "@/components/explorer/placeholder";
+import { ExplorerBlocksList } from "@/components/explorer/blocks/blocks-list";
 
 export default function ExplorerBlocksPage() {
-  return (
-    <Placeholder
-      title="Blocks"
-      hint="Recent sequences. Pagination depends on a backend endpoint that is being requested separately."
-    />
-  );
+  return <ExplorerBlocksList />;
 }
