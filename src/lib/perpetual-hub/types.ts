@@ -258,6 +258,21 @@ export type PerpetualHubRollupDetail = {
   operations: PerpetualHubOperation[];
 };
 
+export type PerpetualHubRollupListStats = {
+  totalRollups: number;
+  totalOps: number;
+  latestSequence: number;
+  avgOpsPerRollup: string;
+};
+
+export type PerpetualHubRollupList = {
+  rollups: PerpetualHubRollup[];
+  total: number;
+  limit: number;
+  offset: number;
+  stats?: PerpetualHubRollupListStats;
+};
+
 export type PerpetualHubStateDetail = {
   sequenceNumber: number;
   merkleRoot?: string;

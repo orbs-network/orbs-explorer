@@ -1,6 +1,7 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, keepPreviousData } from "@tanstack/react-query";
 import {
   getPerpetualHubRollup,
+  getPerpetualHubRollups,
   getPerpetualHubState,
   getPerpetualHubSummary,
   getPerpetualHubUser,
@@ -36,6 +37,18 @@ export function useExplorerBatch(id: string | number) {
     queryFn: ({ signal }) => getPerpetualHubRollup(id, signal),
     enabled: String(id).length > 0,
     staleTime: 30_000,
+  });
+}
+
+export function useExplorerBatches(params: { limit: number; offset: number }) {
+  return useQuery({
+    queryKey: ["explorerBatches", params.limit, params.offset],
+    queryFn: ({ signal }) => getPerpetualHubRollups(params, signal),
+    // Keep the previous page visible while the next page loads to avoid
+    // the table collapsing to a skeleton during pagination.
+    placeholderData: keepPreviousData,
+    refetchInterval: 10_000,
+    staleTime: 5_000,
   });
 }
 

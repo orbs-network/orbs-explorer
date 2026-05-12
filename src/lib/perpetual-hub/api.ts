@@ -1,6 +1,7 @@
 import type {
   PerpetualHubRollupDetail,
   PerpetualHubRollup,
+  PerpetualHubRollupList,
   PerpetualHubStateDetail,
   PerpetualHubSummary,
   PerpetualHubUserDetail,
@@ -69,6 +70,23 @@ export async function getPerpetualHubRollupByRoot(
   });
   if (!response.ok) {
     throw new Error(`Failed to find rollup root (${response.status})`);
+  }
+  return response.json();
+}
+
+export async function getPerpetualHubRollups(
+  params: { limit: number; offset: number },
+  signal?: AbortSignal
+): Promise<PerpetualHubRollupList> {
+  const query = new URLSearchParams({
+    limit: String(params.limit),
+    offset: String(params.offset),
+  });
+  const response = await fetch(`/api/perpetual-hub/rollups?${query}`, {
+    signal,
+  });
+  if (!response.ok) {
+    throw new Error(`Failed to load rollups (${response.status})`);
   }
   return response.json();
 }
