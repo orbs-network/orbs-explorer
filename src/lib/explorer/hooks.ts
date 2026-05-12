@@ -1,5 +1,6 @@
 import { useQuery, keepPreviousData } from "@tanstack/react-query";
 import {
+  getPerpetualHubEvents,
   getPerpetualHubRollup,
   getPerpetualHubRollups,
   getPerpetualHubState,
@@ -49,6 +50,16 @@ export function useExplorerBatches(params: { limit: number; offset: number }) {
     placeholderData: keepPreviousData,
     refetchInterval: 10_000,
     staleTime: 5_000,
+  });
+}
+
+export function useExplorerBlocks(params: { limit: number; offset: number }) {
+  return useQuery({
+    queryKey: ["explorerBlocks", params.limit, params.offset],
+    queryFn: ({ signal }) => getPerpetualHubEvents(params, signal),
+    placeholderData: keepPreviousData,
+    refetchInterval: 7_000,
+    staleTime: 3_000,
   });
 }
 

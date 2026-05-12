@@ -273,6 +273,26 @@ export type PerpetualHubRollupList = {
   stats?: PerpetualHubRollupListStats;
 };
 
+export type PerpetualHubEventListStats = {
+  totalEvents: number;
+  byType: Record<string, number>;
+};
+
+export type PerpetualHubEventListFilters = {
+  type?: string;
+  symbol?: string;
+  user?: string;
+  status?: string;
+};
+
+export type PerpetualHubEventList = {
+  events: PerpetualHubOperation[];
+  total: number;
+  limit: number;
+  offset: number;
+  stats?: PerpetualHubEventListStats;
+};
+
 export type PerpetualHubStateDetail = {
   sequenceNumber: number;
   merkleRoot?: string;
