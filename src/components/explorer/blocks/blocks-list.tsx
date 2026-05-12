@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import Link from "next/link";
 import { useExplorerBlocks } from "@/lib/explorer/hooks";
 import { useListPagination } from "@/lib/explorer/use-list-pagination";
@@ -28,6 +29,16 @@ export function ExplorerBlocksList() {
       allowedSizes: PAGE_SIZE_OPTIONS,
     });
   const q = useExplorerBlocks({ limit, offset });
+
+  // Normalize the URL when ?page=N points past the real ceiling so refresh
+  // doesn't preserve a stale inconsistent state. <Pagination> clamps the
+  // displayed page visually in either case; this keeps the URL honest.
+  const total = q.data?.total;
+  useEffect(() => {
+    if (total === undefined) return;
+    const totalPages = Math.max(1, Math.ceil(total / pageSize));
+    if (page > totalPages) setPage(totalPages);
+  }, [total, pageSize, page, setPage]);
 
   const latestSeq = q.data?.events[0]?.teeSequence;
 
@@ -227,33 +238,21 @@ function BlockRow({ op }: { op: PerpetualHubOperation }) {
 // ---------- States ----------
 
 function SkeletonRows({ count }: { count: number }) {
+  // Grid template mirrors BlockRow so the skeleton's column layout matches
+  // the loaded table at every viewport.
   return (
     <ul className="divide-y divide-border">
       {Array.from({ length: count }).map((_, i) => (
         <li
           key={i}
-          className="grid grid-cols-[5.5rem_minmax(0,1fr)_minmax(0,7rem)_minmax(0,8rem)_auto_auto] items-center gap-3 px-3 py-2"
+          className="grid grid-cols-[5.5rem_1fr_auto] items-center gap-3 px-3 py-2 sm:grid-cols-[5.5rem_minmax(0,1fr)_minmax(0,7rem)_minmax(0,8rem)_auto_auto]"
         >
-          {Array.from({ length: 6 }).map((_, c) => (
-            <span
-              key={c}
-              className="block h-3 animate-pulse rounded bg-muted/60"
-              style={{
-                width:
-                  c === 0
-                    ? "4rem"
-                    : c === 1
-                    ? "70%"
-                    : c === 2
-                    ? "5rem"
-                    : c === 3
-                    ? "6rem"
-                    : c === 4
-                    ? "4rem"
-                    : "3rem",
-              }}
-            />
-          ))}
+          <span className="block h-3 w-16 animate-pulse rounded bg-muted/60" />
+          <span className="block h-3 w-3/4 animate-pulse rounded bg-muted/60" />
+          <span className="hidden sm:block h-3 w-20 animate-pulse rounded bg-muted/60" />
+          <span className="hidden sm:block h-3 w-24 animate-pulse rounded bg-muted/60" />
+          <span className="hidden sm:block h-3 w-16 animate-pulse rounded bg-muted/60" />
+          <span className="block h-3 w-12 animate-pulse rounded bg-muted/60" />
         </li>
       ))}
     </ul>
