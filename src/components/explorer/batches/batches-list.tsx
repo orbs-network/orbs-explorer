@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import Link from "next/link";
 import { ExternalLink } from "lucide-react";
 import { useExplorerBatches } from "@/lib/explorer/hooks";
@@ -17,7 +18,10 @@ import {
   arbiscanTxUrl,
   formatInteger,
 } from "@/lib/explorer/format";
-import type { PerpetualHubRollup } from "@/lib/perpetual-hub/types";
+import type {
+  PerpetualHubRollup,
+  PerpetualHubRollupListStats,
+} from "@/lib/perpetual-hub/types";
 
 const DEFAULT_PAGE_SIZE = 25;
 
@@ -28,6 +32,16 @@ export function ExplorerBatchesList() {
       allowedSizes: PAGE_SIZE_OPTIONS,
     });
   const q = useExplorerBatches({ limit, offset });
+
+  // Normalize the URL when ?page=N points past the real ceiling so refresh
+  // doesn't preserve a stale inconsistent state. `<Pagination>` clamps
+  // visually in either case; this just keeps the URL honest.
+  const total = q.data?.total;
+  useEffect(() => {
+    if (total === undefined) return;
+    const totalPages = Math.max(1, Math.ceil(total / pageSize));
+    if (page > totalPages) setPage(totalPages);
+  }, [total, pageSize, page, setPage]);
 
   return (
     <div className="flex flex-col gap-4 sm:gap-5">
@@ -95,7 +109,7 @@ function StatsStrip({
   isLoading,
 }: {
   total: number | undefined;
-  stats: { totalOps: number; latestSequence: number; avgOpsPerRollup: string } | undefined;
+  stats: PerpetualHubRollupListStats | undefined;
   isLoading: boolean;
 }) {
   return (
@@ -204,33 +218,22 @@ function TxLink({ txHash }: { txHash: string | undefined }) {
 // ---------- States ----------
 
 function SkeletonRows({ count }: { count: number }) {
+  // Grid template mirrors BatchRow so the skeleton's column layout matches
+  // the loaded table at every viewport.
   return (
     <ul className="divide-y divide-border">
       {Array.from({ length: count }).map((_, i) => (
         <li
           key={i}
-          className="grid grid-cols-[6rem_auto_1fr_auto_auto_auto] items-center gap-3 px-3 py-2"
+          className="grid grid-cols-[auto_auto_1fr_auto] items-center gap-3 px-3 py-2 sm:grid-cols-[6rem_auto_1fr_auto_auto_auto]"
         >
-          {Array.from({ length: 6 }).map((_, c) => (
-            <span
-              key={c}
-              className="block h-3 animate-pulse rounded bg-muted/60"
-              style={{
-                width:
-                  c === 0
-                    ? "4rem"
-                    : c === 1
-                    ? "4rem"
-                    : c === 2
-                    ? "60%"
-                    : c === 3
-                    ? "3rem"
-                    : c === 4
-                    ? "5rem"
-                    : "3rem",
-              }}
-            />
-          ))}
+          {/* Mobile shows 4 columns; the last two only render on sm+ */}
+          <span className="block h-3 w-16 animate-pulse rounded bg-muted/60" />
+          <span className="block h-3 w-16 animate-pulse rounded bg-muted/60" />
+          <span className="block h-3 w-3/5 animate-pulse rounded bg-muted/60" />
+          <span className="hidden sm:block h-3 w-12 animate-pulse rounded bg-muted/60" />
+          <span className="hidden sm:block h-3 w-20 animate-pulse rounded bg-muted/60" />
+          <span className="block h-3 w-12 animate-pulse rounded bg-muted/60" />
         </li>
       ))}
     </ul>
