@@ -1,10 +1,5 @@
-import { Placeholder } from "@/components/explorer/placeholder";
+import { ExplorerBatchesList } from "@/components/explorer/batches/batches-list";
 
 export default function ExplorerBatchesPage() {
-  return (
-    <Placeholder
-      title="Batches"
-      hint="Rollups submitted to L1. Each batch contains a range of sequences."
-    />
-  );
+  return <ExplorerBatchesList />;
 }
