@@ -8,6 +8,7 @@ import {
   getOrderLimitPriceRate,
   getOrderTriggerPriceRate,
   getOrderStatus,
+  getTwapOrderChainId,
 } from "../utils";
 import { toAmountUI, toMoment } from "../../utils/utils";
 import moment from "moment";
@@ -26,10 +27,12 @@ const parseValue = (value: string | undefined, decimals?: number) => {
 
 export function useSpotOrder(hash?: string) {
   const { data: order, isLoading } = useSpotOrderQuery(hash);
-  const { chainId, partner, config } = useSpotPartner(
+  const orderChainId = getTwapOrderChainId(order);
+  const { chainId: partnerChainId, partner, config } = useSpotPartner(
     order?.order.witness.exchange.adapter,
-    order?.order.witness.chainId
+    orderChainId
   );
+  const chainId = orderChainId ?? (partnerChainId || undefined);
   const srcToken = useToken(order?.order.witness.input.token, chainId).data;
   const dstToken = useToken(order?.order.witness.output.token, chainId).data;
 

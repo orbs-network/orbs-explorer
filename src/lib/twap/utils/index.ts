@@ -7,6 +7,19 @@ import moment from "moment";
 import BN from "bignumber.js";
 import { getPartner } from "@/lib/lib";
 
+type OrderWithWitnessChainId = {
+  order?: {
+    witness?: {
+      chainId?: number;
+      chainid?: number;
+    };
+  };
+};
+
+export const getTwapOrderChainId = (order?: OrderWithWitnessChainId) => {
+  return order?.order?.witness?.chainId ?? order?.order?.witness?.chainid;
+};
+
 export const resolveOrderIdentifier = (identifier: string) => {
   const parsedIdentifiers = identifier.split(",");
   const result: Record<string, string[] | undefined> = {};

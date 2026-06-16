@@ -30,6 +30,7 @@ export interface ListOrder {
       deadline: string;
       epoch: number;
       chainId: number;
+      chainid?: number;
     };
   };
   timestamp: string;
