@@ -1,4 +1,10 @@
 import { NextResponse } from "next/server";
+import {
+  scaleAccounting,
+  scaleOperation,
+  scaleTrade,
+  scaleUserCurrent,
+} from "@/lib/perpetual-hub/scale";
 import type {
   PerpetualHubOperation,
   PerpetualHubTrade,
@@ -108,18 +114,20 @@ export async function GET(
     );
   }
 
+  const rawAccounting = reflectedState.data?.users?.find(
+    (user) => user.user?.toLowerCase() === address.toLowerCase()
+  );
+
   const detail: PerpetualHubUserDetail = {
     address,
-    current: current.data,
-    accounting: reflectedState.data?.users?.find(
-      (user) => user.user?.toLowerCase() === address.toLowerCase()
-    ),
+    current: scaleUserCurrent(current.data),
+    accounting: scaleAccounting(rawAccounting),
     history: {
-      events: events.data?.events ?? [],
+      events: (events.data?.events ?? []).map(scaleOperation),
       totalEvents: events.data?.total ?? 0,
-      trades: trades.data?.trades ?? [],
+      trades: (trades.data?.trades ?? []).map(scaleTrade),
       totalTrades: trades.data?.total ?? 0,
-      transactions: transactions.data?.transactions ?? [],
+      transactions: (transactions.data?.transactions ?? []).map(scaleOperation),
       totalTransactions: transactions.data?.total ?? 0,
     },
     errors,

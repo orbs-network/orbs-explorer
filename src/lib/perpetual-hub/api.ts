@@ -1,9 +1,13 @@
 import type {
+  PerpetualHubEventList,
+  PerpetualHubEventListFilters,
   PerpetualHubRollupDetail,
   PerpetualHubRollup,
+  PerpetualHubRollupList,
   PerpetualHubStateDetail,
   PerpetualHubSummary,
   PerpetualHubUserDetail,
+  PerpetualHubUsers,
 } from "./types";
 
 export async function getPerpetualHubSummary(
@@ -49,6 +53,16 @@ export async function getPerpetualHubUser(
   return response.json();
 }
 
+export async function getPerpetualHubUsers(
+  signal?: AbortSignal
+): Promise<PerpetualHubUsers> {
+  const response = await fetch("/api/perpetual-hub/users", { signal });
+  if (!response.ok) {
+    throw new Error(`Failed to load Perpetual Hub users (${response.status})`);
+  }
+  return response.json();
+}
+
 export async function getPerpetualHubRollupByRoot(
   root: string,
   signal?: AbortSignal
@@ -58,6 +72,49 @@ export async function getPerpetualHubRollupByRoot(
   });
   if (!response.ok) {
     throw new Error(`Failed to find rollup root (${response.status})`);
+  }
+  return response.json();
+}
+
+export async function getPerpetualHubRollups(
+  params: { limit: number; offset: number },
+  signal?: AbortSignal
+): Promise<PerpetualHubRollupList> {
+  const query = new URLSearchParams({
+    limit: String(params.limit),
+    offset: String(params.offset),
+  });
+  const response = await fetch(`/api/perpetual-hub/rollups?${query}`, {
+    signal,
+  });
+  if (!response.ok) {
+    throw new Error(`Failed to load rollups (${response.status})`);
+  }
+  return response.json();
+}
+
+export async function getPerpetualHubEvents(
+  params: {
+    limit: number;
+    offset: number;
+    filters?: PerpetualHubEventListFilters;
+  },
+  signal?: AbortSignal
+): Promise<PerpetualHubEventList> {
+  const query = new URLSearchParams({
+    limit: String(params.limit),
+    offset: String(params.offset),
+  });
+  if (params.filters) {
+    for (const [key, value] of Object.entries(params.filters)) {
+      if (value) query.set(key, value);
+    }
+  }
+  const response = await fetch(`/api/perpetual-hub/events?${query}`, {
+    signal,
+  });
+  if (!response.ok) {
+    throw new Error(`Failed to load events (${response.status})`);
   }
   return response.json();
 }

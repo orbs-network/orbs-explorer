@@ -13,8 +13,7 @@ import { ExternalLink, Search, ArrowRight, ChevronRight } from "lucide-react";
 import Link from "next/link";
 import { ROUTES } from "@/lib/routes";
 import { Virtuoso } from "react-virtuoso";
-import { useToken } from "@/lib/hooks/use-token";
-import { useSpotPartnerListOrder } from "@/lib/twap";
+import { getTwapOrderChainId } from "@/lib/twap";
 import { Amount } from "@/components/ui/amount";
 import BN from "bignumber.js";
 import moment from "moment";
@@ -67,15 +66,13 @@ const variantBorderColors: Record<StatusOrdersModalVariant, string> = {
 };
 
 function OrderRowTokenPair({ order }: { order: ListOrder }) {
-  const { chainId } = useSpotPartnerListOrder(order);
-  
-  const srcToken = useToken(order.inputToken, chainId).data;
-  const dstToken = useToken(order.outputToken, chainId).data;
+  const chainId = getTwapOrderChainId(order);
+
   return (
     <span className="inline-flex items-center gap-1.5 text-sm">
-      <TokenDisplay address={srcToken?.address} chainId={chainId} />
+      <TokenDisplay address={order.inputToken} chainId={chainId} />
       <ArrowRight className="h-3.5 w-3.5 shrink-0 text-primary/70" />
-      <TokenDisplay address={dstToken?.address} chainId={chainId} />
+      <TokenDisplay address={order.outputToken} chainId={chainId} />
     </span>
   );
 }

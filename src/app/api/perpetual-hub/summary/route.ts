@@ -1,4 +1,10 @@
 import { NextResponse } from "next/server";
+import {
+  amountToUsd,
+  priceToUsd,
+  quantityToUnits,
+  toNumber,
+} from "@/lib/perpetual-hub/scale";
 import type {
   PerpetualHubHedgerPosition,
   PerpetualHubOperation,
@@ -146,35 +152,6 @@ async function fetchJson<T>(
   } catch (error) {
     return { error: error instanceof Error ? error.message : String(error) };
   }
-}
-
-function toNumber(value: unknown): number {
-  if (typeof value === "number" && Number.isFinite(value)) return value;
-  if (typeof value !== "string") return 0;
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : 0;
-}
-
-function isIntegerString(value: unknown) {
-  return typeof value === "string" && /^-?\d+$/.test(value);
-}
-
-function amountToUsd(value: unknown) {
-  const amount = toNumber(value);
-  if (!amount) return 0;
-  return isIntegerString(value) ? amount / 1e6 : amount;
-}
-
-function quantityToUnits(value: unknown) {
-  const quantity = toNumber(value);
-  if (!quantity) return 0;
-  return isIntegerString(value) ? quantity / 1e8 : quantity;
-}
-
-function priceToUsd(value: unknown) {
-  const price = toNumber(value);
-  if (!price) return 0;
-  return isIntegerString(value) ? price / 1e18 : price;
 }
 
 function eventNotional(event: PerpetualHubOperation): number {

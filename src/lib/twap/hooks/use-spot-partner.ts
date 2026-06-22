@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { useSpotConfig } from "./use-spot-config";
 import { PARTNERS } from "../../partners";
 import type { ListOrder } from "../types";
+import { getTwapOrderChainId } from "../utils";
 
 const getPartner = (partner: string) => {
   return PARTNERS.find((item) =>
@@ -48,9 +49,9 @@ export function useSpotPartner(
     }
 
     return EMPTY_PARTNER;
-  }, [adapterOrPartnerId, config]);
+  }, [adapterOrPartnerId, config, partnerChainId]);
 }
 
 export function useSpotPartnerListOrder(order?: ListOrder) {
-  return useSpotPartner(order?.exchangeAdapter, order?.order.witness.chainId);
+  return useSpotPartner(order?.exchangeAdapter, getTwapOrderChainId(order));
 }

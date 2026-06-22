@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { scaleOperation } from "@/lib/perpetual-hub/scale";
 import type { PerpetualHubRollupDetail } from "@/lib/perpetual-hub/types";
 
 const DEFAULT_BACKEND_URL = "https://perpsapi.orbs.network";
@@ -36,7 +37,12 @@ export async function GET(
         { status: response.status }
       );
     }
-    return NextResponse.json((await response.json()) as PerpetualHubRollupDetail);
+    const raw = (await response.json()) as PerpetualHubRollupDetail;
+    const detail: PerpetualHubRollupDetail = {
+      rollup: raw.rollup,
+      operations: (raw.operations ?? []).map(scaleOperation),
+    };
+    return NextResponse.json(detail);
   } catch (error) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : String(error) },

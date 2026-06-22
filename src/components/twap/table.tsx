@@ -9,7 +9,7 @@ import { useNetwork } from "@/lib/hooks/use-network";
 import { Amount } from "@/components/ui/amount";
 import { parseListOrderStatus, shortenAddress } from "@/lib/utils/utils";
 import { VirtualTable } from "../virtual-table";
-import { useSpotOrdersPaginated } from "@/lib/twap";
+import { getTwapOrderChainId, useSpotOrdersPaginated } from "@/lib/twap";
 import { map } from "lodash";
 import { ROUTES } from "@/lib/routes";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip";
@@ -18,7 +18,6 @@ import { useSpotPartnerListOrder } from "@/lib/twap";
 import { Partner } from "../ui/partner";
 import { OrdersFilter } from "./filter";
 import { TwapSinkEnvSelect } from "./sink-env-select";
-import { useToken } from "@/lib/hooks/use-token";
 import { TokenDisplay } from "../token-display";
 
 const Timestamp = ({ item }: { item: ListOrder }) => {
@@ -47,7 +46,6 @@ const TradeUSDValue = ({ item }: { item: ListOrder }) => {
 };
 
 const Status = ({ item }: { item: ListOrder }) => {
-  
   return (
     <OrderStatusBadge
       totalTrades={item.metadata.expectedChunks}
@@ -88,15 +86,13 @@ const TxHash = ({ item }: { item: ListOrder }) => {
 };
 
 const TokenPair = ({ item }: { item: ListOrder }) => {
-  const {chainId} = useSpotPartnerListOrder(item);
+  const chainId = getTwapOrderChainId(item);
 
-  const srcToken = useToken(item.inputToken, chainId).data;
-  const dstToken = useToken(item.outputToken, chainId).data;
   return (
     <div className="flex flex-row gap-2 items-center">
-      <TokenDisplay address={srcToken?.address} chainId={chainId} className="pointer-events-none" />
+      <TokenDisplay address={item.inputToken} chainId={chainId} className="pointer-events-none" />
       <ArrowRight className="w-3.5 h-3.5 text-muted-foreground" />
-      <TokenDisplay address={dstToken?.address} chainId={chainId} className="pointer-events-none" />
+      <TokenDisplay address={item.outputToken} chainId={chainId} className="pointer-events-none" />
     </div>
   );
 };
@@ -151,13 +147,6 @@ export function TwapOrdersTable() {
     [router],
   );
 
-  const prefetchOrder = useCallback(
-    (order: ListOrder) => {
-      router.prefetch(ROUTES.TWAP.ORDER(order.hash));
-    },
-    [router],
-  );
-
   return (
     <VirtualTable<ListOrder>
       isLoading={isLoading}
@@ -168,7 +157,6 @@ export function TwapOrdersTable() {
       desktopRows={desktopRows}
       onSelect={navigateToOrder}
       onMobileRowClick={navigateToOrder}
-      onRowHover={prefetchOrder}
       title="TWAP Orders"
       headerAction={
         <div className="flex items-center gap-2">

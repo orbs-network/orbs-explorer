@@ -116,6 +116,83 @@
   --sidebar-ring: hsl(212 100% 67%);
 }
 
+/* ============================================================
+   Explorer (data-theme="explorer") — Orbs Design System skin.
+   Persistent dark, Orbs lilac accent, Montserrat + JetBrains Mono,
+   sharp 1px hairlines, signature surfaces.
+   ============================================================ */
+[data-theme="explorer"] {
+  /* Orbs brand palette (raw) */
+  --orbs-light: #f6f6f6;
+  --orbs-dark: #121214;
+  --orbs-indigo: #3346f2;
+  --orbs-cyan: #2cedfc;
+  --orbs-pink: #dc8ae0;
+  --orbs-lilac: #a17ae9;
+  --orbs-periwinkle: #7a89e9;
+  --orbs-coral: #ffadae;
+
+  /* Radii — Orbs uses sharp edges */
+  --radius: 0px;
+
+  /* Surfaces */
+  --background: var(--orbs-dark);                  /* #121214 */
+  --background-secondary: #16161a;
+  --foreground: var(--orbs-light);                 /* #f6f6f6 */
+  --card: #161618;
+  --card-foreground: var(--orbs-light);
+  --popover: #1a1a1d;
+  --popover-foreground: var(--orbs-light);
+
+  /* Accent — lilac. Swap to --orbs-cyan / --orbs-indigo / --orbs-pink to retheme. */
+  --primary: var(--orbs-lilac);
+  --primary-foreground: var(--orbs-dark);
+
+  /* Secondary / muted / accent surfaces — neutral grays per Orbs */
+  --secondary: #1c1c1f;
+  --secondary-foreground: #c5c5c5;
+  --muted: #1a1a1d;
+  --muted-foreground: #8a8a8c;
+  --accent: #1c1c1f;
+  --accent-foreground: var(--orbs-light);
+
+  /* Status — desaturated to match Orbs */
+  --destructive: #d96a6a;
+  --explorer-success: #4fbe8a;
+  --explorer-warning: #e0b86a;
+  --explorer-pending: #8a8a8c;
+
+  /* Hairlines & inputs */
+  --border: #2a2a2e;
+  --input: #2a2a2e;
+  --ring: var(--orbs-lilac);
+
+  /* Font routing — re-map the existing token names so we don't have
+     to touch every Tailwind font-sans / font-mono usage. */
+  --font-geist-sans: var(--font-orbs-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-geist-mono: var(--font-orbs-mono), ui-monospace, "SF Mono", Menlo, monospace;
+}
+
+/* Body type tightening to match Orbs editorial register */
+[data-theme="explorer"] {
+  letter-spacing: -0.01em;
+}
+[data-theme="explorer"] h1,
+[data-theme="explorer"] h2,
+[data-theme="explorer"] h3 {
+  letter-spacing: -0.03em;
+  font-weight: 600;
+}
+
+/* Orbs eyebrow label utility — usable as className="orbs-eyebrow" */
+[data-theme="explorer"] .orbs-eyebrow {
+  font-family: var(--font-geist-mono);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted-foreground);
+}
+
 /* Custom scrollbars */
 * {
   scrollbar-width: thin;

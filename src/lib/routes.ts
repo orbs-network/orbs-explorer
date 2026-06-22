@@ -21,4 +21,15 @@ export const ROUTES = {
   },
   ORDERS_DASHBOARD: "/twap/overview",
   LIQUIDITY_HUB_DASHBOARD: "/liquidity-hub-dashboard",
+  EXPLORER: {
+    ROOT: "/explorer",
+    BLOCKS: "/explorer/blocks",
+    BATCHES: "/explorer/batches",
+    BLOCK: (seq: number | string) => `/explorer/block/${seq}`,
+    BATCH: (id: number | string) => `/explorer/batch/${id}`,
+    ADDRESS: (addr: string) => `/explorer/address/${addr}`,
+    STATE: (seq: number | string) => `/explorer/state/${seq}`,
+    SEARCH: (q?: string) =>
+      q ? `/explorer/search?q=${encodeURIComponent(q)}` : "/explorer/search",
+  },
 } as const;
