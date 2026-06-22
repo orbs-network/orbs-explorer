@@ -295,6 +295,9 @@ function ExposureTable({
     longNotional: number;
     shortNotional: number;
     netQuantity: number;
+    hedgerQuantity: number;
+    hedgeGap: number;
+    hedgeStatus: "matched" | "missing" | "partial" | "hedger_only";
     positions: number;
   }[];
 }) {
@@ -318,27 +321,51 @@ function ExposureTable({
               <th className="px-4 py-3 text-right font-medium">Long OI</th>
               <th className="px-4 py-3 text-right font-medium">Short OI</th>
               <th className="px-4 py-3 text-right font-medium">Net Qty</th>
+              <th className="px-4 py-3 text-right font-medium">Hedger Qty</th>
+              <th className="px-4 py-3 text-right font-medium">Gap</th>
+              <th className="px-4 py-3 text-left font-medium">Hedge</th>
               <th className="px-4 py-3 text-right font-medium">Positions</th>
             </tr>
           </thead>
           <tbody>
-            {rows.slice(0, 8).map((row) => (
-              <tr key={row.symbol} className="border-b last:border-b-0">
-                <td className="px-4 py-3 font-medium">{row.symbol}</td>
-                <td className="px-4 py-3 text-right font-mono text-emerald-500">
-                  {formatUsd(row.longNotional)}
-                </td>
-                <td className="px-4 py-3 text-right font-mono text-destructive">
-                  {formatUsd(row.shortNotional)}
-                </td>
-                <td className="px-4 py-3 text-right font-mono">
-                  {formatCompact(row.netQuantity, 4)}
-                </td>
-                <td className="px-4 py-3 text-right font-mono">
-                  {row.positions}
-                </td>
-              </tr>
-            ))}
+            {rows.slice(0, 8).map((row) => {
+              const gap = row.hedgeGap ?? 0;
+              const hedgeBadge =
+                row.hedgeStatus === "matched"
+                  ? statusBadge("ok", "Matched")
+                  : row.hedgeStatus === "missing"
+                    ? statusBadge("bad", "Missing")
+                    : row.hedgeStatus === "hedger_only"
+                      ? statusBadge("bad", "Hedger only")
+                      : statusBadge("warn", "Partial");
+              return (
+                <tr key={row.symbol} className="border-b last:border-b-0">
+                  <td className="px-4 py-3 font-medium">{row.symbol}</td>
+                  <td className="px-4 py-3 text-right font-mono text-emerald-500">
+                    {formatUsd(row.longNotional)}
+                  </td>
+                  <td className="px-4 py-3 text-right font-mono text-destructive">
+                    {formatUsd(row.shortNotional)}
+                  </td>
+                  <td className="px-4 py-3 text-right font-mono">
+                    {formatCompact(row.netQuantity, 4)}
+                  </td>
+                  <td className="px-4 py-3 text-right font-mono">
+                    {formatCompact(row.hedgerQuantity, 4)}
+                  </td>
+                  <td className={cn(
+                    "px-4 py-3 text-right font-mono",
+                    Math.abs(gap) > 1e-8 ? "text-destructive" : "text-muted-foreground"
+                  )}>
+                    {formatCompact(gap, 4)}
+                  </td>
+                  <td className="px-4 py-3">{hedgeBadge}</td>
+                  <td className="px-4 py-3 text-right font-mono">
+                    {row.positions}
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
@@ -1260,6 +1287,12 @@ export function PerpetualHubDashboard() {
               <MetricCard label="Users" value={formatNumber(data.risk.users)} icon={Wallet} />
               <MetricCard label="Open Positions" value={formatNumber(data.risk.openPositions)} icon={BarChart3} />
               <MetricCard label="Open Interest" value={formatUsd(data.risk.openInterest)} icon={TrendingUp} tone="info" />
+              <MetricCard
+                label="Hedge Gaps"
+                value={formatNumber(data.risk.hedgeMismatchCount)}
+                icon={AlertTriangle}
+                tone={data.risk.hedgeMismatchCount ? "danger" : "positive"}
+              />
               <MetricCard
                 label="Near Liquidation"
                 value={formatNumber(data.risk.nearLiquidationCount)}

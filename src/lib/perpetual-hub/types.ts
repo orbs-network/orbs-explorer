@@ -155,6 +155,7 @@ export type PerpetualHubSummary = {
     totalUnrealizedPnl: number;
     openInterest: number;
     nearLiquidationCount: number;
+    hedgeMismatchCount: number;
     platformFeesCollected: number;
     hedgerFeesCollected: number;
     totalFeesCollected: number;
@@ -164,6 +165,10 @@ export type PerpetualHubSummary = {
       longNotional: number;
       shortNotional: number;
       netQuantity: number;
+      hedgerQuantity: number;
+      hedgerNotional: number;
+      hedgeGap: number;
+      hedgeStatus: "matched" | "missing" | "partial" | "hedger_only";
       positions: number;
     }[];
   };

@@ -85,6 +85,20 @@ type ReflectedPosition = NonNullable<
   NonNullable<ReflectedState["users"]>[number]["positions"]
 >[number];
 
+type RiskExposureRow = {
+  symbol: string;
+  longNotional: number;
+  shortNotional: number;
+  netQuantity: number;
+  hedgerQuantity: number;
+  hedgerNotional: number;
+  hedgeGap: number;
+  hedgeStatus: "matched" | "missing" | "partial" | "hedger_only";
+  positions: number;
+};
+
+type HedgeStatus = RiskExposureRow["hedgeStatus"];
+
 type HedgerStatus = {
   connected?: boolean;
   dryRun?: boolean;
@@ -214,18 +228,38 @@ function summarizeVolume(events: PerpetualHubOperation[]) {
 }
 
 function positionNotional(position: ReflectedPosition) {
-  const explicit = Math.abs(amountToUsd(position.notional));
+  const explicit = Math.abs(toNumber(position.notional));
   if (explicit) return explicit;
-  const quantity = Math.abs(quantityToUnits(position.positionAmt));
-  const entry = Math.abs(priceToUsd(position.entryPrice));
+  const quantity = Math.abs(toNumber(position.positionAmt));
+  const entry = Math.abs(toNumber(position.entryPrice));
   return quantity * entry;
 }
 
-function summarizeRisk(state?: ReflectedState) {
-  const exposure = new Map<
-    string,
-    { longNotional: number; shortNotional: number; netQuantity: number; positions: number }
-  >();
+function hedgeTolerance(quantity: number) {
+  return Math.max(1e-8, Math.abs(quantity) * 1e-6);
+}
+
+function classifyHedgeStatus(
+  netQuantity: number,
+  hedgerQuantity: number
+): HedgeStatus {
+  const netAbs = Math.abs(netQuantity);
+  const hedgeAbs = Math.abs(hedgerQuantity);
+  const tolerance = hedgeTolerance(Math.max(netAbs, hedgeAbs));
+
+  if (netAbs <= tolerance && hedgeAbs <= tolerance) return "matched";
+  if (netAbs <= tolerance) return "hedger_only";
+  if (hedgeAbs <= tolerance) return "missing";
+  return Math.abs(netQuantity - hedgerQuantity) <= tolerance
+    ? "matched"
+    : "partial";
+}
+
+function summarizeRisk(
+  state?: ReflectedState,
+  hedgerPositions: PerpetualHubHedgerPosition[] = []
+) {
+  const exposure = new Map<string, RiskExposureRow>();
 
   let openPositions = 0;
   let pendingOrders = 0;
@@ -236,19 +270,24 @@ function summarizeRisk(state?: ReflectedState) {
   const nearLiquidationCount = 0;
 
   for (const user of state?.users ?? []) {
-    totalUserBalance += amountToUsd(user.balance);
+    totalUserBalance += toNumber(user.balance);
     pendingOrders += user.pendingOrders?.length ?? 0;
 
     for (const position of user.positions ?? []) {
-      const quantity = quantityToUnits(position.positionAmt);
+      const quantity = toNumber(position.positionAmt);
       if (!quantity) continue;
       const notional = positionNotional(position);
       const symbolExposure = exposure.get(position.symbol) ?? {
+        symbol: position.symbol,
         longNotional: 0,
         shortNotional: 0,
         netQuantity: 0,
+        hedgerQuantity: 0,
+        hedgerNotional: 0,
+        hedgeGap: 0,
+        hedgeStatus: "matched",
         positions: 0,
-      };
+      } satisfies RiskExposureRow;
       if (quantity > 0) symbolExposure.longNotional += notional;
       else symbolExposure.shortNotional += notional;
       symbolExposure.netQuantity += quantity;
@@ -260,6 +299,47 @@ function summarizeRisk(state?: ReflectedState) {
     }
   }
 
+  for (const position of hedgerPositions) {
+    const quantity = toNumber(position.positionAmt);
+    if (!quantity) continue;
+    const notional = Math.abs(toNumber(position.notional));
+    const symbolExposure = exposure.get(position.symbol) ?? {
+      symbol: position.symbol,
+      longNotional: 0,
+      shortNotional: 0,
+      netQuantity: 0,
+      hedgerQuantity: 0,
+      hedgerNotional: 0,
+      hedgeGap: 0,
+      hedgeStatus: "matched",
+      positions: 0,
+    } satisfies RiskExposureRow;
+
+    symbolExposure.hedgerQuantity += quantity;
+    symbolExposure.hedgerNotional += notional;
+    exposure.set(position.symbol, symbolExposure);
+  }
+
+  const exposureBySymbol = Array.from(exposure.values())
+    .map((row) => {
+      const hedgeGap = row.netQuantity - row.hedgerQuantity;
+      return {
+        ...row,
+        hedgeGap,
+        hedgeStatus: classifyHedgeStatus(row.netQuantity, row.hedgerQuantity),
+      };
+    })
+    .sort(
+      (a, b) =>
+        b.longNotional +
+        b.shortNotional +
+        b.hedgerNotional -
+        (a.longNotional + a.shortNotional + a.hedgerNotional)
+    );
+  const hedgeMismatchCount = exposureBySymbol.filter(
+    (row) => row.hedgeStatus !== "matched"
+  ).length;
+
   return {
     users: state?.users?.length ?? 0,
     openPositions,
@@ -269,6 +349,7 @@ function summarizeRisk(state?: ReflectedState) {
     totalUnrealizedPnl,
     openInterest,
     nearLiquidationCount,
+    hedgeMismatchCount,
     platformFeesCollected: toNumber(state?.platformFeesCollected),
     hedgerFeesCollected: toNumber(state?.hedger?.totalFeesCollected),
     totalFeesCollected:
@@ -279,12 +360,7 @@ function summarizeRisk(state?: ReflectedState) {
       "User unrealized PnL",
       "Near-liquidation count",
     ],
-    exposureBySymbol: Array.from(exposure.entries())
-      .map(([symbol, value]) => ({ symbol, ...value }))
-      .sort(
-        (a, b) =>
-          b.longNotional + b.shortNotional - (a.longNotional + a.shortNotional)
-      ),
+    exposureBySymbol,
   };
 }
 
@@ -417,7 +493,7 @@ export async function GET() {
       recentEvents,
     },
     volume: summarizeVolume(recentEvents),
-    risk: summarizeRisk(reflectedState.data),
+    risk: summarizeRisk(reflectedState.data, hedgerPositions),
     hedger: {
       connected:
         typeof hedger.data?.connected === "boolean" ? hedger.data.connected : null,
