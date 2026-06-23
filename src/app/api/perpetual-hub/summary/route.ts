@@ -5,6 +5,10 @@ import {
   quantityToUnits,
   toNumber,
 } from "@/lib/perpetual-hub/scale";
+import {
+  type PerpetualHubDeployment,
+  resolvePerpetualHubDeployments,
+} from "@/lib/perpetual-hub/deployments";
 import type {
   PerpetualHubHedgerPosition,
   PerpetualHubOperation,
@@ -104,22 +108,13 @@ type HedgerStatus = {
   error?: string;
 };
 
-const DEFAULT_BACKEND_URL = "https://perpsapi.orbs.network";
 function trimTrailingSlash(value: string) {
   return value.replace(/\/+$/, "");
 }
 
-function getBackendUrl() {
-  return trimTrailingSlash(
-    process.env.PERPETUAL_HUB_API_URL ||
-      process.env.NEXT_PUBLIC_PERPETUAL_HUB_API_URL ||
-      DEFAULT_BACKEND_URL
-  );
-}
-
 async function fetchJson<T>(
   url: string,
-  init?: RequestInit
+  init?: RequestInit,
 ): Promise<FetchResult<T>> {
   try {
     const response = await fetch(url, {
@@ -201,7 +196,12 @@ function positionNotional(position: ReflectedPosition) {
 function summarizeRisk(state?: ReflectedState) {
   const exposure = new Map<
     string,
-    { longNotional: number; shortNotional: number; netQuantity: number; positions: number }
+    {
+      longNotional: number;
+      shortNotional: number;
+      netQuantity: number;
+      positions: number;
+    }
   >();
 
   let openPositions = 0;
@@ -246,11 +246,11 @@ function summarizeRisk(state?: ReflectedState) {
     totalUnrealizedPnl,
     openInterest,
     nearLiquidationCount,
-    platformFeesCollected: toNumber(state?.platformFeesCollected),
-    hedgerFeesCollected: toNumber(state?.hedger?.totalFeesCollected),
+    platformFeesCollected: amountToUsd(state?.platformFeesCollected),
+    hedgerFeesCollected: amountToUsd(state?.hedger?.totalFeesCollected),
     totalFeesCollected:
-      toNumber(state?.platformFeesCollected) +
-      toNumber(state?.hedger?.totalFeesCollected),
+      amountToUsd(state?.platformFeesCollected) +
+      amountToUsd(state?.hedger?.totalFeesCollected),
     unavailableMetrics: [
       "Available user balance",
       "User unrealized PnL",
@@ -260,14 +260,14 @@ function summarizeRisk(state?: ReflectedState) {
       .map(([symbol, value]) => ({ symbol, ...value }))
       .sort(
         (a, b) =>
-          b.longNotional + b.shortNotional - (a.longNotional + a.shortNotional)
+          b.longNotional + b.shortNotional - (a.longNotional + a.shortNotional),
       ),
   };
 }
 
 function enrichEventsWithRollups(
   events: PerpetualHubOperation[],
-  rollups: NonNullable<RollupsResponse["rollups"]>
+  rollups: NonNullable<RollupsResponse["rollups"]>,
 ) {
   const rollupsByID = new Map(rollups.map((rollup) => [rollup.id, rollup]));
 
@@ -279,7 +279,7 @@ function enrichEventsWithRollups(
       ? rollups.find(
           (rollup) =>
             event.teeSequence! > rollup.oldSequence &&
-            event.teeSequence! <= rollup.newSequence
+            event.teeSequence! <= rollup.newSequence,
         )
       : undefined;
     const rollup = directRollup ?? sequenceRollup;
@@ -293,8 +293,10 @@ function enrichEventsWithRollups(
   });
 }
 
-export async function GET() {
-  const backendUrl = getBackendUrl();
+async function buildDeploymentSummary(
+  deployment: PerpetualHubDeployment,
+): Promise<PerpetualHubSummary> {
+  const backendUrl = trimTrailingSlash(deployment.backendUrl);
 
   const [
     backendHealth,
@@ -316,16 +318,20 @@ export async function GET() {
     fetchJson<ChainState>(`${backendUrl}/api/v1/chain/state`),
     fetchJson<EventsResponse>(`${backendUrl}/api/v1/events?limit=100&offset=0`),
     fetchJson<EventsResponse>(
-      `${backendUrl}/api/v1/events?status=SUCCESS&limit=1&offset=0`
+      `${backendUrl}/api/v1/events?status=SUCCESS&limit=1&offset=0`,
     ),
     fetchJson<EventsResponse>(
-      `${backendUrl}/api/v1/events?status=REJECTED&limit=1&offset=0`
+      `${backendUrl}/api/v1/events?status=REJECTED&limit=1&offset=0`,
     ),
     fetchJson<EventsResponse>(
-      `${backendUrl}/api/v1/events?status=REJECTED&limit=100&offset=0`
+      `${backendUrl}/api/v1/events?status=REJECTED&limit=100&offset=0`,
     ),
-    fetchJson<RollupsResponse>(`${backendUrl}/api/v1/rollups?limit=10&offset=0`),
-    fetchJson<RollupsResponse>(`${backendUrl}/api/v1/rollups?limit=100&offset=0`),
+    fetchJson<RollupsResponse>(
+      `${backendUrl}/api/v1/rollups?limit=10&offset=0`,
+    ),
+    fetchJson<RollupsResponse>(
+      `${backendUrl}/api/v1/rollups?limit=100&offset=0`,
+    ),
     fetchJson<ProofsResponse>(`${backendUrl}/api/v1/proofs?limit=100&offset=0`),
     fetchJson<HedgerStatus>(`${backendUrl}/api/v1/hedger/binance-status`),
   ]);
@@ -342,17 +348,19 @@ export async function GET() {
     hedger.error && `Hedger: ${hedger.error}`,
   ].filter(Boolean) as string[];
 
-  const eventRollupItems = eventRollups.data?.rollups ?? rollups.data?.rollups ?? [];
+  const eventRollupItems =
+    eventRollups.data?.rollups ?? rollups.data?.rollups ?? [];
   const recentEvents = enrichEventsWithRollups(
     events.data?.events ?? [],
-    eventRollupItems
+    eventRollupItems,
   );
   const successTotal = successEvents.data?.total ?? 0;
   const rejectedTotal = rejectedEvents.data?.total ?? 0;
   const totalEvents =
     events.data?.stats?.totalEvents ?? successTotal + rejectedTotal;
   const rejectRate = totalEvents ? rejectedTotal / totalEvents : 0;
-  const teeSeq = rollupStatus.data?.teeSeq ?? reflectedState.data?.sequenceNumber ?? 0;
+  const teeSeq =
+    rollupStatus.data?.teeSeq ?? reflectedState.data?.sequenceNumber ?? 0;
   const chainSeq =
     chainState.data?.sequenceNumber ?? rollupStatus.data?.lastOnChainSeq ?? 0;
   const teeRoot = rollupStatus.data?.teeRoot ?? reflectedState.data?.merkleRoot;
@@ -377,7 +385,8 @@ export async function GET() {
       chainSeq,
       sequenceGap: Math.max(0, teeSeq - chainSeq),
       rootsMatch,
-      pendingOps: rollupStatus.data?.pendingOps ?? Math.max(0, teeSeq - chainSeq),
+      pendingOps:
+        rollupStatus.data?.pendingOps ?? Math.max(0, teeSeq - chainSeq),
       nextRollupIn: rollupStatus.data?.nextRollupIn ?? 0,
       lastRollupTime: rollupStatus.data?.lastSubmitTime,
       lastRollupError: rollupStatus.data?.lastError,
@@ -397,7 +406,9 @@ export async function GET() {
     risk: summarizeRisk(reflectedState.data),
     hedger: {
       connected:
-        typeof hedger.data?.connected === "boolean" ? hedger.data.connected : null,
+        typeof hedger.data?.connected === "boolean"
+          ? hedger.data.connected
+          : null,
       dryRun: Boolean(hedger.data?.dryRun),
       walletBalance: toNumber(hedgerAccount?.totalWalletBalance),
       marginBalance: toNumber(hedgerAccount?.totalMarginBalance),
@@ -406,7 +417,7 @@ export async function GET() {
       openPositions: hedgerPositions.length,
       positionNotional: hedgerPositions.reduce(
         (sum, position) => sum + Math.abs(toNumber(position.notional)),
-        0
+        0,
       ),
       positions: hedgerPositions,
       error: hedger.data?.error,
@@ -421,16 +432,338 @@ export async function GET() {
     proofs: {
       totalProofs: proofs.data?.total ?? 0,
       chainValid:
-        typeof proofs.data?.chainValid === "boolean" ? proofs.data.chainValid : null,
-      pendingProofsSample: proofEntries.filter((entry) => entry.rollupId == null)
-        .length,
+        typeof proofs.data?.chainValid === "boolean"
+          ? proofs.data.chainValid
+          : null,
+      pendingProofsSample: proofEntries.filter(
+        (entry) => entry.rollupId == null,
+      ).length,
       latestSequence: Math.max(
         0,
-        ...proofEntries.map((entry) => entry.sequenceNumber ?? 0)
+        ...proofEntries.map((entry) => entry.sequenceNumber ?? 0),
       ),
     },
     updatedAt: Date.now(),
   };
 
-  return NextResponse.json(summary);
+  return summary;
+}
+
+function eventTimestampMs(event: PerpetualHubOperation) {
+  return event.timestamp < 10_000_000_000
+    ? event.timestamp * 1000
+    : event.timestamp;
+}
+
+function mergeCounts(records: Array<Record<string, number>>) {
+  const counts: Record<string, number> = {};
+  for (const record of records) {
+    for (const [key, value] of Object.entries(record)) {
+      counts[key] = (counts[key] ?? 0) + value;
+    }
+  }
+  return counts;
+}
+
+function mergeRejectReasons(summaries: PerpetualHubSummary[]) {
+  const counts = new Map<string, number>();
+  for (const summary of summaries) {
+    for (const item of summary.activity.topRejectReasons) {
+      counts.set(item.reason, (counts.get(item.reason) ?? 0) + item.count);
+    }
+  }
+  return Array.from(counts.entries())
+    .map(([reason, count]) => ({ reason, count }))
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 5);
+}
+
+function mergeExposureBySymbol(summaries: PerpetualHubSummary[]) {
+  const exposure = new Map<
+    string,
+    {
+      longNotional: number;
+      shortNotional: number;
+      netQuantity: number;
+      positions: number;
+    }
+  >();
+
+  for (const summary of summaries) {
+    for (const item of summary.risk.exposureBySymbol) {
+      const current = exposure.get(item.symbol) ?? {
+        longNotional: 0,
+        shortNotional: 0,
+        netQuantity: 0,
+        positions: 0,
+      };
+      current.longNotional += item.longNotional;
+      current.shortNotional += item.shortNotional;
+      current.netQuantity += item.netQuantity;
+      current.positions += item.positions;
+      exposure.set(item.symbol, current);
+    }
+  }
+
+  return Array.from(exposure.entries())
+    .map(([symbol, value]) => ({ symbol, ...value }))
+    .sort(
+      (a, b) =>
+        b.longNotional + b.shortNotional - (a.longNotional + a.shortNotional),
+    );
+}
+
+function aggregateSummaries(summaries: PerpetualHubSummary[]) {
+  const recentEvents = summaries
+    .flatMap((summary) => summary.activity.recentEvents)
+    .sort((a, b) => eventTimestampMs(b) - eventTimestampMs(a))
+    .slice(0, 100);
+  const successEvents = summaries.reduce(
+    (sum, summary) => sum + summary.activity.successEvents,
+    0,
+  );
+  const rejectedEvents = summaries.reduce(
+    (sum, summary) => sum + summary.activity.rejectedEvents,
+    0,
+  );
+  const totalEvents = summaries.reduce(
+    (sum, summary) => sum + summary.activity.totalEvents,
+    0,
+  );
+  const totalRollups = summaries.reduce(
+    (sum, summary) => sum + summary.rollups.totalRollups,
+    0,
+  );
+  const totalOps = summaries.reduce(
+    (sum, summary) => sum + summary.rollups.totalOps,
+    0,
+  );
+  const latestRollups = summaries
+    .flatMap((summary) => summary.rollups.latest)
+    .sort((a, b) => b.submittedAt - a.submittedAt)
+    .slice(0, 10);
+  const allRootsKnown = summaries.every(
+    (summary) => summary.sync.rootsMatch !== null,
+  );
+  const anyRootsDiffer = summaries.some(
+    (summary) => summary.sync.rootsMatch === false,
+  );
+  const chainValidityValues = summaries.map(
+    (summary) => summary.proofs.chainValid,
+  );
+  const allChainValidityKnown = chainValidityValues.every(
+    (value) => value !== null,
+  );
+  const anyChainInvalid = chainValidityValues.some((value) => value === false);
+  const hedgerConnectedValues = summaries.map(
+    (summary) => summary.hedger.connected,
+  );
+  const anyHedgerDisconnected = hedgerConnectedValues.some(
+    (value) => value === false,
+  );
+  const anyHedgerConnected = hedgerConnectedValues.some(
+    (value) => value === true,
+  );
+  const nextRollupTimes = summaries
+    .map((summary) => summary.sync.nextRollupIn)
+    .filter((value) => value > 0);
+  const healthySummaries = summaries.filter(
+    (summary) => summary.health.backendStatus && !summary.health.errors.length,
+  );
+  const hasAnyBackendStatus = summaries.some(
+    (summary) => summary.health.backendStatus,
+  );
+
+  return {
+    source: {
+      backendUrl: summaries
+        .map((summary) => summary.source.backendUrl)
+        .join(", "),
+    },
+    health: {
+      backendStatus:
+        healthySummaries.length === summaries.length
+          ? "healthy"
+          : hasAnyBackendStatus
+            ? "degraded"
+            : undefined,
+      errors: summaries.flatMap((summary) =>
+        summary.health.errors.map(
+          (error) => `${summary.source.backendUrl}: ${error}`,
+        ),
+      ),
+    },
+    sync: {
+      teeSeq: Math.max(0, ...summaries.map((summary) => summary.sync.teeSeq)),
+      chainSeq: Math.max(
+        0,
+        ...summaries.map((summary) => summary.sync.chainSeq),
+      ),
+      sequenceGap: summaries.reduce(
+        (sum, summary) => sum + summary.sync.sequenceGap,
+        0,
+      ),
+      rootsMatch: allRootsKnown ? !anyRootsDiffer : null,
+      pendingOps: summaries.reduce(
+        (sum, summary) => sum + summary.sync.pendingOps,
+        0,
+      ),
+      nextRollupIn: nextRollupTimes.length ? Math.min(...nextRollupTimes) : 0,
+      lastRollupTime: Math.max(
+        0,
+        ...summaries.map((summary) => summary.sync.lastRollupTime ?? 0),
+      ),
+      lastRollupError: summaries
+        .map((summary) => summary.sync.lastRollupError)
+        .filter(Boolean)
+        .join("; "),
+      rollupPaused: summaries.some((summary) => summary.sync.rollupPaused),
+      rollupPauseReason: summaries
+        .map((summary) => summary.sync.rollupPauseReason)
+        .filter(Boolean)
+        .join("; "),
+    },
+    activity: {
+      totalEvents,
+      byType: mergeCounts(summaries.map((summary) => summary.activity.byType)),
+      successEvents,
+      rejectedEvents,
+      rejectRate: totalEvents ? rejectedEvents / totalEvents : 0,
+      topRejectReasons: mergeRejectReasons(summaries),
+      recentEvents,
+    },
+    volume: summarizeVolume(recentEvents),
+    risk: {
+      users: summaries.reduce((sum, summary) => sum + summary.risk.users, 0),
+      openPositions: summaries.reduce(
+        (sum, summary) => sum + summary.risk.openPositions,
+        0,
+      ),
+      pendingOrders: summaries.reduce(
+        (sum, summary) => sum + summary.risk.pendingOrders,
+        0,
+      ),
+      totalUserBalance: summaries.reduce(
+        (sum, summary) => sum + summary.risk.totalUserBalance,
+        0,
+      ),
+      totalAvailableBalance: summaries.reduce(
+        (sum, summary) => sum + summary.risk.totalAvailableBalance,
+        0,
+      ),
+      totalUnrealizedPnl: summaries.reduce(
+        (sum, summary) => sum + summary.risk.totalUnrealizedPnl,
+        0,
+      ),
+      openInterest: summaries.reduce(
+        (sum, summary) => sum + summary.risk.openInterest,
+        0,
+      ),
+      nearLiquidationCount: summaries.reduce(
+        (sum, summary) => sum + summary.risk.nearLiquidationCount,
+        0,
+      ),
+      platformFeesCollected: summaries.reduce(
+        (sum, summary) => sum + summary.risk.platformFeesCollected,
+        0,
+      ),
+      hedgerFeesCollected: summaries.reduce(
+        (sum, summary) => sum + summary.risk.hedgerFeesCollected,
+        0,
+      ),
+      totalFeesCollected: summaries.reduce(
+        (sum, summary) => sum + summary.risk.totalFeesCollected,
+        0,
+      ),
+      unavailableMetrics: Array.from(
+        new Set(
+          summaries.flatMap((summary) => summary.risk.unavailableMetrics),
+        ),
+      ),
+      exposureBySymbol: mergeExposureBySymbol(summaries),
+    },
+    hedger: {
+      connected: anyHedgerDisconnected
+        ? false
+        : anyHedgerConnected
+          ? true
+          : null,
+      dryRun: summaries.some((summary) => summary.hedger.dryRun),
+      walletBalance: summaries.reduce(
+        (sum, summary) => sum + (summary.hedger.walletBalance ?? 0),
+        0,
+      ),
+      marginBalance: summaries.reduce(
+        (sum, summary) => sum + (summary.hedger.marginBalance ?? 0),
+        0,
+      ),
+      availableBalance: summaries.reduce(
+        (sum, summary) => sum + (summary.hedger.availableBalance ?? 0),
+        0,
+      ),
+      unrealizedPnl: summaries.reduce(
+        (sum, summary) => sum + (summary.hedger.unrealizedPnl ?? 0),
+        0,
+      ),
+      openPositions: summaries.reduce(
+        (sum, summary) => sum + summary.hedger.openPositions,
+        0,
+      ),
+      positionNotional: summaries.reduce(
+        (sum, summary) => sum + summary.hedger.positionNotional,
+        0,
+      ),
+      positions: summaries.flatMap((summary) => summary.hedger.positions),
+      error: summaries
+        .map((summary) => summary.hedger.error)
+        .filter(Boolean)
+        .join("; "),
+    },
+    rollups: {
+      totalRollups,
+      totalOps,
+      latestSequence: Math.max(
+        0,
+        ...summaries.map((summary) => summary.rollups.latestSequence),
+      ),
+      avgOpsPerRollup: totalRollups ? totalOps / totalRollups : 0,
+      latest: latestRollups,
+    },
+    proofs: {
+      totalProofs: summaries.reduce(
+        (sum, summary) => sum + summary.proofs.totalProofs,
+        0,
+      ),
+      chainValid: allChainValidityKnown ? !anyChainInvalid : null,
+      pendingProofsSample: summaries.reduce(
+        (sum, summary) => sum + summary.proofs.pendingProofsSample,
+        0,
+      ),
+      latestSequence: Math.max(
+        0,
+        ...summaries.map((summary) => summary.proofs.latestSequence),
+      ),
+    },
+    updatedAt: Date.now(),
+  } satisfies PerpetualHubSummary;
+}
+
+export async function GET(request: Request) {
+  const { searchParams } = new URL(request.url);
+  const deployments = resolvePerpetualHubDeployments({
+    partnerId: searchParams.getAll("partner_id"),
+    chainId: searchParams.getAll("chain_id"),
+  });
+
+  if (!deployments.length) {
+    return NextResponse.json(
+      { error: "No Perpetual Hub deployment matches the selected filters" },
+      { status: 404 },
+    );
+  }
+
+  const summaries = await Promise.all(deployments.map(buildDeploymentSummary));
+  return NextResponse.json(
+    summaries.length === 1 ? summaries[0] : aggregateSummaries(summaries),
+  );
 }

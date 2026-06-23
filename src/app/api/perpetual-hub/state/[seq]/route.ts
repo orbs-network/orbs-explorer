@@ -4,6 +4,7 @@ import {
   priceToUsd,
   quantityToUnits,
 } from "@/lib/perpetual-hub/scale";
+import { resolvePerpetualHubDeployments } from "@/lib/perpetual-hub/deployments";
 import type { PerpetualHubStateDetail } from "@/lib/perpetual-hub/types";
 
 type FetchResult<T> = { data?: T; error?: string };
@@ -46,18 +47,17 @@ type ReflectedPosition = NonNullable<
   NonNullable<ReflectedState["users"]>[number]["positions"]
 >[number];
 
-const DEFAULT_BACKEND_URL = "https://perpsapi.orbs.network";
-
 function trimTrailingSlash(value: string) {
   return value.replace(/\/+$/, "");
 }
 
-function getBackendUrl() {
-  return trimTrailingSlash(
-    process.env.PERPETUAL_HUB_API_URL ||
-      process.env.NEXT_PUBLIC_PERPETUAL_HUB_API_URL ||
-      DEFAULT_BACKEND_URL
-  );
+function resolveDeployment(request: Request) {
+  const { searchParams } = new URL(request.url);
+  return resolvePerpetualHubDeployments({
+    partnerId: searchParams.getAll("partner_id"),
+    chainId: searchParams.getAll("chain_id"),
+    contract: searchParams.get("contract") || undefined,
+  })[0];
 }
 
 async function fetchJson<T>(url: string): Promise<FetchResult<T>> {
@@ -87,7 +87,12 @@ function positionNotional(position: ReflectedPosition) {
 function summarizeState(state: ReflectedState) {
   const exposure = new Map<
     string,
-    { longNotional: number; shortNotional: number; netQuantity: number; positions: number }
+    {
+      longNotional: number;
+      shortNotional: number;
+      netQuantity: number;
+      positions: number;
+    }
   >();
   let openPositions = 0;
   let pendingOrders = 0;
@@ -144,32 +149,40 @@ function summarizeState(state: ReflectedState) {
       .map(([symbol, value]) => ({ symbol, ...value }))
       .sort(
         (a, b) =>
-          b.longNotional + b.shortNotional - (a.longNotional + a.shortNotional)
+          b.longNotional + b.shortNotional - (a.longNotional + a.shortNotional),
       ),
-    users: users
-      .sort((a, b) => b.balance - a.balance)
-      .slice(0, 50),
+    users: users.sort((a, b) => b.balance - a.balance).slice(0, 50),
   };
 }
 
 export async function GET(
-  _request: Request,
-  { params }: { params: Promise<{ seq: string }> }
+  request: Request,
+  { params }: { params: Promise<{ seq: string }> },
 ) {
   const { seq } = await params;
   if (!/^\d+$/.test(seq)) {
-    return NextResponse.json({ error: "Invalid sequence number" }, { status: 400 });
+    return NextResponse.json(
+      { error: "Invalid sequence number" },
+      { status: 400 },
+    );
   }
 
-  const backendUrl = getBackendUrl();
+  const deployment = resolveDeployment(request);
+  if (!deployment) {
+    return NextResponse.json(
+      { error: "Deployment not found" },
+      { status: 404 },
+    );
+  }
+  const backendUrl = trimTrailingSlash(deployment.backendUrl);
   const stateResponse = await fetchJson<StateBySequenceResponse>(
-    `${backendUrl}/api/v1/state/${seq}`
+    `${backendUrl}/api/v1/state/${seq}`,
   );
 
   if (stateResponse.error || !stateResponse.data) {
     return NextResponse.json(
       { error: stateResponse.error || "State unavailable" },
-      { status: 502 }
+      { status: 502 },
     );
   }
 
@@ -180,7 +193,9 @@ export async function GET(
   const detail: PerpetualHubStateDetail = {
     sequenceNumber: state.sequenceNumber ?? targetSeq,
     merkleRoot: state.merkleRoot,
-    source: state.source,
+    source: state.source
+      ? `${deployment.partnerName} ${deployment.chainName} / ${state.source}`
+      : `${deployment.partnerName} ${deployment.chainName}`,
     transition: state.transition,
     ...summary,
     updatedAt: Date.now(),

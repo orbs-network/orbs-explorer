@@ -2,41 +2,40 @@ import { useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
 import _ from "lodash";
 import { Token } from "../types";
-import * as chains from 'viem/chains'
+import * as chains from "viem/chains";
 import { getChain, isNativeAddress } from "../utils/utils";
 import { zeroAddress } from "viem";
 
-
-
 const getLogoUrl = (name: string) => {
- try {
-  return  `https://static.arkhamintelligence.com/tokens/${
-    name
-    ?.toLowerCase()
-    .replace(/usd₮0/g, 'usdt0')        // usd₮0 → usdt0
-    .replace(/\(.*?\)/g, '')           // remove (text)
-    .replace(/\susd$/, '')             // remove trailing " usd"
-    .replace(/\s+/g, '-')              // spaces → "-"
-    .replace(/-+/g, '-')               // collapse multiple dashes
-    .replace(/^-|-$/g, '')             // trim dashes
-    .replace(/^wrapped-bnb$/, 'wbnb')  // wrapped-bnb → wbnb
-    .replace(/^usdc$/, 'usd-coin')     // usdc → usd-coin
-  }.png`
- } catch (error) {
-  return ''
- }
-}
+  try {
+    return `https://static.arkhamintelligence.com/tokens/${name
+      ?.toLowerCase()
+      .replace(/usd₮0/g, "usdt0") // usd₮0 → usdt0
+      .replace(/\(.*?\)/g, "") // remove (text)
+      .replace(/\susd$/, "") // remove trailing " usd"
+      .replace(/\s+/g, "-") // spaces → "-"
+      .replace(/-+/g, "-") // collapse multiple dashes
+      .replace(/^-|-$/g, "") // trim dashes
+      .replace(/^wrapped-bnb$/, "wbnb") // wrapped-bnb → wbnb
+      .replace(
+        /^usdc$/,
+        "usd-coin",
+      ) // usdc → usd-coin
+    }.png`;
+  } catch (error) {
+    return "";
+  }
+};
 
 export const useToken = (
   address?: string,
   chainId?: number,
-  disabled = false
+  disabled = false,
 ) => {
-  return  useQuery({
+  return useQuery({
     queryKey: ["useToken", address, chainId],
-    queryFn: async () => {
-
-      if(isNativeAddress(address!)) {
+    queryFn: async ({ signal }) => {
+      if (isNativeAddress(address!)) {
         const nativeToken = getChain(chainId)?.nativeCurrency;
         return {
           address: zeroAddress,
@@ -48,11 +47,11 @@ export const useToken = (
 
       const response = await fetch("/api/tokens", {
         method: "POST",
+        signal,
         body: JSON.stringify({ addresses: [address], chainId }),
       });
       const data = await response.json();
       const token = data[0];
-
 
       return {
         ...token,
@@ -64,22 +63,18 @@ export const useToken = (
   });
 };
 
-
-
-export const useTokens = (
-  _addresses?: string[],
-  chainId?: number,
-) => {
-  return  useQuery({
+export const useTokens = (_addresses?: string[], chainId?: number) => {
+  return useQuery({
     queryKey: ["useTokens", _addresses, chainId],
-    queryFn: async () => {
+    queryFn: async ({ signal }) => {
       const addresses = _.uniq(_addresses);
       const response = await fetch("/api/tokens", {
         method: "POST",
+        signal,
         body: JSON.stringify({ addresses, chainId }),
       });
       const data = await response.json();
-      
+
       return data as Token[];
     },
     enabled: !!_addresses && !!chainId,

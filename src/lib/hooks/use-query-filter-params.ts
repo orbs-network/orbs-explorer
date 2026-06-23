@@ -1,11 +1,13 @@
 "use client";
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import moment from "moment";
+import { usePathname } from "next/navigation";
 import { useEffect, useMemo } from "react";
 import { useQueryParams, StringParam, ArrayParam } from "use-query-params";
 import { URL_QUERY_KEYS } from "../consts";
 
 export const useQueryFilterParams = () => {
+  const pathname = usePathname();
   const [query, setQuery] = useQueryParams(
     {
       timeRange: StringParam,
@@ -25,10 +27,15 @@ export const useQueryFilterParams = () => {
       [URL_QUERY_KEYS.SESSION_ID]: ArrayParam,
       [URL_QUERY_KEYS.STATUS]: StringParam,
       [URL_QUERY_KEYS.TWAP_SINK_ENV]: StringParam,
+      [URL_QUERY_KEYS.SYMBOL]: StringParam,
+      [URL_QUERY_KEYS.ACTION_TYPE]: ArrayParam,
+      [URL_QUERY_KEYS.POSITION_ITEM_TYPE]: StringParam,
+      [URL_QUERY_KEYS.POSITION_SIDE]: StringParam,
+      [URL_QUERY_KEYS.CONTRACT]: StringParam,
     },
     {
       updateType: "pushIn",
-    }
+    },
   );
 
   return useMemo(() => {
@@ -76,17 +83,28 @@ export const useQueryFilterParams = () => {
         [URL_QUERY_KEYS.TWAP_SINK_ENV]: query[URL_QUERY_KEYS.TWAP_SINK_ENV] as
           | string
           | undefined,
+        [URL_QUERY_KEYS.SYMBOL]: query[URL_QUERY_KEYS.SYMBOL] as
+          | string
+          | undefined,
+        [URL_QUERY_KEYS.ACTION_TYPE]: query[URL_QUERY_KEYS.ACTION_TYPE] as
+          | string[]
+          | undefined,
+        [URL_QUERY_KEYS.POSITION_ITEM_TYPE]: query[
+          URL_QUERY_KEYS.POSITION_ITEM_TYPE
+        ] as string | undefined,
+        [URL_QUERY_KEYS.POSITION_SIDE]: query[URL_QUERY_KEYS.POSITION_SIDE] as
+          | string
+          | undefined,
+        [URL_QUERY_KEYS.CONTRACT]: query[URL_QUERY_KEYS.CONTRACT] as
+          | string
+          | undefined,
       },
       setQuery: {
         updateQuery: (value: any) => setQuery(value),
-        resetQuery: () => {
-          Object.values(URL_QUERY_KEYS).forEach((key) => {
-            setQuery({ [key]: undefined });
-          });
-        },
+        resetQuery: () => window.history.pushState(null, "", pathname),
       },
     };
-  }, [query, setQuery]);
+  }, [pathname, query, setQuery]);
 };
 
 export type QueryFilterParams = ReturnType<

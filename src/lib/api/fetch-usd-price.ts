@@ -24,8 +24,8 @@ const chainIdToName: { [key: number]: string } = {
   [chains.berachain.id]: "berachain",
 };
 export type USDPrices = {
-    [key: string]: number;
-}
+  [key: string]: number;
+};
 export interface LlamaPriceResult {
   price: number;
   symbol: string;
@@ -40,6 +40,7 @@ export interface LlamaPriceResponse {
 export async function getUSDPrice(
   tokens: string[],
   chainId: number,
+  signal?: AbortSignal,
 ): Promise<USDPrices> {
   try {
     const chainName = chainIdToName[chainId];
@@ -72,7 +73,7 @@ export async function getUSDPrice(
 
     for (const batch of batches) {
       const url = `https://coins.llama.fi/prices/current/${batch.join(",")}`;
-      const response = await fetch(url);
+      const response = await fetch(url, { signal });
 
       if (!response.ok) {
         console.error("Failed Llama batch:", batch);
@@ -98,6 +99,12 @@ export async function getUSDPrice(
     }
     return prices;
   } catch (error) {
+    if (
+      signal?.aborted ||
+      (error instanceof Error && error.name === "AbortError")
+    ) {
+      throw error;
+    }
     console.error("Error fetching Llama price:", error);
     return {};
   }

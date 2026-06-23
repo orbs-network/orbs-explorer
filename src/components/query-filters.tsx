@@ -73,12 +73,12 @@ const FilterContextProvider = ({ children }: { children: ReactNode }) => {
     (queryKey: string, value?: string | string[]) => {
       setData((prev) => ({ ...prev, [queryKey]: value }));
     },
-    []
+    [],
   );
 
   const onSubmit = useCallback(() => {
     setQuery.updateQuery(
-      data as Record<string, string | number | (string | number)[] | undefined>
+      data as Record<string, string | number | (string | number)[] | undefined>,
     );
   }, [data, setQuery]);
 
@@ -100,13 +100,10 @@ const useFilterContext = () => {
 const useFilterData = (queryKey: string) => {
   const { data } = useFilterContext();
 
-  return useMemo(
-    () => {
-      const value = data?.[queryKey as keyof typeof data] || []
-      return Array.isArray(value) ? value : [value]
-    },
-    [data, queryKey]
-  );
+  return useMemo(() => {
+    const value = data?.[queryKey as keyof typeof data] || [];
+    return Array.isArray(value) ? value : [value];
+  }, [data, queryKey]);
 };
 
 const BadgesFilter = ({
@@ -134,7 +131,7 @@ const BadgesFilter = ({
         : [...(data || []), option.value];
       onUpdate(queryKey, newData);
     },
-    [data, onUpdate, queryKey, singleSelect]
+    [data, onUpdate, queryKey, singleSelect],
   );
 
   const onReset = useCallback(() => {
@@ -160,14 +157,83 @@ const BadgesFilter = ({
                 "border gap-2",
                 selected
                   ? "bg-primary/20 border-primary/50 text-primary"
-                  : "bg-muted/50 border-border text-muted-foreground hover:bg-muted hover:text-foreground hover:border-border"
+                  : "bg-muted/50 border-border text-muted-foreground hover:bg-muted hover:text-foreground hover:border-border",
               )}
             >
-             <span className="text-sm font-medium capitalize">{option.label}</span>
-             {option.logo &&  <Avatar className="w-4 h-4">
-                <AvatarImage src={option.logo} />
-                <AvatarFallback>{option.label.charAt(0)}</AvatarFallback>
-              </Avatar>}
+              <span className="text-sm font-medium capitalize">
+                {option.label}
+              </span>
+              {option.logo && (
+                <Avatar className="w-4 h-4">
+                  <AvatarImage src={option.logo} />
+                  <AvatarFallback>{option.label.charAt(0)}</AvatarFallback>
+                </Avatar>
+              )}
+            </button>
+          );
+        })}
+      </FilterBadgesContainer>
+    </FilterSection>
+  );
+};
+
+const SingleValueBadgesFilter = ({
+  label,
+  queryKey,
+  options,
+}: {
+  label: string;
+  queryKey: string;
+  options: FilterOption[];
+}) => {
+  const { onUpdate } = useFilterContext();
+  const selectedValue = useFilterData(queryKey)[0];
+
+  const onSelect = useCallback(
+    (option: FilterOption) => {
+      onUpdate(
+        queryKey,
+        selectedValue === option.value ? undefined : option.value,
+      );
+    },
+    [onUpdate, queryKey, selectedValue],
+  );
+
+  const onReset = useCallback(() => {
+    onUpdate(queryKey, undefined);
+  }, [onUpdate, queryKey]);
+
+  return (
+    <FilterSection>
+      <FilterHeader
+        label={label}
+        onReset={onReset}
+        showReset={Boolean(selectedValue)}
+      />
+      <FilterBadgesContainer isEmpty={!options.length}>
+        {options.map((option) => {
+          const selected = selectedValue === option.value;
+          return (
+            <button
+              key={option.value}
+              onClick={() => onSelect(option)}
+              className={cn(
+                "inline-flex items-center px-3 py-1.5 rounded-lg text-sm font-medium transition-all duration-200 cursor-pointer",
+                "border gap-2",
+                selected
+                  ? "bg-primary/20 border-primary/50 text-primary"
+                  : "bg-muted/50 border-border text-muted-foreground hover:bg-muted hover:text-foreground hover:border-border",
+              )}
+            >
+              <span className="text-sm font-medium capitalize">
+                {option.label}
+              </span>
+              {option.logo && (
+                <Avatar className="w-4 h-4">
+                  <AvatarImage src={option.logo} />
+                  <AvatarFallback>{option.label.charAt(0)}</AvatarFallback>
+                </Avatar>
+              )}
             </button>
           );
         })}
@@ -187,7 +253,7 @@ const FilterSection = ({
     <div
       className={cn(
         "flex flex-col gap-3 p-4 bg-muted/30 rounded-xl border border-border",
-        className
+        className,
       )}
     >
       {children}
@@ -207,10 +273,7 @@ const FilterBadgesContainer = ({
   if (isEmpty) return null;
   return (
     <div
-      className={cn(
-        "flex items-center gap-2 flex-row flex-wrap",
-        className
-      )}
+      className={cn("flex items-center gap-2 flex-row flex-wrap", className)}
     >
       {children}
     </div>
@@ -270,7 +333,7 @@ const InputWithBadgesFilter = ({
         : [...(data || []), option];
       onUpdate(queryKey, newData);
     },
-    [data, onUpdate, queryKey]
+    [data, onUpdate, queryKey],
   );
 
   const disabledBtn = useMemo(() => {
@@ -287,7 +350,7 @@ const InputWithBadgesFilter = ({
         setInputValue("");
       }
     },
-    [onSelect, inputValue, disabledBtn, validateValue]
+    [onSelect, inputValue, disabledBtn, validateValue],
   );
 
   return (
@@ -360,11 +423,11 @@ const TokensFilter = () => {
 
 const ChainsFilter = () => {
   const options = useMemo(() => {
-  return getChains().map((chain) => ({
-    label: chain.name,
-    value: chain.id.toString(),
-    logo: chain.logoUrl,
-  }));
+    return getChains().map((chain) => ({
+      label: chain.name,
+      value: chain.id.toString(),
+      logo: chain.logoUrl,
+    }));
   }, []);
 
   return (
@@ -408,34 +471,36 @@ const UserFilter = () => {
   );
 };
 
-const FilterModalButtons = () => {
+const FilterModalButtons = ({ onClose }: { onClose: () => void }) => {
   const { onSubmit } = useFilterContext();
   const { setQuery } = useQueryFilterParams();
 
   return (
     <div className="flex gap-2">
-      <DrawerClose>
       <Button
+        type="button"
         variant="outline"
         className="gap-2 cursor-pointer"
-        onClick={() => setQuery.resetQuery()}
+        onClick={() => {
+          setQuery.resetQuery();
+          onClose();
+        }}
       >
         <RotateCcw className="w-4 h-4" />
         Reset All
       </Button>
-      </DrawerClose>
-      <DrawerClose asChild>
-        <Button
-          variant="default"
-          className="flex-1 gap-2 cursor-pointer"
-          onClick={() => {
-            onSubmit();
-          }}
-        >
-          <Check className="w-4 h-4" />
-          Apply Filters
-        </Button>
-      </DrawerClose>
+      <Button
+        type="button"
+        variant="default"
+        className="flex-1 gap-2 cursor-pointer"
+        onClick={() => {
+          onSubmit();
+          onClose();
+        }}
+      >
+        <Check className="w-4 h-4" />
+        Apply Filters
+      </Button>
     </div>
   );
 };
@@ -469,6 +534,96 @@ const InputFilter = ({
   );
 };
 
+function parseTimestampFilter(value?: string) {
+  if (!value) return {};
+  const [from, to] = value.split("-");
+  const fromMs = Number(from);
+  const toMs = Number(to);
+  return {
+    from: Number.isFinite(fromMs) && from ? fromMs : undefined,
+    to: Number.isFinite(toMs) && to ? toMs : undefined,
+  };
+}
+
+function toDatetimeLocal(value?: number) {
+  if (!value) return "";
+  const date = new Date(value);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(
+    date.getDate(),
+  )}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
+function fromDatetimeLocal(value: string) {
+  if (!value) return undefined;
+  const parsed = new Date(value).getTime();
+  return Number.isFinite(parsed) ? parsed : undefined;
+}
+
+function serializeTimestampFilter(from?: number, to?: number) {
+  if (!from && !to) return undefined;
+  return `${from ?? ""}-${to ?? ""}`;
+}
+
+const TimestampRangeFilter = ({
+  label = "Timestamp",
+  queryKey = URL_QUERY_KEYS.TIMESTAMP,
+}: {
+  label?: string;
+  queryKey?: string;
+}) => {
+  const rawValue = useFilterData(queryKey)[0];
+  const { onUpdate } = useFilterContext();
+  const { from, to } = useMemo(
+    () => parseTimestampFilter(rawValue),
+    [rawValue],
+  );
+
+  const updateFrom = useCallback(
+    (value: string) => {
+      onUpdate(
+        queryKey,
+        serializeTimestampFilter(fromDatetimeLocal(value), to),
+      );
+    },
+    [onUpdate, queryKey, to],
+  );
+
+  const updateTo = useCallback(
+    (value: string) => {
+      onUpdate(
+        queryKey,
+        serializeTimestampFilter(from, fromDatetimeLocal(value)),
+      );
+    },
+    [from, onUpdate, queryKey],
+  );
+
+  return (
+    <FilterSection>
+      <FilterHeader
+        label={label}
+        onReset={() => onUpdate(queryKey, undefined)}
+        showReset={Boolean(rawValue)}
+      />
+      <div className="grid gap-2 sm:grid-cols-2">
+        <Input
+          type="datetime-local"
+          value={toDatetimeLocal(from)}
+          onChange={(event) => updateFrom(event.target.value)}
+          className="h-10 bg-background/50 border-border/50 focus:border-primary/50 focus:ring-primary/20"
+        />
+        <Input
+          type="datetime-local"
+          value={toDatetimeLocal(to)}
+          onChange={(event) => updateTo(event.target.value)}
+          className="h-10 bg-background/50 border-border/50 focus:border-primary/50 focus:ring-primary/20"
+        />
+      </div>
+    </FilterSection>
+  );
+};
+
 const MinDollarValueFilter = () => {
   return (
     <InputFilter
@@ -479,12 +634,19 @@ const MinDollarValueFilter = () => {
   );
 };
 
-const FiltersTrigger = () => {
+const FiltersTrigger = ({ countKeys }: { countKeys?: string[] }) => {
   const { query } = useQueryFilterParams();
   const filtersCount = useMemo(() => {
+    if (countKeys?.length) {
+      return size(
+        countKeys
+          .flatMap((key) => query[key as keyof typeof query] ?? [])
+          .filter(Boolean),
+      );
+    }
     const { [URL_QUERY_KEYS.TIMESTAMP]: timestamp, ...rest } = query;
     return size(Object.values(rest).flat().filter(Boolean));
-  }, [query]);
+  }, [countKeys, query]);
 
   return (
     <DrawerTrigger asChild>
@@ -503,9 +665,11 @@ const FiltersTrigger = () => {
 
 export const QueryFilters = ({
   children,
+  countKeys,
   filters,
 }: {
   children?: ReactNode;
+  countKeys?: string[];
   filters?: {
     userFilter?: boolean;
     minDollarValueFilter?: boolean;
@@ -514,10 +678,12 @@ export const QueryFilters = ({
     tokensFilter?: boolean;
   };
 }) => {
+  const [open, setOpen] = useState(false);
+
   return (
     <FilterContextProvider>
-      <Drawer direction="right">
-        <FiltersTrigger />
+      <Drawer direction="right" open={open} onOpenChange={setOpen}>
+        <FiltersTrigger countKeys={countKeys} />
         <DrawerContent className="fixed right-0 top-0 h-full bg-card border-l border-border outline-none flex flex-col">
           <DrawerHeader className="border-b border-border pb-4 shrink-0">
             <div className="flex items-center justify-between">
@@ -539,20 +705,19 @@ export const QueryFilters = ({
 
           <div className="flex-1 overflow-y-auto p-4">
             <div className="flex flex-col gap-4">
-            {children}
-            <>
-                  {filters?.userFilter && <UserFilter />}
-                  {filters?.minDollarValueFilter && <MinDollarValueFilter />}
-                  {filters?.chainIdFilter && <ChainsFilter />}
-                  {filters?.partnerIdFilter && <PartnersFilter />}
-                  {filters?.tokensFilter && <TokensFilter />}
-                </>
-             
+              {children}
+              <>
+                {filters?.userFilter && <UserFilter />}
+                {filters?.minDollarValueFilter && <MinDollarValueFilter />}
+                {filters?.chainIdFilter && <ChainsFilter />}
+                {filters?.partnerIdFilter && <PartnersFilter />}
+                {filters?.tokensFilter && <TokensFilter />}
+              </>
             </div>
           </div>
-          
+
           <div className="shrink-0 p-4 border-t border-border bg-card">
-            <FilterModalButtons />
+            <FilterModalButtons onClose={() => setOpen(false)} />
           </div>
         </DrawerContent>
       </Drawer>
@@ -575,7 +740,7 @@ const SelectedBadge = ({
         "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium cursor-pointer",
         "bg-primary/20 text-primary border border-primary/30",
         "hover:bg-primary/30 transition-colors",
-        className
+        className,
       )}
       onClick={onClick}
     >
@@ -627,7 +792,9 @@ function ActiveQueryFilters() {
       <div className="flex flex-row justify-between items-center">
         <div className="flex items-center gap-2">
           <Filter className="w-4 h-4 text-muted-foreground" />
-          <span className="text-sm font-medium text-foreground">Active Filters</span>
+          <span className="text-sm font-medium text-foreground">
+            Active Filters
+          </span>
         </div>
         <button
           className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-primary transition-colors cursor-pointer"
@@ -665,6 +832,8 @@ function ActiveQueryFilters() {
 }
 
 QueryFilters.Badge = BadgesFilter;
+QueryFilters.SingleBadge = SingleValueBadgesFilter;
 QueryFilters.BadgeWithInput = InputWithBadgesFilter;
 QueryFilters.Input = InputFilter;
+QueryFilters.Timestamp = TimestampRangeFilter;
 QueryFilters.Active = ActiveQueryFilters;

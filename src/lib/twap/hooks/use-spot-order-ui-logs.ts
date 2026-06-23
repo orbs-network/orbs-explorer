@@ -5,8 +5,8 @@ import { useQuery } from "@tanstack/react-query";
 export function useSpotOrderUiLogs(hash?: string) {
   return useQuery({
     queryKey: [REACT_QUERY_KEYS.orderClientLogs, hash],
-    queryFn: async () => {
-      return getOrderLogsUI(hash as string);
+    queryFn: async ({ signal }) => {
+      return getOrderLogsUI(hash as string, signal);
     },
     enabled: !!hash,
   });

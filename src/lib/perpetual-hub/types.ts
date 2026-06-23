@@ -22,6 +22,11 @@ export type PerpetualHubOperation = {
   stateRoot?: string;
   rollupId?: number;
   rollupTxHash?: string;
+  partnerId?: string;
+  partnerName?: string;
+  chainId?: number;
+  chainName?: string;
+  contractAddress?: string;
 };
 
 export type PerpetualHubTrade = {
@@ -48,20 +53,91 @@ export type PerpetualHubUserPosition = {
   liquidationPrice?: ScaledNumber;
   maintenanceMargin?: ScaledNumber;
   leverage?: string | number;
+  updateTime?: number;
+};
+
+export type PerpetualHubPosition = PerpetualHubUserPosition & {
+  id: string;
+  userAddress: string;
+  sequenceNumber?: number;
+  userBalance?: ScaledNumber;
+  partnerId?: string;
+  partnerName?: string;
+  chainId?: number;
+  chainName?: string;
+  contractAddress?: string;
+};
+
+export type PerpetualHubPositionRecord = PerpetualHubPosition & {
+  recordType: "position";
+  status: "OPEN";
+};
+
+export type PerpetualHubPositionListFilters = {
+  item_type?: string;
+  symbol?: string;
+  user?: string;
+  side?: string;
+  order_type?: string;
+  min_dollar_value?: string;
+  timestamp?: string;
+  chain_id?: string;
+  partner_id?: string;
+  contract?: string;
+};
+
+export type PerpetualHubPositionList = {
+  items: PerpetualHubPositionListItem[];
+  positions: PerpetualHubPositionRecord[];
+  orders: PerpetualHubOrderRecord[];
+  total: number;
+  limit: number;
+  offset: number;
+  sequenceNumber?: number;
+  updatedAt: number;
 };
 
 export type PerpetualHubUserOrder = {
   orderId?: number | string;
   id?: number | string;
+  clientOrderId?: number | string;
   symbol?: string;
   side?: string;
+  type?: string;
   orderType?: string;
   quantity?: ScaledNumber;
+  origQty?: ScaledNumber;
+  executedQty?: ScaledNumber;
   price?: ScaledNumber;
   stopPrice?: ScaledNumber;
   status?: string;
+  timeInForce?: string;
+  reduceOnly?: boolean;
+  closePosition?: boolean;
+  time?: number;
+  updateTime?: number;
   timestamp?: number;
 };
+
+export type PerpetualHubOrderRecord = Omit<PerpetualHubUserOrder, "id"> & {
+  recordType: "order";
+  id: string;
+  userAddress: string;
+  sequenceNumber?: number;
+  quantity?: ScaledNumber;
+  orderType?: string;
+  timestamp?: number;
+  notional?: ScaledNumber;
+  partnerId?: string;
+  partnerName?: string;
+  chainId?: number;
+  chainName?: string;
+  contractAddress?: string;
+};
+
+export type PerpetualHubPositionListItem =
+  | PerpetualHubPositionRecord
+  | PerpetualHubOrderRecord;
 
 export type PerpetualHubUserCurrent = {
   user?: {
@@ -105,6 +181,12 @@ export type PerpetualHubUserBalance = {
   address: string;
   ok: boolean;
   error?: string;
+  partnerId?: string;
+  partnerName?: string;
+  chainId?: number;
+  chainName?: string;
+  contractAddress?: string;
+  sequenceNumber?: number;
   wallet: number;
   available: number;
   marginUsed: number;
@@ -115,10 +197,21 @@ export type PerpetualHubUserBalance = {
   orders: number;
 };
 
+export type PerpetualHubUserListFilters = {
+  user?: string;
+  chain_id?: string;
+  partner_id?: string;
+  contract?: string;
+  min_dollar_value?: string;
+};
+
 export type PerpetualHubUsers = {
   onChainSeq: number;
   teeSeq: number | null;
   pendingOps: number | null;
+  total: number;
+  limit: number;
+  offset: number;
   totalUsers: number;
   fundedUsers: number;
   hiddenEmpty: number;
@@ -132,6 +225,7 @@ export type PerpetualHubUsers = {
 };
 
 export type PerpetualHubHedgerPosition = {
+  id?: string;
   symbol: string;
   positionSide?: string;
   positionAmt?: string;
@@ -143,6 +237,61 @@ export type PerpetualHubHedgerPosition = {
   maintMargin?: string;
   notional?: string;
   updateTime?: number;
+  partnerId?: string;
+  partnerName?: string;
+  chainId?: number;
+  chainName?: string;
+  contractAddress?: string;
+  connected?: boolean | null;
+  dryRun?: boolean;
+};
+
+export type PerpetualHubHedgerPositionListFilters = {
+  symbol?: string;
+  side?: string;
+  min_dollar_value?: string;
+  chain_id?: string;
+  partner_id?: string;
+  contract?: string;
+};
+
+export type PerpetualHubHedgerPositionList = {
+  positions: PerpetualHubHedgerPosition[];
+  total: number;
+  limit: number;
+  offset: number;
+  updatedAt: number;
+};
+
+export type PerpetualHubRiskExposure = {
+  id: string;
+  symbol: string;
+  longNotional: number;
+  shortNotional: number;
+  netQuantity: number;
+  positions: number;
+  sequenceNumber?: number;
+  partnerId?: string;
+  partnerName?: string;
+  chainId?: number;
+  chainName?: string;
+  contractAddress?: string;
+};
+
+export type PerpetualHubRiskListFilters = {
+  symbol?: string;
+  min_dollar_value?: string;
+  chain_id?: string;
+  partner_id?: string;
+  contract?: string;
+};
+
+export type PerpetualHubRiskList = {
+  exposures: PerpetualHubRiskExposure[];
+  total: number;
+  limit: number;
+  offset: number;
+  updatedAt: number;
 };
 
 export type PerpetualHubSummary = {
@@ -251,6 +400,11 @@ export type PerpetualHubRollup = {
   confirmedAt?: number;
   oldSequence: number;
   newSequence: number;
+  partnerId?: string;
+  partnerName?: string;
+  chainId?: number;
+  chainName?: string;
+  contractAddress?: string;
 };
 
 export type PerpetualHubRollupDetail = {
@@ -273,16 +427,28 @@ export type PerpetualHubRollupList = {
   stats?: PerpetualHubRollupListStats;
 };
 
+export type PerpetualHubRollupListFilters = {
+  status?: string;
+  hash?: string;
+  chain_id?: string;
+  partner_id?: string;
+  contract?: string;
+};
+
 export type PerpetualHubEventListStats = {
   totalEvents: number;
   byType: Record<string, number>;
 };
 
 export type PerpetualHubEventListFilters = {
-  type?: string;
+  type?: string | string[];
   symbol?: string;
   user?: string;
   status?: string;
+  timestamp?: string;
+  chain_id?: string;
+  partner_id?: string;
+  contract?: string;
 };
 
 export type PerpetualHubEventList = {
@@ -291,6 +457,11 @@ export type PerpetualHubEventList = {
   limit: number;
   offset: number;
   stats?: PerpetualHubEventListStats;
+};
+
+export type PerpetualHubEventDetail = {
+  event: PerpetualHubOperation;
+  updatedAt: number;
 };
 
 export type PerpetualHubStateDetail = {

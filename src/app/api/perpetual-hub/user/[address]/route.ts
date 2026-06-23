@@ -5,6 +5,7 @@ import {
   scaleTrade,
   scaleUserCurrent,
 } from "@/lib/perpetual-hub/scale";
+import { resolvePerpetualHubDeployments } from "@/lib/perpetual-hub/deployments";
 import type {
   PerpetualHubOperation,
   PerpetualHubTrade,
@@ -36,18 +37,17 @@ type ReflectedState = {
   }>;
 };
 
-const DEFAULT_BACKEND_URL = "https://perpsapi.orbs.network";
-
 function trimTrailingSlash(value: string) {
   return value.replace(/\/+$/, "");
 }
 
-function getBackendUrl() {
-  return trimTrailingSlash(
-    process.env.PERPETUAL_HUB_API_URL ||
-      process.env.NEXT_PUBLIC_PERPETUAL_HUB_API_URL ||
-      DEFAULT_BACKEND_URL
-  );
+function resolveDeployment(request: Request) {
+  const { searchParams } = new URL(request.url);
+  return resolvePerpetualHubDeployments({
+    partnerId: searchParams.getAll("partner_id"),
+    chainId: searchParams.getAll("chain_id"),
+    contract: searchParams.get("contract") || undefined,
+  })[0];
 }
 
 async function fetchJson<T>(url: string): Promise<FetchResult<T>> {
@@ -67,37 +67,42 @@ async function fetchJson<T>(url: string): Promise<FetchResult<T>> {
 }
 
 export async function GET(
-  _request: Request,
-  { params }: { params: Promise<{ address: string }> }
+  request: Request,
+  { params }: { params: Promise<{ address: string }> },
 ) {
   const { address } = await params;
   if (!/^0x[a-fA-F0-9]{40}$/.test(address)) {
-    return NextResponse.json({ error: "Invalid user address" }, { status: 400 });
+    return NextResponse.json(
+      { error: "Invalid user address" },
+      { status: 400 },
+    );
   }
 
-  const backendUrl = getBackendUrl();
+  const deployment = resolveDeployment(request);
+  if (!deployment) {
+    return NextResponse.json(
+      { error: "Deployment not found" },
+      { status: 404 },
+    );
+  }
+  const backendUrl = trimTrailingSlash(deployment.backendUrl);
   const encodedAddress = encodeURIComponent(address);
-  const [
-    current,
-    events,
-    trades,
-    transactions,
-    reflectedState,
-  ] = await Promise.all([
-    fetchJson<PerpetualHubUserCurrent>(
-      `${backendUrl}/api/v1/user/${encodedAddress}`
-    ),
-    fetchJson<PaginatedOperations>(
-      `${backendUrl}/api/v1/events?user=${encodedAddress}&limit=20&offset=0`
-    ),
-    fetchJson<PaginatedTrades>(
-      `${backendUrl}/api/v1/user/${encodedAddress}/trades?limit=20&offset=0`
-    ),
-    fetchJson<PaginatedOperations>(
-      `${backendUrl}/api/v1/user/${encodedAddress}/transactions?limit=20&offset=0`
-    ),
-    fetchJson<ReflectedState>(`${backendUrl}/get-last-state`),
-  ]);
+  const [current, events, trades, transactions, reflectedState] =
+    await Promise.all([
+      fetchJson<PerpetualHubUserCurrent>(
+        `${backendUrl}/api/v1/user/${encodedAddress}`,
+      ),
+      fetchJson<PaginatedOperations>(
+        `${backendUrl}/api/v1/events?user=${encodedAddress}&limit=20&offset=0`,
+      ),
+      fetchJson<PaginatedTrades>(
+        `${backendUrl}/api/v1/user/${encodedAddress}/trades?limit=20&offset=0`,
+      ),
+      fetchJson<PaginatedOperations>(
+        `${backendUrl}/api/v1/user/${encodedAddress}/transactions?limit=20&offset=0`,
+      ),
+      fetchJson<ReflectedState>(`${backendUrl}/get-last-state`),
+    ]);
 
   const errors = [
     current.error && `Current state: ${current.error}`,
@@ -110,12 +115,12 @@ export async function GET(
   if (current.error && events.error && trades.error && transactions.error) {
     return NextResponse.json(
       { error: "User data unavailable", details: errors },
-      { status: 502 }
+      { status: 502 },
     );
   }
 
   const rawAccounting = reflectedState.data?.users?.find(
-    (user) => user.user?.toLowerCase() === address.toLowerCase()
+    (user) => user.user?.toLowerCase() === address.toLowerCase(),
   );
 
   const detail: PerpetualHubUserDetail = {

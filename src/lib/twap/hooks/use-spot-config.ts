@@ -6,7 +6,7 @@ import type { SpotConfig } from "../types";
 export function useSpotConfig() {
   return useQuery<SpotConfig>({
     queryKey: [REACT_QUERY_KEYS.spotConfig],
-    queryFn: () => getSpotConfig(),
+    queryFn: ({ signal }) => getSpotConfig(signal),
     staleTime: Infinity,
   });
 }
