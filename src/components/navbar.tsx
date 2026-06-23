@@ -39,7 +39,7 @@ const LIQUIDITY_HUB_CHILDREN = [
 
 const PERPETUAL_HUB_CHILDREN = [
   { href: ROUTES.PERPETUAL_HUB.ROOT, label: "Actions", exact: true },
-  { href: ROUTES.PERPETUAL_HUB.POSITIONS, label: "Positions / Orders" },
+  { href: ROUTES.PERPETUAL_HUB.POSITIONS, label: "Positions" },
   { href: ROUTES.PERPETUAL_HUB.DASHBOARD, label: "Overview" },
   { href: ROUTES.PERPETUAL_HUB.RISK, label: "Risk" },
   { href: ROUTES.PERPETUAL_HUB.USERS, label: "Users" },

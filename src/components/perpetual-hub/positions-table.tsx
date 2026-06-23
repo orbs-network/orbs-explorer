@@ -385,7 +385,7 @@ export function PerpetualHubPositionsTable() {
       desktopRows={TABLE_COLUMNS}
       onSelect={handleSelect}
       onMobileRowClick={handleSelect}
-      title="Positions / Orders"
+      title="Positions"
       headerAction={<PerpetualPositionsFilter />}
     />
   );
