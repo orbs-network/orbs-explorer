@@ -85,15 +85,21 @@ function getPositionOrderEventTypes(
 
 export function usePerpetualHubSummary() {
   const {
-    query: { chain_id, partner_id },
+    query: { chain_id, partner_id, contract },
   } = useQueryFilterParams();
   const filters = {
     chain_id: queryValues(chain_id),
     partner_id: firstQueryValue(partner_id),
+    contract,
   };
 
   return useQuery({
-    queryKey: ["perpetualHubSummary", filters.chain_id, filters.partner_id],
+    queryKey: [
+      "perpetualHubSummary",
+      filters.chain_id,
+      filters.partner_id,
+      filters.contract,
+    ],
     queryFn: ({ signal }) => getPerpetualHubSummary(filters, signal),
     refetchInterval: 30_000,
   });

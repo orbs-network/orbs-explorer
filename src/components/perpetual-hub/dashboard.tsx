@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import moment from "moment";
 import {
@@ -24,6 +24,7 @@ import {
 } from "lucide-react";
 import {
   formatPerpetualHubActionName,
+  appendPerpetualHubScope,
   usePerpetualHubSummary,
 } from "@/lib/perpetual-hub";
 import {
@@ -498,6 +499,10 @@ function RecentEventsTable({
   emptyLabel?: string;
   showRollupColumns?: boolean;
 }) {
+  const searchParams = useSearchParams();
+  const scopedHref = (href: string) =>
+    appendPerpetualHubScope(href, searchParams);
+
   if (!events.length) {
     return (
       <Card className="rounded-lg py-8">
@@ -541,7 +546,9 @@ function RecentEventsTable({
                   <td className="px-4 py-3 text-right font-mono text-muted-foreground">
                     {event.teeSequence ? (
                       <Link
-                        href={ROUTES.PERPETUAL_HUB.STATE(event.teeSequence)}
+                        href={scopedHref(
+                          ROUTES.PERPETUAL_HUB.STATE(event.teeSequence),
+                        )}
                         className="text-primary hover:underline"
                       >
                         #{formatNumber(event.teeSequence)}
@@ -554,7 +561,9 @@ function RecentEventsTable({
                     <td className="px-4 py-3 text-right font-mono text-muted-foreground">
                       {event.rollupId ? (
                         <Link
-                          href={ROUTES.PERPETUAL_HUB.ROLLUP(event.rollupId)}
+                          href={scopedHref(
+                            ROUTES.PERPETUAL_HUB.ROLLUP(event.rollupId),
+                          )}
                           className="text-primary hover:underline"
                         >
                           #{event.rollupId}
@@ -570,7 +579,9 @@ function RecentEventsTable({
                   <td className="px-4 py-3 font-mono">
                     {isUserAddress(event.userAddress) ? (
                       <Link
-                        href={ROUTES.PERPETUAL_HUB.USER(event.userAddress)}
+                        href={scopedHref(
+                          ROUTES.PERPETUAL_HUB.USER(event.userAddress),
+                        )}
                         className="text-primary hover:underline"
                       >
                         {truncate(event.userAddress)}
@@ -964,6 +975,10 @@ type RollupListItem = {
 };
 
 function RollupList({ latest }: { latest: RollupListItem[] }) {
+  const searchParams = useSearchParams();
+  const scopedHref = (href: string) =>
+    appendPerpetualHubScope(href, searchParams);
+
   if (!latest.length) {
     return (
       <Card className="rounded-lg py-8">
@@ -984,7 +999,7 @@ function RollupList({ latest }: { latest: RollupListItem[] }) {
           <div className="min-w-0">
             <div className="flex items-center gap-2">
               <Link
-                href={ROUTES.PERPETUAL_HUB.ROLLUP(rollup.id)}
+                href={scopedHref(ROUTES.PERPETUAL_HUB.ROLLUP(rollup.id))}
                 className="font-mono text-sm text-primary hover:underline"
               >
                 #{rollup.id}
@@ -1001,14 +1016,18 @@ function RollupList({ latest }: { latest: RollupListItem[] }) {
             <p className="mt-1 text-xs text-muted-foreground">
               Seq{" "}
               <Link
-                href={ROUTES.PERPETUAL_HUB.STATE(rollup.oldSequence)}
+                href={scopedHref(
+                  ROUTES.PERPETUAL_HUB.STATE(rollup.oldSequence),
+                )}
                 className="font-mono text-primary hover:underline"
               >
                 #{rollup.oldSequence}
               </Link>{" "}
               to{" "}
               <Link
-                href={ROUTES.PERPETUAL_HUB.STATE(rollup.newSequence)}
+                href={scopedHref(
+                  ROUTES.PERPETUAL_HUB.STATE(rollup.newSequence),
+                )}
                 className="font-mono text-primary hover:underline"
               >
                 #{rollup.newSequence}
@@ -1107,6 +1126,9 @@ export function PerpetualHubDashboard({
   initialTab?: PerpetualHubDashboardTab;
 }) {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const scopedHref = (href: string) =>
+    appendPerpetualHubScope(href, searchParams);
   const {
     query: { [URL_QUERY_KEYS.PARTNER_ID]: selectedPartner },
   } = useQueryFilterParams();
@@ -1158,7 +1180,7 @@ export function PerpetualHubDashboard({
     event.preventDefault();
     const id = normalizedLookup(rollupLookup);
     if (/^\d+$/.test(id)) {
-      router.push(ROUTES.PERPETUAL_HUB.ROLLUP(id));
+      router.push(scopedHref(ROUTES.PERPETUAL_HUB.ROLLUP(id)));
     }
   }
 
@@ -1166,7 +1188,7 @@ export function PerpetualHubDashboard({
     event.preventDefault();
     const seq = normalizedLookup(seqLookup);
     if (/^\d+$/.test(seq)) {
-      router.push(ROUTES.PERPETUAL_HUB.STATE(seq));
+      router.push(scopedHref(ROUTES.PERPETUAL_HUB.STATE(seq)));
     }
   }
 
@@ -1181,8 +1203,11 @@ export function PerpetualHubDashboard({
     setRootLookupError("");
     setIsRootLookupLoading(true);
     try {
-      const result = await getPerpetualHubRollupByRoot(root);
-      router.push(ROUTES.PERPETUAL_HUB.ROLLUP(result.rollup.id));
+      const result = await getPerpetualHubRollupByRoot(root, undefined, {
+        chain_id: searchParams.get("chain_id") ?? undefined,
+        contract: searchParams.get("contract") ?? undefined,
+      });
+      router.push(scopedHref(ROUTES.PERPETUAL_HUB.ROLLUP(result.rollup.id)));
     } catch (error) {
       setRootLookupError(
         error instanceof Error ? error.message : "Rollup root not found",

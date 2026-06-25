@@ -11,6 +11,7 @@ import {
 import {
   formatPerpetualHubActionName,
   PERPETUAL_HUB_CHAIN_OPTIONS,
+  PERPETUAL_HUB_CONTRACT_OPTIONS,
   PERPETUAL_HUB_PARTNER_OPTIONS,
 } from "@/lib/perpetual-hub";
 import { URL_QUERY_KEYS } from "@/lib/consts";
@@ -81,10 +82,11 @@ const ALL_PARTNERS_VALUE = "all";
 
 function ActionFilter() {
   return (
-    <QueryFilters.Badge
+    <QueryFilters.SearchableMultiSelect
       queryKey={URL_QUERY_KEYS.ACTION_TYPE}
       label="Action"
       options={ACTION_TYPE_OPTIONS}
+      placeholder="Search action type"
     />
   );
 }
@@ -111,10 +113,10 @@ function MarketFilter() {
 
 function ContractFilter() {
   return (
-    <QueryFilters.Input
+    <QueryFilters.SingleBadge
       queryKey={URL_QUERY_KEYS.CONTRACT}
       label="Contract"
-      placeholder="Search contract address"
+      options={PERPETUAL_HUB_CONTRACT_OPTIONS}
     />
   );
 }
@@ -199,10 +201,11 @@ function PositionItemTypeFilter() {
 
 function PositionOrderActionFilter() {
   return (
-    <QueryFilters.Badge
+    <QueryFilters.SearchableMultiSelect
       queryKey={URL_QUERY_KEYS.ACTION_TYPE}
       label="Action"
       options={POSITION_ORDER_ACTION_OPTIONS}
+      placeholder="Search action type"
     />
   );
 }
@@ -277,12 +280,12 @@ export function PerpetualOverviewPartnerSelect() {
 export function PerpetualActionsFilter() {
   return (
     <QueryFilters>
+      <ChainsFilter />
+      <ContractFilter />
       <ActionFilter />
       <StatusFilter />
       <MarketFilter />
-      <ContractFilter />
       <UserWalletFilter />
-      <ChainsFilter />
       <PartnersFilter />
     </QueryFilters>
   );
@@ -290,8 +293,11 @@ export function PerpetualActionsFilter() {
 
 export function PerpetualOverviewFilter() {
   return (
-    <QueryFilters countKeys={[URL_QUERY_KEYS.CHAIN_ID]}>
+    <QueryFilters
+      countKeys={[URL_QUERY_KEYS.CHAIN_ID, URL_QUERY_KEYS.CONTRACT]}
+    >
       <OverviewChainsFilter />
+      <ContractFilter />
     </QueryFilters>
   );
 }
@@ -299,10 +305,10 @@ export function PerpetualOverviewFilter() {
 export function PerpetualUsersFilter() {
   return (
     <QueryFilters>
+      <ChainsFilter />
+      <ContractFilter />
       <UserWalletFilter />
       <MinUserBalanceFilter />
-      <ContractFilter />
-      <ChainsFilter />
       <PartnersFilter />
     </QueryFilters>
   );
@@ -311,13 +317,13 @@ export function PerpetualUsersFilter() {
 export function PerpetualPositionsFilter() {
   return (
     <QueryFilters>
+      <ChainsFilter />
+      <ContractFilter />
       <PositionItemTypeFilter />
       <PositionOrderActionFilter />
       <StatusFilter />
       <MarketFilter />
       <UserWalletFilter />
-      <ContractFilter />
-      <ChainsFilter />
       <PartnersFilter />
     </QueryFilters>
   );
@@ -326,13 +332,13 @@ export function PerpetualPositionsFilter() {
 export function PerpetualRiskFilter() {
   return (
     <QueryFilters>
+      <ChainsFilter />
+      <ContractFilter />
       <MarketFilter />
       <MinDollarFilter
         label="Min Exposure"
         placeholder="Minimum long + short open interest"
       />
-      <ContractFilter />
-      <ChainsFilter />
       <PartnersFilter />
     </QueryFilters>
   );
@@ -341,11 +347,11 @@ export function PerpetualRiskFilter() {
 export function PerpetualHedgerFilter() {
   return (
     <QueryFilters>
+      <ChainsFilter />
+      <ContractFilter />
       <MarketFilter />
       <SideFilter />
       <MinDollarFilter label="Min Notional" placeholder="Minimum notional" />
-      <ContractFilter />
-      <ChainsFilter />
       <PartnersFilter />
     </QueryFilters>
   );
@@ -354,10 +360,10 @@ export function PerpetualHedgerFilter() {
 export function PerpetualRollupsFilter() {
   return (
     <QueryFilters>
+      <ChainsFilter />
+      <ContractFilter />
       <RollupStatusFilter />
       <RollupLookupFilter />
-      <ContractFilter />
-      <ChainsFilter />
       <PartnersFilter />
     </QueryFilters>
   );

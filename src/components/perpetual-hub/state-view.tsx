@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import {
   ArrowLeft,
   BarChart3,
@@ -9,7 +10,10 @@ import {
   Gauge,
   Users,
 } from "lucide-react";
-import { usePerpetualHubState } from "@/lib/perpetual-hub";
+import {
+  appendPerpetualHubScope,
+  usePerpetualHubState,
+} from "@/lib/perpetual-hub";
 import { ROUTES } from "@/lib/routes";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -81,6 +85,9 @@ function MetricCard({
 }
 
 export function PerpetualHubStateView({ seq }: { seq: string }) {
+  const searchParams = useSearchParams();
+  const scopedHref = (href: string) =>
+    appendPerpetualHubScope(href, searchParams);
   const { data, isLoading, isError, error } = usePerpetualHubState(seq);
 
   if (isLoading) {
@@ -121,7 +128,7 @@ export function PerpetualHubStateView({ seq }: { seq: string }) {
           </p>
         </div>
         <Button variant="outline" size="sm" asChild>
-          <Link href={ROUTES.PERPETUAL_HUB.ROOT}>
+          <Link href={scopedHref(ROUTES.PERPETUAL_HUB.ROOT)}>
             <ArrowLeft className="h-4 w-4" />
             Back
           </Link>

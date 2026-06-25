@@ -50,6 +50,21 @@ export const PERPETUAL_HUB_CHAIN_OPTIONS = [
   { label: "Polygon", value: "137" },
 ];
 
+export const PERPETUAL_HUB_CONTRACT_OPTIONS = Array.from(
+  new Map(
+    PERPETUAL_HUB_DEPLOYMENTS.map((deployment) => [
+      `${deployment.chainId}:${deployment.contractAddress.toLowerCase()}`,
+      {
+        label: `${deployment.chainName} · ${deployment.contractAddress.slice(
+          0,
+          6,
+        )}...${deployment.contractAddress.slice(-4)}`,
+        value: deployment.contractAddress,
+      },
+    ]),
+  ).values(),
+);
+
 function firstValue(value: string | string[] | undefined) {
   if (Array.isArray(value)) return value.find(Boolean);
   return value || undefined;

@@ -14,6 +14,7 @@ import {
   Hash,
 } from "lucide-react";
 import {
+  appendPerpetualHubScope,
   formatPerpetualHubActionName,
   formatPerpetualHubMarket,
   usePerpetualHubEvent,
@@ -157,12 +158,8 @@ export function PerpetualHubEventView({ id }: { id: string }) {
   const searchParams = useSearchParams();
   const { data, isLoading, isError, error } = usePerpetualHubEvent(id);
 
-  const scopedHref = (path: string) => {
-    const params = new URLSearchParams(searchParams.toString());
-    params.delete("seq");
-    const query = params.toString();
-    return query ? `${path}?${query}` : path;
-  };
+  const scopedHref = (path: string) =>
+    appendPerpetualHubScope(path, searchParams);
 
   if (!/^\d+$/.test(id)) {
     return (

@@ -12,7 +12,10 @@ import {
   Layers,
   ShieldCheck,
 } from "lucide-react";
-import { usePerpetualHubRollup } from "@/lib/perpetual-hub";
+import {
+  appendPerpetualHubScope,
+  usePerpetualHubRollup,
+} from "@/lib/perpetual-hub";
 import { ROUTES } from "@/lib/routes";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -81,10 +84,8 @@ function MetricCard({
 export function PerpetualHubRollupView({ id }: { id: string }) {
   const searchParams = useSearchParams();
   const { data, isLoading, isError, error } = usePerpetualHubRollup(id);
-  const scopedHref = (path: string) => {
-    const query = searchParams.toString();
-    return query ? `${path}?${query}` : path;
-  };
+  const scopedHref = (path: string) =>
+    appendPerpetualHubScope(path, searchParams);
 
   if (isLoading) {
     return (
@@ -135,7 +136,7 @@ export function PerpetualHubRollupView({ id }: { id: string }) {
           </div>
         </div>
         <Button variant="outline" size="sm" asChild>
-          <Link href={ROUTES.PERPETUAL_HUB.ROOT}>
+          <Link href={scopedHref(ROUTES.PERPETUAL_HUB.ROOT)}>
             <ArrowLeft className="h-4 w-4" />
             Back
           </Link>
@@ -246,7 +247,9 @@ export function PerpetualHubRollupView({ id }: { id: string }) {
                   <td className="px-4 py-3 font-mono">
                     {isUserAddress(operation.userAddress) ? (
                       <Link
-                        href={ROUTES.PERPETUAL_HUB.USER(operation.userAddress)}
+                        href={scopedHref(
+                          ROUTES.PERPETUAL_HUB.USER(operation.userAddress),
+                        )}
                         className="text-primary hover:underline"
                       >
                         {truncate(operation.userAddress)}
