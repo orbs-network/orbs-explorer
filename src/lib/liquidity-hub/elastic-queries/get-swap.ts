@@ -61,7 +61,9 @@ export const getSwaps = ({
           walletAddress?.length &&
             keywordScriptFilter("user.keyword", walletAddress),
           dex?.length && keywordScriptFilter("dex.keyword", dex),
-          txHash?.length && keywordScriptFilter("txHash.keyword", txHash),
+          txHash?.length && {
+            terms: { "txHash.keyword": txHash },
+          },
           {
             term: {
               "type.keyword": "swap",
@@ -71,8 +73,7 @@ export const getSwaps = ({
             keywordScriptFilter("tokenInName.keyword", inToken),
           outToken?.length &&
             keywordScriptFilter("tokenOutName.keyword", outToken),
-          status &&
-            keywordScriptFilter("swapStatus.keyword", [status]),
+          status && keywordScriptFilter("swapStatus.keyword", [status]),
           sessionId?.length && {
             terms: {
               "sessionId.keyword": sessionId,

@@ -2,7 +2,7 @@
 
 import { FilterOption, QueryFilters } from "../query-filters";
 import { URL_QUERY_KEYS } from "@/lib/consts";
-import { shortenAddress } from "@/lib/utils/utils";
+import { isValidWalletAddress, shortenAddress } from "@/lib/utils/utils";
 
 // ============================================================================
 // Filter Options
@@ -35,6 +35,16 @@ const TxHashFilter = () => (
   />
 );
 
+const UserAddressFilter = () => (
+  <QueryFilters.BadgeWithInput
+    queryKey={URL_QUERY_KEYS.USER}
+    label="User Address"
+    placeholder="Enter user address"
+    modifyDisplayValue={shortenAddress}
+    validateValue={isValidWalletAddress}
+  />
+);
+
 const SwapStatusFilter = () => (
   <QueryFilters.Badge
     queryKey={URL_QUERY_KEYS.STATUS}
@@ -52,12 +62,12 @@ export function LHSwapsFilter() {
   return (
     <QueryFilters
       filters={{
-        userFilter: true,
         partnerIdFilter: true,
         chainIdFilter: true,
         minDollarValueFilter: true,
       }}
     >
+      <UserAddressFilter />
       <SessionIdFilter />
       <TxHashFilter />
       <SwapStatusFilter />

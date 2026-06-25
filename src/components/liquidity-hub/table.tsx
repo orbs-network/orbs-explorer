@@ -15,7 +15,7 @@ import { VirtualTable } from "../virtual-table";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip";
 import { Partner } from "../ui/partner";
 import { SwapStatusBadge } from "./status-badge";
-import { QueryFilters } from "../query-filters";
+import { LHSwapsFilter } from "./filter";
 
 // ============================================================================
 // Cell Components
@@ -23,12 +23,14 @@ import { QueryFilters } from "../query-filters";
 
 const TimestampCell = ({ item }: { item: LiquidityHubSwap }) => {
   const date = useMemo(() => moment(item.timestamp), [item.timestamp]);
-  
+
   return (
     <div className="flex items-center gap-1.5">
       <Clock className="w-3.5 h-3.5 text-muted-foreground" />
       <span className="text-foreground">{date.format("MMM D, YYYY")}</span>
-      <span className="text-muted-foreground text-xs">{date.format("HH:mm")}</span>
+      <span className="text-muted-foreground text-xs">
+        {date.format("HH:mm")}
+      </span>
     </div>
   );
 };
@@ -37,12 +39,12 @@ const UsdValueCell = ({ item }: { item: LiquidityHubSwap }) => {
   const value = item.amountInUSD || item.dollarValue2 || 0;
 
   return (
-    <span className={value > 0 ? "text-foreground font-medium" : "text-muted-foreground"}>
-      {value > 0 ? (
-        <Amount amount={String(value)} prefix="$" />
-      ) : (
-        "-"
-      )}
+    <span
+      className={
+        value > 0 ? "text-foreground font-medium" : "text-muted-foreground"
+      }
+    >
+      {value > 0 ? <Amount amount={String(value)} prefix="$" /> : "-"}
     </span>
   );
 };
@@ -56,11 +58,7 @@ const PartnerCell = ({ item }: { item: LiquidityHubSwap }) => {
   const network = useNetwork(item.chainId);
 
   return (
-    <Partner
-      data={partner}
-      variant="with-subtitle"
-      subtitle={network?.name}
-    />
+    <Partner data={partner} variant="with-subtitle" subtitle={network?.name} />
   );
 };
 
@@ -80,7 +78,7 @@ const SessionIdCell = ({ item }: { item: LiquidityHubSwap }) => (
 const TokenPairCell = ({ item }: { item: LiquidityHubSwap }) => {
   const srcToken = useToken(item.tokenInAddress, item.chainId).data;
   const dstToken = useToken(item.tokenOutAddress, item.chainId).data;
-  
+
   return (
     <div className="flex items-center gap-2">
       <span className="text-sm font-medium text-foreground">
@@ -96,9 +94,11 @@ const TokenPairCell = ({ item }: { item: LiquidityHubSwap }) => {
 
 const FeesCell = ({ item }: { item: LiquidityHubSwap }) => {
   const { feeOutAmountUsd } = item;
-  
+
   return (
-    <span className={feeOutAmountUsd ? "text-foreground" : "text-muted-foreground"}>
+    <span
+      className={feeOutAmountUsd ? "text-foreground" : "text-muted-foreground"}
+    >
       {feeOutAmountUsd ? (
         <Amount amount={String(feeOutAmountUsd)} prefix="$" />
       ) : (
@@ -134,14 +134,14 @@ export function LiquidityHubTable() {
 
   const swaps = useMemo(
     () => data?.pages.flatMap((page) => page) ?? [],
-    [data]
+    [data],
   );
 
   const handleSelect = useCallback(
     (swap: LiquidityHubSwap) => {
       router.push(ROUTES.LIQUIDITY_HUB.TX(swap.sessionId));
     },
-    [router]
+    [router],
   );
 
   return (
@@ -155,7 +155,7 @@ export function LiquidityHubTable() {
       onSelect={handleSelect}
       onMobileRowClick={handleSelect}
       title="Liquidity Hub Swaps"
-      headerAction={<QueryFilters />}
+      headerAction={<LHSwapsFilter />}
     />
   );
 }

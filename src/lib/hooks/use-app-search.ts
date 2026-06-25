@@ -10,23 +10,32 @@ export function useAppSearch() {
   const router = useRouter();
   return useMutation({
     mutationFn: async (value: string) => {
-      
-      if (!isHash(value)) {
+      const identifier = value.trim();
+
+      if (!isHash(identifier)) {
         toast.error("Invalid order identifier");
         return;
       }
 
-      const [twapOrder, liquidityHubTx] = await Promise.all([
-        getSpotOrder({ hash: value }),
-        getLiquidityHubTx(value),
+      const [twapOrderResult, liquidityHubTxResult] = await Promise.allSettled([
+        getSpotOrder({ hash: identifier }),
+        getLiquidityHubTx(identifier),
       ]);
-      
+
+      const twapOrder =
+        twapOrderResult.status === "fulfilled"
+          ? twapOrderResult.value
+          : undefined;
+      const liquidityHubTx =
+        liquidityHubTxResult.status === "fulfilled"
+          ? liquidityHubTxResult.value
+          : undefined;
+
       if (twapOrder) {
         router.push(ROUTES.TWAP.ORDER(twapOrder.hash));
       } else if (liquidityHubTx) {
         router.push(ROUTES.LIQUIDITY_HUB.TX(liquidityHubTx.swap.txHash));
-      }
-      else {
+      } else {
         toast.error("Transaction not found");
       }
     },
