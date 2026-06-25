@@ -12,15 +12,15 @@ import { TransferLog } from "./types";
 import { LIQUIDITY_HUB_PARTNER_CHAINS } from "./partner-chains";
 import { Partners } from "../types";
 
-
-
-export function padArrayToLength<T = number>(arr: T[], targetLength: number, padValue: T = 0 as T): T[] {
+export function padArrayToLength<T = number>(
+  arr: T[],
+  targetLength: number,
+  padValue: T = 0 as T,
+): T[] {
   const paddingCount = Math.max(0, targetLength - arr.length);
   const padding = Array<T>(paddingCount).fill(padValue);
   return [...padding, ...arr];
 }
-
-
 
 const addSlippage = (amount?: string | number, slippage?: number) => {
   if (!amount || !slippage) return "";
@@ -29,8 +29,6 @@ const addSlippage = (amount?: string | number, slippage?: number) => {
 
   return BN(amount).plus(slippageBN).toString();
 };
-
-
 
 const getGasCostOutToken = (quote: LiquidityHubQuote) => {
   const gasCost = (quote as any)["auctionData.gasCost"];
@@ -152,11 +150,10 @@ export const getPartnerChains = (partnerId?: Partners) => {
   ];
 };
 
-
 export const keywordScriptFilter = (field: string, values: string[]) => ({
   script: {
     script: {
-      source: `params.values.contains(doc['${field}'].value.toLowerCase())`,
+      source: `doc.containsKey('${field}') && doc['${field}'].size() > 0 && params.values.contains(doc['${field}'].value.toLowerCase())`,
       params: {
         values: values.map((v) => v.toLowerCase()),
       },

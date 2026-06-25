@@ -23,6 +23,15 @@ import { getPartnerChains } from "./helpers";
 import { getLiquidityHubTx } from "./api";
 type ClientLog = { userAgent?: string; ua?: string } | undefined;
 
+function toFilterValues(value: unknown): string[] | undefined {
+  const values = Array.isArray(value) ? value : value ? [value] : [];
+  const filtered = values.filter(
+    (item): item is string => typeof item === "string" && item.length > 0,
+  );
+
+  return filtered.length ? filtered : undefined;
+}
+
 export const useLHSwaps = () => {
   const {
     query: {
@@ -60,7 +69,7 @@ export const useLHSwaps = () => {
         page: pageParam,
         chainId: chain_id,
         limit: 100,
-        walletAddress: user ? [user] : undefined,
+        walletAddress: toFilterValues(user),
         dex: partner_id,
         minDollarValue: min_dollar_value,
         inToken: in_token,
