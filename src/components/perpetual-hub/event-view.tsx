@@ -14,11 +14,11 @@ import {
   Hash,
 } from "lucide-react";
 import {
-  appendPerpetualHubScope,
   formatPerpetualHubActionName,
   formatPerpetualHubMarket,
   usePerpetualHubEvent,
 } from "@/lib/perpetual-hub";
+import { appendPerpetualHubScope } from "@/lib/perpetual-hub/query-scope";
 import type { PerpetualHubOperation } from "@/lib/perpetual-hub";
 import { ROUTES } from "@/lib/routes";
 import { formatNumber, formatUsdCompact } from "@/lib/explorer/format";

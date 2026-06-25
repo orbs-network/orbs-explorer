@@ -10,10 +10,8 @@ import {
   Gauge,
   Users,
 } from "lucide-react";
-import {
-  appendPerpetualHubScope,
-  usePerpetualHubState,
-} from "@/lib/perpetual-hub";
+import { usePerpetualHubState } from "@/lib/perpetual-hub";
+import { appendPerpetualHubScope } from "@/lib/perpetual-hub/query-scope";
 import { ROUTES } from "@/lib/routes";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";

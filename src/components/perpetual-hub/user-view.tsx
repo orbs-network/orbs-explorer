@@ -3,10 +3,8 @@
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { AlertTriangle, ArrowLeft, RefreshCw, User } from "lucide-react";
-import {
-  appendPerpetualHubScope,
-  usePerpetualHubUser,
-} from "@/lib/perpetual-hub";
+import { usePerpetualHubUser } from "@/lib/perpetual-hub";
+import { appendPerpetualHubScope } from "@/lib/perpetual-hub/query-scope";
 import { ROUTES } from "@/lib/routes";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";

@@ -12,10 +12,8 @@ import {
   Layers,
   ShieldCheck,
 } from "lucide-react";
-import {
-  appendPerpetualHubScope,
-  usePerpetualHubRollup,
-} from "@/lib/perpetual-hub";
+import { usePerpetualHubRollup } from "@/lib/perpetual-hub";
+import { appendPerpetualHubScope } from "@/lib/perpetual-hub/query-scope";
 import { ROUTES } from "@/lib/routes";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";

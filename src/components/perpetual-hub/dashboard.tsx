@@ -24,9 +24,9 @@ import {
 } from "lucide-react";
 import {
   formatPerpetualHubActionName,
-  appendPerpetualHubScope,
   usePerpetualHubSummary,
 } from "@/lib/perpetual-hub";
+import { appendPerpetualHubScope } from "@/lib/perpetual-hub/query-scope";
 import {
   PerpetualOverviewFilter,
   PerpetualOverviewPartnerSelect,

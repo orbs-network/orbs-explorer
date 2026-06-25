@@ -6,7 +6,7 @@ import { ROUTES } from "@/lib/routes";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { cn } from "@/lib/utils/utils";
-import { appendPerpetualHubScope } from "@/lib/perpetual-hub";
+import { appendPerpetualHubScope } from "@/lib/perpetual-hub/query-scope";
 import { ChevronDown, Menu, Moon, Sun } from "lucide-react";
 import {
   DropdownMenu,
