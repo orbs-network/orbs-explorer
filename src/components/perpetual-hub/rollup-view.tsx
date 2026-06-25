@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import moment from "moment";
+import { useSearchParams } from "next/navigation";
 import {
   Activity,
   ArrowLeft,
@@ -17,21 +18,26 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Spinner } from "@/components/ui/spinner";
-import { shortenAddress } from "@/lib/utils/utils";
+import { formatDecimals, shortenAddress } from "@/lib/utils/utils";
 
 function formatNumber(value?: number) {
-  return Number(value ?? 0).toLocaleString("en-US");
+  const n = Number(value ?? 0);
+  if (!Number.isFinite(n)) return "0";
+  const valueText = formatDecimals(String(n), 0) || "0";
+  return valueText.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
 }
 
 function formatTimestamp(timestamp?: number) {
   if (!timestamp) return "Never";
-  const milliseconds = timestamp < 10_000_000_000 ? timestamp * 1000 : timestamp;
+  const milliseconds =
+    timestamp < 10_000_000_000 ? timestamp * 1000 : timestamp;
   return moment(milliseconds).format("MMM D, HH:mm:ss");
 }
 
 function truncate(value?: string, chars = 6) {
   if (!value) return "-";
-  if (value.startsWith("0x") && value.length > 14) return shortenAddress(value, chars);
+  if (value.startsWith("0x") && value.length > 14)
+    return shortenAddress(value, chars);
   if (value.length <= chars * 2 + 3) return value;
   return `${value.slice(0, chars)}...${value.slice(-chars)}`;
 }
@@ -73,7 +79,12 @@ function MetricCard({
 }
 
 export function PerpetualHubRollupView({ id }: { id: string }) {
+  const searchParams = useSearchParams();
   const { data, isLoading, isError, error } = usePerpetualHubRollup(id);
+  const scopedHref = (path: string) => {
+    const query = searchParams.toString();
+    return query ? `${path}?${query}` : path;
+  };
 
   if (isLoading) {
     return (
@@ -136,7 +147,7 @@ export function PerpetualHubRollupView({ id }: { id: string }) {
           label="Old Seq"
           value={
             <Link
-              href={ROUTES.PERPETUAL_HUB.STATE(rollup.oldSequence)}
+              href={scopedHref(ROUTES.PERPETUAL_HUB.STATE(rollup.oldSequence))}
               className="text-primary hover:underline"
             >
               #{formatNumber(rollup.oldSequence)}
@@ -148,7 +159,7 @@ export function PerpetualHubRollupView({ id }: { id: string }) {
           label="New Seq"
           value={
             <Link
-              href={ROUTES.PERPETUAL_HUB.STATE(rollup.newSequence)}
+              href={scopedHref(ROUTES.PERPETUAL_HUB.STATE(rollup.newSequence))}
               className="text-primary hover:underline"
             >
               #{formatNumber(rollup.newSequence)}
@@ -173,11 +184,15 @@ export function PerpetualHubRollupView({ id }: { id: string }) {
           <CardContent className="space-y-3 px-4 text-sm">
             <div>
               <p className="text-muted-foreground">Old root</p>
-              <p className="mt-1 break-all font-mono">{rollup.oldStateRoot || "-"}</p>
+              <p className="mt-1 break-all font-mono">
+                {rollup.oldStateRoot || "-"}
+              </p>
             </div>
             <div>
               <p className="text-muted-foreground">New root</p>
-              <p className="mt-1 break-all font-mono">{rollup.newStateRoot || "-"}</p>
+              <p className="mt-1 break-all font-mono">
+                {rollup.newStateRoot || "-"}
+              </p>
             </div>
           </CardContent>
         </Card>
@@ -214,7 +229,9 @@ export function PerpetualHubRollupView({ id }: { id: string }) {
                   <td className="px-4 py-3 text-right font-mono">
                     {operation.teeSequence ? (
                       <Link
-                        href={ROUTES.PERPETUAL_HUB.STATE(operation.teeSequence)}
+                        href={scopedHref(
+                          ROUTES.PERPETUAL_HUB.STATE(operation.teeSequence),
+                        )}
                         className="text-primary hover:underline"
                       >
                         #{formatNumber(operation.teeSequence)}
@@ -253,7 +270,10 @@ export function PerpetualHubRollupView({ id }: { id: string }) {
               ))}
               {!operations.length && (
                 <tr>
-                  <td className="px-4 py-8 text-center text-muted-foreground" colSpan={6}>
+                  <td
+                    className="px-4 py-8 text-center text-muted-foreground"
+                    colSpan={6}
+                  >
                     No operations in this rollup
                   </td>
                 </tr>

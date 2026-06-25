@@ -1,7 +1,11 @@
 import axios from "axios";
 import _, { flatten } from "lodash";
 import type { ListOrder, Order, SpotConfig } from "./types";
-import { fetchElastic, normalizeSessions, queryInitialData } from "../api/fetch-elastic";
+import {
+  fetchElastic,
+  normalizeSessions,
+  queryInitialData,
+} from "../api/fetch-elastic";
 import { TWAP_ELASTIC_CLIENT_URL } from "../consts";
 
 type Filters = {
@@ -18,6 +22,16 @@ export const SINK_API_URLS = {
 } as const;
 
 const SINK_API_URL = SINK_API_URLS.prod;
+
+function isCanceledRequest(error: unknown) {
+  return (
+    axios.isCancel(error) ||
+    (typeof error === "object" &&
+      error !== null &&
+      "code" in error &&
+      error.code === "ERR_CANCELED")
+  );
+}
 
 const handleFilters = (filters: Filters) => {
   const chainQuery = filters.chainIds
@@ -47,16 +61,20 @@ const getOrders = async ({
     const filtersQuery = handleFilters(filters);
     const response = await axios.get(
       `${baseUrl}/orders?view=list&page=${page}&limit=${limit}${filtersQuery}`,
-      { signal }
+      { signal },
     );
     return response.data.orders as ListOrder[];
   };
 
   if (filters.chainIds) {
     const results = await Promise.allSettled(filters.chainIds.map(callback));
-    const res = results.map((r) =>
-      r.status === "fulfilled" ? r.value : null
+    const canceled = results.find(
+      (result): result is PromiseRejectedResult =>
+        result.status === "rejected" && isCanceledRequest(result.reason),
     );
+    if (canceled) throw canceled.reason;
+
+    const res = results.map((r) => (r.status === "fulfilled" ? r.value : null));
     return flatten(res).filter(Boolean) as ListOrder[];
   }
   return callback();
@@ -81,7 +99,7 @@ export const getOrdersPageWithFilters = async ({
   const filtersQuery = handleFilters(filters);
   const response = await axios.get(
     `${SINK_API_URL}/orders?view=list&page=${page}&limit=${limit}${filtersQuery}`,
-    { signal }
+    { signal },
   );
   const orders = (response.data.orders ?? []) as ListOrder[];
   return { orders, total: orders.length };
@@ -111,12 +129,15 @@ export const getAllOrdersForExchange = async ({
     if (totalFromApi === null) totalFromApi = total;
     all.push(...orders);
     totalFetched += orders.length;
-    if (orders.length < limit || (totalFromApi !== null && totalFetched >= totalFromApi))
+    if (
+      orders.length < limit ||
+      (totalFromApi !== null && totalFetched >= totalFromApi)
+    )
       break;
     page += 1;
   }
   return all.sort(
-    (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+    (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime(),
   );
 };
 
@@ -154,7 +175,7 @@ export const getAllOrdersForExchangeAndChain = async ({
     page += 1;
   }
   return all.sort(
-    (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+    (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime(),
   );
 };
 
@@ -169,7 +190,7 @@ export const getOrdersListPage = async ({
 }): Promise<{ orders: ListOrder[]; total?: number }> => {
   const response = await axios.get(
     `${SINK_API_URL}/orders?view=list&page=${page}&limit=${limit}`,
-    { signal }
+    { signal },
   );
   return {
     orders: (response.data.orders ?? []) as ListOrder[],
@@ -200,9 +221,10 @@ export const getSpotOrders = async ({
     });
     return orders.sort(
       (a, b) =>
-        new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+        new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime(),
     );
   } catch (error) {
+    if (isCanceledRequest(error)) throw error;
     console.error(error);
     return [];
   }
@@ -222,9 +244,12 @@ export const getSpotOrder = async ({
   return response.data.orders[0] as Order;
 };
 
-export const getSpotConfig = async (): Promise<SpotConfig> => {
+export const getSpotConfig = async (
+  signal?: AbortSignal,
+): Promise<SpotConfig> => {
   const res = await axios.get(
-    "https://raw.githubusercontent.com/orbs-network/spot/master/config.json"
+    "https://raw.githubusercontent.com/orbs-network/spot/master/config.json",
+    { signal },
   );
   return res.data;
 };
@@ -250,7 +275,7 @@ export const getOrderLogsUI = async (hash: string, signal?: AbortSignal) => {
   const response = await fetchElastic<unknown>(
     TWAP_ELASTIC_CLIENT_URL,
     getOrderLogs(hash),
-    signal
+    signal,
   );
   return normalizeSessions(response);
 };

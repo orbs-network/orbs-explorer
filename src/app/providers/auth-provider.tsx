@@ -40,9 +40,20 @@ export const parseUser = (data: any): User => {
 };
 
 const scope = ["openid", "email", "profile"].join(" ");
-export const fetchGoogleUser = async (): Promise<User> => {
+function isCanceledRequest(error: unknown) {
+  return (
+    axios.isCancel(error) ||
+    (typeof error === "object" &&
+      error !== null &&
+      "code" in error &&
+      error.code === "ERR_CANCELED")
+  );
+}
+
+export const fetchGoogleUser = async (signal?: AbortSignal): Promise<User> => {
   const { data } = await protectedApi.get(
-    "https://www.googleapis.com/oauth2/v3/userinfo"
+    "https://www.googleapis.com/oauth2/v3/userinfo",
+    { signal },
   );
 
   return parseUser(data);
@@ -51,11 +62,12 @@ export const fetchGoogleUser = async (): Promise<User> => {
 export const useUserQuery = () => {
   return useQuery({
     queryKey: ["user"],
-    queryFn: async () => {
+    queryFn: async ({ signal }) => {
       try {
-        const user = await fetchGoogleUser();
+        const user = await fetchGoogleUser(signal);
         return user;
       } catch (error) {
+        if (isCanceledRequest(error)) throw error;
         console.log("error", error);
         return null;
       }
@@ -102,8 +114,6 @@ export const useUser = () => {
     prompt: "",
   });
 
-
-  
   return {
     user,
     loginSilently,

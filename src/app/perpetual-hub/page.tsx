@@ -1,10 +1,10 @@
 import { Page } from "@/components/page";
-import { PerpetualHubDashboard } from "@/components/perpetual-hub/dashboard";
+import { PerpetualHubActionsTable } from "@/components/perpetual-hub/actions-table";
 
 export default function PerpetualHubPage() {
   return (
     <Page>
-      <PerpetualHubDashboard />
+      <PerpetualHubActionsTable />
     </Page>
   );
 }

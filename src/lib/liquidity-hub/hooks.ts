@@ -3,9 +3,7 @@ import { useCallback, useMemo } from "react";
 import BN from "bignumber.js";
 import { useQuery } from "@tanstack/react-query";
 import { getPublicClient } from "../lib";
-import {
-  getERC20Transfers,
-} from "./helpers";
+import { getERC20Transfers } from "./helpers";
 import { toAmountUI } from "../utils/utils";
 import { useToken } from "../hooks/use-token";
 import { usePriceUsd } from "../hooks/use-price-usd";
@@ -28,13 +26,13 @@ export const useOutTokenUsdCallback = (swap?: LiquidityHubSwap) => {
 
       return BN(amount).times(usdSingleToken).toString();
     },
-    [swap, token]
+    [swap, token],
   );
 };
 
 export const useOutTokenUsd = (
   swap?: LiquidityHubSwap,
-  amountWei?: string | number
+  amountWei?: string | number,
 ) => {
   const getUsd = useOutTokenUsdCallback(swap);
   return useMemo(() => getUsd(amountWei), [getUsd, amountWei]);
@@ -53,11 +51,10 @@ export const useGasCostUsd = (swap?: LiquidityHubSwap) => {
       .toString();
   }, [swap]);
 
-
-
   return useMemo(() => {
     return BN(gasPrice)
-      .times(usd || 0).toFixed()
+      .times(usd || 0)
+      .toFixed()
       .toString();
   }, [gasPrice, usd]);
 };
@@ -65,16 +62,18 @@ export const useGasCostUsd = (swap?: LiquidityHubSwap) => {
 export const useTransfers = (swap?: LiquidityHubSwap) => {
   return useQuery({
     queryKey: ["useTransfers", swap?.txHash],
-    queryFn: async () => {
+    queryFn: async ({ signal }) => {
       if (!swap) {
         throw new Error("Swap is required");
       }
+      signal?.throwIfAborted();
       const publicClient = getPublicClient(swap.chainId);
 
       const receipt = await publicClient?.getTransactionReceipt({
         hash: swap.txHash! as `0x${string}`,
       });
 
+      signal?.throwIfAborted();
       if (!receipt) return null;
       return getERC20Transfers(receipt);
     },
@@ -82,7 +81,3 @@ export const useTransfers = (swap?: LiquidityHubSwap) => {
     enabled: !!swap?.txHash && !!swap?.chainId,
   });
 };
-
-
-
-

@@ -15,15 +15,20 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Spinner } from "@/components/ui/spinner";
-import { shortenAddress } from "@/lib/utils/utils";
+import { formatDecimals, shortenAddress } from "@/lib/utils/utils";
+
+function groupThousands(value: string) {
+  const sign = value.startsWith("-") ? "-" : "";
+  const unsigned = sign ? value.slice(1) : value;
+  const [integer, decimal] = unsigned.split(".");
+  const grouped = integer.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  return `${sign}${grouped}${decimal ? `.${decimal}` : ""}`;
+}
 
 function formatNumber(value?: number, decimals = 0) {
   const n = Number(value ?? 0);
   if (!Number.isFinite(n)) return "0";
-  return n.toLocaleString("en-US", {
-    maximumFractionDigits: decimals,
-    minimumFractionDigits: decimals,
-  });
+  return groupThousands(formatDecimals(String(n), decimals) || "0");
 }
 
 function formatCompact(value?: number, decimals = 2) {
@@ -31,9 +36,9 @@ function formatCompact(value?: number, decimals = 2) {
   if (!Number.isFinite(n)) return "0";
   const sign = n < 0 ? "-" : "";
   const abs = Math.abs(n);
-  if (abs >= 1e9) return `${sign}${(abs / 1e9).toFixed(decimals)}B`;
-  if (abs >= 1e6) return `${sign}${(abs / 1e6).toFixed(decimals)}M`;
-  if (abs >= 1e3) return `${sign}${(abs / 1e3).toFixed(decimals)}K`;
+  if (abs >= 1e9) return `${sign}${formatNumber(abs / 1e9, decimals)}B`;
+  if (abs >= 1e6) return `${sign}${formatNumber(abs / 1e6, decimals)}M`;
+  if (abs >= 1e3) return `${sign}${formatNumber(abs / 1e3, decimals)}K`;
   return `${sign}${formatNumber(abs, decimals)}`;
 }
 
@@ -43,7 +48,8 @@ function formatUsd(value?: number) {
 
 function truncate(value?: string, chars = 6) {
   if (!value) return "-";
-  if (value.startsWith("0x") && value.length > 14) return shortenAddress(value, chars);
+  if (value.startsWith("0x") && value.length > 14)
+    return shortenAddress(value, chars);
   if (value.length <= chars * 2 + 3) return value;
   return `${value.slice(0, chars)}...${value.slice(-chars)}`;
 }
@@ -123,14 +129,46 @@ export function PerpetualHubStateView({ seq }: { seq: string }) {
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <MetricCard label="Users" value={formatNumber(data.metrics.users)} icon={Users} />
-        <MetricCard label="Open Positions" value={formatNumber(data.metrics.openPositions)} icon={BarChart3} />
-        <MetricCard label="Pending Orders" value={formatNumber(data.metrics.pendingOrders)} icon={Gauge} />
-        <MetricCard label="Open Interest" value={formatUsd(data.metrics.openInterest)} icon={CircleDollarSign} />
-        <MetricCard label="User Balance" value={formatUsd(data.metrics.totalUserBalance)} icon={CircleDollarSign} />
-        <MetricCard label="Platform Fees" value={formatUsd(data.metrics.platformFeesCollected)} icon={CircleDollarSign} />
-        <MetricCard label="Hedger Deposits" value={formatUsd(data.metrics.hedgerTotalDeposits)} icon={CircleDollarSign} />
-        <MetricCard label="Hedger PnL" value={formatUsd(data.metrics.hedgerRealizedPnl)} icon={Gauge} />
+        <MetricCard
+          label="Users"
+          value={formatNumber(data.metrics.users)}
+          icon={Users}
+        />
+        <MetricCard
+          label="Open Positions"
+          value={formatNumber(data.metrics.openPositions)}
+          icon={BarChart3}
+        />
+        <MetricCard
+          label="Pending Orders"
+          value={formatNumber(data.metrics.pendingOrders)}
+          icon={Gauge}
+        />
+        <MetricCard
+          label="Open Interest"
+          value={formatUsd(data.metrics.openInterest)}
+          icon={CircleDollarSign}
+        />
+        <MetricCard
+          label="User Balance"
+          value={formatUsd(data.metrics.totalUserBalance)}
+          icon={CircleDollarSign}
+        />
+        <MetricCard
+          label="Platform Fees"
+          value={formatUsd(data.metrics.platformFeesCollected)}
+          icon={CircleDollarSign}
+        />
+        <MetricCard
+          label="Hedger Deposits"
+          value={formatUsd(data.metrics.hedgerTotalDeposits)}
+          icon={CircleDollarSign}
+        />
+        <MetricCard
+          label="Hedger PnL"
+          value={formatUsd(data.metrics.hedgerRealizedPnl)}
+          icon={Gauge}
+        />
       </div>
 
       <div className="grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
@@ -141,21 +179,29 @@ export function PerpetualHubStateView({ seq }: { seq: string }) {
           <CardContent className="space-y-3 text-sm">
             <div className="grid gap-1">
               <span className="text-muted-foreground">Operation</span>
-              <span className="font-medium">{data.transition?.opType || "-"}</span>
+              <span className="font-medium">
+                {data.transition?.opType || "-"}
+              </span>
             </div>
             <div className="grid gap-1">
               <span className="text-muted-foreground">Rollup</span>
               <span className="font-mono">
-                {data.transition?.rollupId ? `#${data.transition.rollupId}` : "-"}
+                {data.transition?.rollupId
+                  ? `#${data.transition.rollupId}`
+                  : "-"}
               </span>
             </div>
             <div className="grid gap-1">
               <span className="text-muted-foreground">Previous root</span>
-              <span className="break-all font-mono">{data.transition?.prevRoot || "-"}</span>
+              <span className="break-all font-mono">
+                {data.transition?.prevRoot || "-"}
+              </span>
             </div>
             <div className="grid gap-1">
               <span className="text-muted-foreground">New root</span>
-              <span className="break-all font-mono">{data.transition?.newRoot || data.merkleRoot || "-"}</span>
+              <span className="break-all font-mono">
+                {data.transition?.newRoot || data.merkleRoot || "-"}
+              </span>
             </div>
           </CardContent>
         </Card>
@@ -169,7 +215,9 @@ export function PerpetualHubStateView({ seq }: { seq: string }) {
                   <th className="px-4 py-3 text-right font-medium">Long OI</th>
                   <th className="px-4 py-3 text-right font-medium">Short OI</th>
                   <th className="px-4 py-3 text-right font-medium">Net Qty</th>
-                  <th className="px-4 py-3 text-right font-medium">Positions</th>
+                  <th className="px-4 py-3 text-right font-medium">
+                    Positions
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -185,12 +233,17 @@ export function PerpetualHubStateView({ seq }: { seq: string }) {
                     <td className="px-4 py-3 text-right font-mono">
                       {formatCompact(row.netQuantity, 4)}
                     </td>
-                    <td className="px-4 py-3 text-right font-mono">{row.positions}</td>
+                    <td className="px-4 py-3 text-right font-mono">
+                      {row.positions}
+                    </td>
                   </tr>
                 ))}
                 {!data.exposureBySymbol.length && (
                   <tr>
-                    <td className="px-4 py-8 text-center text-muted-foreground" colSpan={5}>
+                    <td
+                      className="px-4 py-8 text-center text-muted-foreground"
+                      colSpan={5}
+                    >
                       No open exposure
                     </td>
                   </tr>
@@ -209,7 +262,9 @@ export function PerpetualHubStateView({ seq }: { seq: string }) {
                 <th className="px-4 py-3 text-left font-medium">User</th>
                 <th className="px-4 py-3 text-right font-medium">Balance</th>
                 <th className="px-4 py-3 text-right font-medium">Positions</th>
-                <th className="px-4 py-3 text-right font-medium">Pending Orders</th>
+                <th className="px-4 py-3 text-right font-medium">
+                  Pending Orders
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -231,7 +286,10 @@ export function PerpetualHubStateView({ seq }: { seq: string }) {
               ))}
               {!data.users.length && (
                 <tr>
-                  <td className="px-4 py-8 text-center text-muted-foreground" colSpan={4}>
+                  <td
+                    className="px-4 py-8 text-center text-muted-foreground"
+                    colSpan={4}
+                  >
                     No users in this state
                   </td>
                 </tr>

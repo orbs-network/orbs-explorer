@@ -16,6 +16,11 @@ export enum URL_QUERY_KEYS {
   SESSION_ID = "session_id",
   STATUS = "status",
   TWAP_SINK_ENV = "twap_sink_env",
+  SYMBOL = "symbol",
+  ACTION_TYPE = "type",
+  POSITION_ITEM_TYPE = "item_type",
+  POSITION_SIDE = "side",
+  CONTRACT = "contract",
 }
 
 export const FILTER_KEY_NAMES = {
@@ -33,6 +38,11 @@ export const FILTER_KEY_NAMES = {
   [URL_QUERY_KEYS.ORDER_TYPE]: "Order Type",
   [URL_QUERY_KEYS.SESSION_ID]: "Session ID",
   [URL_QUERY_KEYS.STATUS]: "Status",
+  [URL_QUERY_KEYS.SYMBOL]: "Market",
+  [URL_QUERY_KEYS.ACTION_TYPE]: "Action",
+  [URL_QUERY_KEYS.POSITION_ITEM_TYPE]: "Type",
+  [URL_QUERY_KEYS.POSITION_SIDE]: "Side",
+  [URL_QUERY_KEYS.CONTRACT]: "Contract",
 };
 
 export const REACT_QUERY_KEYS = {
@@ -60,7 +70,6 @@ export const ROUTES = {
   },
 };
 
-
 export const ELASTIC_ENDPOINT = "https://api.bi.orbs.network";
 export const TWAP_ELASTIC_CLIENT_URL = `${ELASTIC_ENDPOINT}/orbs-twap-ui*`;
 export const LIQUIDITY_HUB_ELASTIC_SERVER_URL = `${ELASTIC_ENDPOINT}/orbs-clob-poc10*`;
@@ -70,7 +79,5 @@ export const DEFAULT_SESSIONS_TIME_RANGE = "30m";
 
 export const TX_TRACE_SERVER = "https://utils.orbs.network/tx-trace";
 
-
 export const ORBS_LOGO =
   "https://raw.githubusercontent.com/orbs-network/twap-ui/master/logo/orbslogo.svg";
-

@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { ORBS_LOGO } from "@/lib/consts";
 import { ROUTES } from "@/lib/routes";
 import Link from "next/link";
@@ -29,14 +30,36 @@ const TWAP_CHILDREN = [
 const LIQUIDITY_HUB_CHILDREN = [
   { href: ROUTES.LIQUIDITY_HUB.ROOT, label: "Swaps" },
   { href: ROUTES.LIQUIDITY_HUB_DASHBOARD, label: "Overview" },
-  { href: "https://www.orbs.com/liquidity-hub/", label: "About", external: true },
+  {
+    href: "https://www.orbs.com/liquidity-hub/",
+    label: "About",
+    external: true,
+  },
+] as const;
+
+const PERPETUAL_HUB_CHILDREN = [
+  { href: ROUTES.PERPETUAL_HUB.ROOT, label: "Actions", exact: true },
+  { href: ROUTES.PERPETUAL_HUB.POSITIONS, label: "Positions" },
+  { href: ROUTES.PERPETUAL_HUB.DASHBOARD, label: "Overview" },
+  { href: ROUTES.PERPETUAL_HUB.RISK, label: "Risk" },
+  { href: ROUTES.PERPETUAL_HUB.USERS, label: "Users" },
+  { href: ROUTES.PERPETUAL_HUB.HEDGER, label: "Hedger" },
+  { href: ROUTES.PERPETUAL_HUB.ROLLUPS, label: "Rollups" },
 ] as const;
 
 const NAV_LINKS = [
   { href: ROUTES.HOME, label: "Home" },
   { href: ROUTES.TWAP.ROOT, label: "TWAP", children: TWAP_CHILDREN },
-  { href: ROUTES.LIQUIDITY_HUB.ROOT, label: "Liquidity Hub", children: LIQUIDITY_HUB_CHILDREN },
-  { href: ROUTES.PERPETUAL_HUB.ROOT, label: "Perpetual Hub" },
+  {
+    href: ROUTES.LIQUIDITY_HUB.ROOT,
+    label: "Liquidity Hub",
+    children: LIQUIDITY_HUB_CHILDREN,
+  },
+  {
+    href: ROUTES.PERPETUAL_HUB.ROOT,
+    label: "Perpetual Hub",
+    children: PERPETUAL_HUB_CHILDREN,
+  },
 ];
 
 function ThemeToggle() {
@@ -58,20 +81,28 @@ function ThemeToggle() {
 
 export function Navbar() {
   const pathname = usePathname();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const isHomePage = pathname === ROUTES.HOME;
 
   if (pathname.startsWith(ROUTES.EXPLORER.ROOT)) return null;
 
-  const isActiveLink = (href: string) => {
-    if (href === ROUTES.HOME) return pathname === ROUTES.HOME;
+  const closeMobileMenu = () => setMobileMenuOpen(false);
+
+  const isActiveLink = (href: string, exact = false) => {
+    if (exact || href === ROUTES.HOME) return pathname === href;
     return pathname.startsWith(href);
   };
 
   return (
     <header className="flex flex-row justify-between items-center bg-background border-b border-border px-3 py-2.5 sm:px-4 sm:py-3 gap-2 sm:gap-4 shrink-0">
-      <Link href={ROUTES.HOME} className="flex flex-row items-center gap-2 shrink-0 min-h-[44px] min-w-[44px] justify-center sm:justify-start">
+      <Link
+        href={ROUTES.HOME}
+        className="flex flex-row items-center gap-2 shrink-0 min-h-[44px] min-w-[44px] justify-center sm:justify-start"
+      >
         <img src={ORBS_LOGO} alt="logo" className="h-8 w-8" />
-        <p className="text-foreground text-xl font-bold hidden sm:block">Orbs Explorer</p>
+        <p className="text-foreground text-xl font-bold hidden sm:block">
+          Orbs Explorer
+        </p>
       </Link>
 
       {!isHomePage ? (
@@ -82,21 +113,23 @@ export function Navbar() {
                 isActiveLink(link.href) ||
                 ("children" in link &&
                   link.children?.some(
-                    (c) => !("external" in c) && isActiveLink(c.href)
+                    (c) =>
+                      !("external" in c) &&
+                      isActiveLink(
+                        c.href,
+                        "exact" in c ? Boolean(c.exact) : false,
+                      ),
                   ));
               if ("children" in link && link.children) {
                 return (
-                  <div
-                    key={link.href}
-                    className="group relative"
-                  >
+                  <div key={link.href} className="group relative">
                     <Link
                       href={link.href}
                       className={cn(
                         "flex items-center gap-0.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors",
                         isActive
                           ? "bg-primary/10 text-primary"
-                          : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                          : "text-muted-foreground hover:text-foreground hover:bg-muted",
                       )}
                     >
                       {link.label}
@@ -105,15 +138,25 @@ export function Navbar() {
                     <div className="absolute left-0 top-full pt-1 opacity-0 invisible pointer-events-none group-hover:opacity-100 group-hover:visible group-hover:pointer-events-auto transition-opacity duration-150 z-50">
                       <div className="bg-popover text-popover-foreground rounded-md border shadow-md py-1 min-w-[8rem]">
                         {link.children.map((child) => {
-                          const isChildActive = !("external" in child) && isActiveLink(child.href);
+                          const isChildActive =
+                            !("external" in child) &&
+                            isActiveLink(
+                              child.href,
+                              "exact" in child ? Boolean(child.exact) : false,
+                            );
                           return (
                             <Link
                               key={child.href}
                               href={child.href}
-                              {...("external" in child ? { target: "_blank", rel: "noopener noreferrer" } : {})}
+                              {...("external" in child
+                                ? {
+                                    target: "_blank",
+                                    rel: "noopener noreferrer",
+                                  }
+                                : {})}
                               className={cn(
                                 "block px-3 py-2 text-sm hover:bg-accent hover:text-accent-foreground rounded-none first:rounded-t-md last:rounded-b-md",
-                                isChildActive && "bg-primary/10 text-primary"
+                                isChildActive && "bg-primary/10 text-primary",
                               )}
                             >
                               {child.label}
@@ -133,7 +176,7 @@ export function Navbar() {
                     "px-3 py-1.5 rounded-md text-sm font-medium transition-colors",
                     isActive
                       ? "bg-primary/10 text-primary"
-                      : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                      : "text-muted-foreground hover:text-foreground hover:bg-muted",
                   )}
                 >
                   {link.label}
@@ -145,19 +188,23 @@ export function Navbar() {
 
           <div className="md:hidden flex items-center gap-1">
             <ThemeToggle />
-            <DropdownMenu>
+            <DropdownMenu
+              open={mobileMenuOpen}
+              onOpenChange={setMobileMenuOpen}
+            >
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-11 w-11 shrink-0">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-11 w-11 shrink-0"
+                >
                   <Menu className="h-5 w-5" />
                   <span className="sr-only">Open menu</span>
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-64">
                 <div className="p-2">
-                  <SearchInput
-                    placeholder="Search..."
-                    className="h-9"
-                  />
+                  <SearchInput placeholder="Search..." className="h-9" />
                 </div>
                 <DropdownMenuSeparator />
                 {NAV_LINKS.map((link) => {
@@ -165,7 +212,12 @@ export function Navbar() {
                     isActiveLink(link.href) ||
                     ("children" in link &&
                       link.children?.some(
-                        (c) => !("external" in c) && isActiveLink(c.href)
+                        (c) =>
+                          !("external" in c) &&
+                          isActiveLink(
+                            c.href,
+                            "exact" in c ? Boolean(c.exact) : false,
+                          ),
                       ));
                   if ("children" in link && link.children) {
                     return (
@@ -173,21 +225,36 @@ export function Navbar() {
                         <DropdownMenuSubTrigger asChild>
                           <Link
                             href={link.href}
-                            className={cn(isActive && "bg-primary/10 text-primary")}
+                            onClick={closeMobileMenu}
+                            className={cn(
+                              isActive && "bg-primary/10 text-primary",
+                            )}
                           >
                             {link.label}
                           </Link>
                         </DropdownMenuSubTrigger>
                         <DropdownMenuSubContent>
                           {link.children.map((child) => {
-                            const isChildActive = !("external" in child) && isActiveLink(child.href);
+                            const isChildActive =
+                              !("external" in child) &&
+                              isActiveLink(
+                                child.href,
+                                "exact" in child ? Boolean(child.exact) : false,
+                              );
                             return (
                               <DropdownMenuItem key={child.href} asChild>
                                 <Link
                                   href={child.href}
-                                  {...("external" in child ? { target: "_blank", rel: "noopener noreferrer" } : {})}
+                                  onClick={closeMobileMenu}
+                                  {...("external" in child
+                                    ? {
+                                        target: "_blank",
+                                        rel: "noopener noreferrer",
+                                      }
+                                    : {})}
                                   className={cn(
-                                    isChildActive && "bg-primary/10 text-primary"
+                                    isChildActive &&
+                                      "bg-primary/10 text-primary",
                                   )}
                                 >
                                   {child.label}
@@ -203,9 +270,8 @@ export function Navbar() {
                     <DropdownMenuItem key={link.href} asChild>
                       <Link
                         href={link.href}
-                        className={cn(
-                          isActive && "bg-primary/10 text-primary"
-                        )}
+                        onClick={closeMobileMenu}
+                        className={cn(isActive && "bg-primary/10 text-primary")}
                       >
                         {link.label}
                       </Link>

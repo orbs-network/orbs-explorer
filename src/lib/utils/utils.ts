@@ -73,8 +73,9 @@ export function formatDecimals(
   if (!value) return "";
 
   // ─── keep the sign, work with the absolute value ────────────────
-  const sign = value.startsWith("-") ? "-" : "";
-  const abs = sign ? value.slice(1) : value;
+  const normalizedValue = /e/i.test(value) ? BN(value).toFixed() : value.trim();
+  const sign = normalizedValue.startsWith("-") ? "-" : "";
+  const abs = sign ? normalizedValue.slice(1) : normalizedValue;
 
   const [intPart, rawDec = ""] = abs.split(".");
 

@@ -109,7 +109,10 @@ export function VirtualTable<T>({
             overscan={50}
             // ✅ single trigger point
             rangeChanged={(range) => {
-              if (range.endIndex >= tableItems.length - 30) {
+              if (
+                range.endIndex >= tableItems.length - 30 &&
+                !isFetchingNextPage
+              ) {
                 fetchNextPage();
               }
             }}
@@ -117,16 +120,18 @@ export function VirtualTable<T>({
               Table: Table,
               TableHead: TableHeader,
               TableRow: ({ children, ...props }) => {
-                const rowProps = props as { "data-item-index"?: number; "data-index"?: number };
-                const index = rowProps["data-item-index"] ?? rowProps["data-index"];
+                const rowProps = props as {
+                  "data-item-index"?: number;
+                  "data-index"?: number;
+                };
+                const index =
+                  rowProps["data-item-index"] ?? rowProps["data-index"];
                 const item = index != null ? tableItems[index] : undefined;
                 return (
                   <TableRow
                     {...props}
                     onMouseEnter={
-                      item && onRowHover
-                        ? () => onRowHover(item)
-                        : undefined
+                      item && onRowHover ? () => onRowHover(item) : undefined
                     }
                   >
                     {children}
@@ -139,10 +144,7 @@ export function VirtualTable<T>({
               <TableRow className="hover:bg-transparent cursor-default bg-muted/30">
                 {map(headerLabels, (label, index) => {
                   return (
-                    <TableHead
-                      className={cn(label.className)}
-                      key={label.text}
-                    >
+                    <TableHead className={cn(label.className)} key={label.text}>
                       {label.text}
                     </TableHead>
                   );
@@ -272,7 +274,11 @@ const MobileTable = <T,>({
           totalCount={tableItems.length}
           overscan={50}
           rangeChanged={(range) => {
-            if (range.endIndex >= tableItems.length - 5 && !isFetchingNextPage && onEndReached) {
+            if (
+              range.endIndex >= tableItems.length - 5 &&
+              !isFetchingNextPage &&
+              onEndReached
+            ) {
               onEndReached();
             }
           }}
