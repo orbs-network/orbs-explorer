@@ -22,6 +22,7 @@ import type {
 type PerpetualHubSummaryFilters = {
   chain_id?: string | string[];
   partner_id?: string;
+  contract?: string;
 };
 
 function isAbortSignal(value: unknown): value is AbortSignal {
@@ -188,8 +189,20 @@ export async function getPerpetualHubUsers(
 export async function getPerpetualHubRollupByRoot(
   root: string,
   signal?: AbortSignal,
+  filters?: {
+    chain_id?: string;
+    partner_id?: string;
+    contract?: string;
+  },
 ): Promise<{ rollup: PerpetualHubRollup }> {
-  const response = await fetch(`/api/perpetual-hub/rollup-root/${root}`, {
+  const query = new URLSearchParams();
+  if (filters) {
+    for (const [key, value] of Object.entries(filters)) {
+      if (value) query.set(key, value);
+    }
+  }
+  const suffix = query.size ? `?${query}` : "";
+  const response = await fetch(`/api/perpetual-hub/rollup-root/${root}${suffix}`, {
     signal,
   });
   if (!response.ok) {

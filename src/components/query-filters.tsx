@@ -20,6 +20,7 @@ import {
   Link2,
   Plus,
   RotateCcw,
+  Search,
   SlidersHorizontal,
   Trash2,
   User,
@@ -34,6 +35,7 @@ import {
   useContext,
   useMemo,
   createContext,
+  useRef,
 } from "react";
 
 import {
@@ -68,22 +70,29 @@ const Context = createContext<FilterContextType>({} as FilterContextType);
 const FilterContextProvider = ({ children }: { children: ReactNode }) => {
   const { setQuery, query } = useQueryFilterParams();
   const [data, setData] = useState({} as QueryFilterParams);
+  const dataRef = useRef({} as QueryFilterParams);
 
   const onUpdate = useCallback(
     (queryKey: string, value?: string | string[]) => {
-      setData((prev) => ({ ...prev, [queryKey]: value }));
+      const next = { ...dataRef.current, [queryKey]: value };
+      dataRef.current = next;
+      setData(next);
     },
     [],
   );
 
   const onSubmit = useCallback(() => {
     setQuery.updateQuery(
-      data as Record<string, string | number | (string | number)[] | undefined>,
+      dataRef.current as Record<
+        string,
+        string | number | (string | number)[] | undefined
+      >,
     );
-  }, [data, setQuery]);
+  }, [setQuery]);
 
   useEffect(() => {
     setData(query);
+    dataRef.current = query;
   }, [query]);
 
   return (
@@ -238,6 +247,124 @@ const SingleValueBadgesFilter = ({
           );
         })}
       </FilterBadgesContainer>
+    </FilterSection>
+  );
+};
+
+const SearchableMultiSelectFilter = ({
+  label,
+  queryKey,
+  options,
+  placeholder = "Search",
+}: {
+  label: string;
+  queryKey: string;
+  options: FilterOption[];
+  placeholder?: string;
+}) => {
+  const { onUpdate } = useFilterContext();
+  const data = useFilterData(queryKey);
+  const [search, setSearch] = useState("");
+  const [open, setOpen] = useState(false);
+  const selected = useMemo(() => new Set(data), [data]);
+  const selectedOptions = useMemo(
+    () => options.filter((option) => selected.has(option.value)),
+    [options, selected],
+  );
+  const filteredOptions = useMemo(() => {
+    const term = search.trim().toLowerCase();
+    return options
+      .filter((option) => !selected.has(option.value))
+      .filter((option) => {
+        if (!term) return true;
+        return (
+          option.label.toLowerCase().includes(term) ||
+          option.value.toLowerCase().includes(term)
+        );
+      })
+      .slice(0, 8);
+  }, [options, search, selected]);
+
+  const onSelect = useCallback(
+    (option: FilterOption) => {
+      onUpdate(queryKey, [...data, option.value]);
+      setSearch("");
+      setOpen(false);
+    },
+    [data, onUpdate, queryKey],
+  );
+
+  const onRemove = useCallback(
+    (value: string) => {
+      onUpdate(
+        queryKey,
+        data.filter((item) => item !== value),
+      );
+    },
+    [data, onUpdate, queryKey],
+  );
+
+  const onReset = useCallback(() => {
+    onUpdate(queryKey, []);
+    setSearch("");
+  }, [onUpdate, queryKey]);
+
+  return (
+    <FilterSection>
+      <FilterHeader
+        label={label}
+        onReset={onReset}
+        showReset={Boolean(data.length)}
+      />
+      <div className="relative">
+        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        <Input
+          value={search}
+          onChange={(event) => {
+            setSearch(event.target.value);
+            setOpen(true);
+          }}
+          onFocus={() => setOpen(true)}
+          onBlur={() => window.setTimeout(() => setOpen(false), 120)}
+          placeholder={placeholder}
+          className="h-10 bg-background/50 pl-9"
+        />
+        {open && (
+          <div className="absolute z-50 mt-1 max-h-56 w-full overflow-y-auto rounded-md border bg-popover p-1 text-popover-foreground shadow-md">
+            {filteredOptions.length ? (
+              filteredOptions.map((option) => (
+                <button
+                  key={option.value}
+                  type="button"
+                  onMouseDown={(event) => event.preventDefault()}
+                  onClick={() => onSelect(option)}
+                  className="flex w-full items-center justify-between gap-3 rounded-sm px-3 py-2 text-left text-sm hover:bg-accent hover:text-accent-foreground"
+                >
+                  <span>{option.label}</span>
+                  <span className="font-mono text-xs text-muted-foreground">
+                    {option.value}
+                  </span>
+                </button>
+              ))
+            ) : (
+              <div className="px-3 py-2 text-sm text-muted-foreground">
+                No actions found
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+      {selectedOptions.length > 0 && (
+        <div className="flex flex-wrap gap-2 border-t border-border pt-2">
+          {selectedOptions.map((option) => (
+            <SelectedBadge
+              key={option.value}
+              onClick={() => onRemove(option.value)}
+              text={option.label}
+            />
+          ))}
+        </div>
+      )}
     </FilterSection>
   );
 };
@@ -833,6 +960,7 @@ function ActiveQueryFilters() {
 
 QueryFilters.Badge = BadgesFilter;
 QueryFilters.SingleBadge = SingleValueBadgesFilter;
+QueryFilters.SearchableMultiSelect = SearchableMultiSelectFilter;
 QueryFilters.BadgeWithInput = InputWithBadgesFilter;
 QueryFilters.Input = InputFilter;
 QueryFilters.Timestamp = TimestampRangeFilter;

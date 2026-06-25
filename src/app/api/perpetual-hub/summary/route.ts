@@ -753,6 +753,7 @@ export async function GET(request: Request) {
   const deployments = resolvePerpetualHubDeployments({
     partnerId: searchParams.getAll("partner_id"),
     chainId: searchParams.getAll("chain_id"),
+    contract: searchParams.get("contract") || undefined,
   });
 
   if (!deployments.length) {

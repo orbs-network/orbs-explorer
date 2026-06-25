@@ -1,8 +1,12 @@
 "use client";
 
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { AlertTriangle, ArrowLeft, RefreshCw, User } from "lucide-react";
-import { usePerpetualHubUser } from "@/lib/perpetual-hub";
+import {
+  appendPerpetualHubScope,
+  usePerpetualHubUser,
+} from "@/lib/perpetual-hub";
 import { ROUTES } from "@/lib/routes";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -10,6 +14,9 @@ import { Spinner } from "@/components/ui/spinner";
 import { UserLookupResults } from "./dashboard";
 
 export function PerpetualHubUserView({ address }: { address: string }) {
+  const searchParams = useSearchParams();
+  const scopedHref = (href: string) =>
+    appendPerpetualHubScope(href, searchParams);
   const userQuery = usePerpetualHubUser(address);
 
   if (!/^0x[a-fA-F0-9]{40}$/.test(address)) {
@@ -35,7 +42,7 @@ export function PerpetualHubUserView({ address }: { address: string }) {
         </div>
         <div className="flex gap-2">
           <Button asChild variant="outline" size="sm">
-            <Link href={ROUTES.PERPETUAL_HUB.ROOT}>
+            <Link href={scopedHref(ROUTES.PERPETUAL_HUB.ROOT)}>
               <ArrowLeft className="h-4 w-4" />
               Dashboard
             </Link>

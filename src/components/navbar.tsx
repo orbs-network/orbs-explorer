@@ -4,8 +4,9 @@ import { useState } from "react";
 import { ORBS_LOGO } from "@/lib/consts";
 import { ROUTES } from "@/lib/routes";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { cn } from "@/lib/utils/utils";
+import { appendPerpetualHubScope } from "@/lib/perpetual-hub";
 import { ChevronDown, Menu, Moon, Sun } from "lucide-react";
 import {
   DropdownMenu,
@@ -81,8 +82,10 @@ function ThemeToggle() {
 
 export function Navbar() {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const isHomePage = pathname === ROUTES.HOME;
+  const isPerpetualHubPage = pathname.startsWith(ROUTES.PERPETUAL_HUB.ROOT);
 
   if (pathname.startsWith(ROUTES.EXPLORER.ROOT)) return null;
 
@@ -92,6 +95,11 @@ export function Navbar() {
     if (exact || href === ROUTES.HOME) return pathname === href;
     return pathname.startsWith(href);
   };
+
+  const scopedHref = (href: string) =>
+    isPerpetualHubPage && href.startsWith(ROUTES.PERPETUAL_HUB.ROOT)
+      ? appendPerpetualHubScope(href, searchParams)
+      : href;
 
   return (
     <header className="flex flex-row justify-between items-center bg-background border-b border-border px-3 py-2.5 sm:px-4 sm:py-3 gap-2 sm:gap-4 shrink-0">
@@ -124,7 +132,7 @@ export function Navbar() {
                 return (
                   <div key={link.href} className="group relative">
                     <Link
-                      href={link.href}
+                      href={scopedHref(link.href)}
                       className={cn(
                         "flex items-center gap-0.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors",
                         isActive
@@ -147,7 +155,11 @@ export function Navbar() {
                           return (
                             <Link
                               key={child.href}
-                              href={child.href}
+                              href={
+                                "external" in child
+                                  ? child.href
+                                  : scopedHref(child.href)
+                              }
                               {...("external" in child
                                 ? {
                                     target: "_blank",
@@ -171,7 +183,7 @@ export function Navbar() {
               return (
                 <Link
                   key={link.href}
-                  href={link.href}
+                  href={scopedHref(link.href)}
                   className={cn(
                     "px-3 py-1.5 rounded-md text-sm font-medium transition-colors",
                     isActive
@@ -224,7 +236,7 @@ export function Navbar() {
                       <DropdownMenuSub key={link.href}>
                         <DropdownMenuSubTrigger asChild>
                           <Link
-                            href={link.href}
+                            href={scopedHref(link.href)}
                             onClick={closeMobileMenu}
                             className={cn(
                               isActive && "bg-primary/10 text-primary",
@@ -244,7 +256,11 @@ export function Navbar() {
                             return (
                               <DropdownMenuItem key={child.href} asChild>
                                 <Link
-                                  href={child.href}
+                                  href={
+                                    "external" in child
+                                      ? child.href
+                                      : scopedHref(child.href)
+                                  }
                                   onClick={closeMobileMenu}
                                   {...("external" in child
                                     ? {
@@ -269,7 +285,7 @@ export function Navbar() {
                   return (
                     <DropdownMenuItem key={link.href} asChild>
                       <Link
-                        href={link.href}
+                        href={scopedHref(link.href)}
                         onClick={closeMobileMenu}
                         className={cn(isActive && "bg-primary/10 text-primary")}
                       >
