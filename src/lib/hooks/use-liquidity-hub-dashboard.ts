@@ -37,7 +37,7 @@ export function useLiquidityHubDashboard() {
         const result = await fetchElastic<LiquidityHubSwap>(
           LIQUIDITY_HUB_ELASTIC_SERVER_URL,
           data,
-          signal
+          signal,
         );
         if (result.length === 0) hasMore = false;
         else {
@@ -58,7 +58,9 @@ export function useLiquidityHubDashboard() {
     if (!partners.length) return [];
     return partners
       .map((p) => {
-        const swaps = allSwaps.filter((s) => swapBelongsToPartner(s, p.partnerId));
+        const swaps = allSwaps.filter((s) =>
+          swapBelongsToPartner(s, p.partnerId),
+        );
         return swapsToPartnerStats(swaps, p.partnerId, p.partnerName);
       })
       .sort((a, b) => b.totalSwaps - a.totalSwaps);
@@ -67,7 +69,9 @@ export function useLiquidityHubDashboard() {
   const swapsByPartnerId = useMemo(() => {
     const map: Record<string, LiquidityHubSwap[]> = {};
     partners.forEach((p) => {
-      map[p.partnerId] = allSwaps.filter((s) => swapBelongsToPartner(s, p.partnerId));
+      map[p.partnerId] = allSwaps.filter((s) =>
+        swapBelongsToPartner(s, p.partnerId),
+      );
     });
     return map;
   }, [partners, allSwaps]);
@@ -75,6 +79,7 @@ export function useLiquidityHubDashboard() {
   return {
     isLoading,
     isError,
+    retry: () => query.refetch(),
     error,
     stats,
     swapsByPartnerId,

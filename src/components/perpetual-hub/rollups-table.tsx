@@ -80,11 +80,11 @@ function StatusCell({ item }: { item: PerpetualHubRollup }) {
       className={cn(
         "text-[11px] uppercase",
         isConfirmed &&
-          "border-emerald-500/40 bg-emerald-500/10 text-emerald-500",
+          "border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400",
         isFailed && "border-destructive/40 bg-destructive/10 text-destructive",
         !isConfirmed &&
           !isFailed &&
-          "border-amber-500/40 bg-amber-500/10 text-amber-500",
+          "border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-400",
       )}
     >
       {item.status}
@@ -139,15 +139,15 @@ function TxCell({ item }: { item: PerpetualHubRollup }) {
 }
 
 const TABLE_COLUMNS = [
-  { Component: RollupCell, text: "Rollup" },
-  { Component: PartnerCell, text: "Partner" },
-  { Component: ChainCell, text: "Chain" },
+  { Component: RollupCell, text: "Settlement batch" },
+  { Component: PartnerCell, text: "Trading app" },
+  { Component: ChainCell, text: "Network" },
   { Component: StatusCell, text: "Status" },
-  { Component: OpsCell, text: "Ops", className: "text-right" },
-  { Component: SequenceCell, text: "Sequences" },
+  { Component: OpsCell, text: "Changes", className: "text-right" },
+  { Component: SequenceCell, text: "Change numbers" },
   { Component: SubmittedCell, text: "Submitted" },
   { Component: ConfirmedCell, text: "Confirmed" },
-  { Component: TxCell, text: "Tx" },
+  { Component: TxCell, text: "Blockchain record" },
 ];
 
 const HEADER_LABELS = TABLE_COLUMNS.map((column) => ({
@@ -191,6 +191,10 @@ export function PerpetualHubRollupsTable() {
   return (
     <VirtualTable<PerpetualHubRollup>
       isLoading={rollupsQuery.isLoading}
+      isError={rollupsQuery.isError}
+      onRetry={() => rollupsQuery.refetch()}
+      hasNextPage={rollupsQuery.hasNextPage}
+      warnings={rollupsQuery.data?.pages[0]?.warnings ?? []}
       isFetchingNextPage={rollupsQuery.isFetchingNextPage}
       fetchNextPage={handleFetchNextPage}
       tableItems={rows}
@@ -198,7 +202,7 @@ export function PerpetualHubRollupsTable() {
       desktopRows={TABLE_COLUMNS}
       onSelect={handleSelect}
       onMobileRowClick={handleSelect}
-      title="Rollups"
+      title="Settlement batches"
       headerAction={<PerpetualRollupsFilter />}
     />
   );

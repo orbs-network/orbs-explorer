@@ -1,7 +1,4 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
 "use client";
-/* eslint-disable @typescript-eslint/no-explicit-any */
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { URL_QUERY_KEYS } from "@/lib/consts";
@@ -10,21 +7,14 @@ import {
   getChains,
   isValidWalletAddress,
   parseAppliedFilters,
-  shortenAddress,
 } from "@/lib/utils/utils";
 import { map, size } from "lodash";
 import {
   Check,
-  ChevronRight,
   Filter,
-  Link2,
-  Plus,
   RotateCcw,
-  Search,
   SlidersHorizontal,
   Trash2,
-  User,
-  Wallet,
   X,
 } from "lucide-react";
 import {
@@ -36,6 +26,7 @@ import {
   useMemo,
   createContext,
   useRef,
+  useId,
 } from "react";
 
 import {
@@ -51,17 +42,18 @@ import {
   QueryFilterParams,
   useQueryFilterParams,
 } from "@/lib/hooks/use-query-filter-params";
-import { Avatar, AvatarImage, AvatarFallback } from "./ui/avatar";
-
-export type FilterOption = {
-  label: string;
-  value: string;
-  logo?: string;
-};
+import { FilterCombobox, type FilterOption } from "./filter-combobox";
+import {
+  FILTER_ARRAY_KEYS,
+  filterQueryValue,
+  splitFilterValues,
+} from "@/lib/query-filter-values";
+export type { FilterOption } from "./filter-combobox";
 
 type FilterContextType = {
   onUpdate: (key: string, value: string[] | string | undefined) => void;
-  onSubmit: () => void;
+  onSubmit: () => boolean;
+  registerValidation: (key: string, validate: () => boolean) => () => void;
   data: QueryFilterParams;
 };
 
@@ -69,8 +61,34 @@ const Context = createContext<FilterContextType>({} as FilterContextType);
 
 const FilterContextProvider = ({ children }: { children: ReactNode }) => {
   const { setQuery, query } = useQueryFilterParams();
-  const [data, setData] = useState({} as QueryFilterParams);
-  const dataRef = useRef({} as QueryFilterParams);
+  return (
+    <FilterDraft key={JSON.stringify(query)} query={query} setQuery={setQuery}>
+      {children}
+    </FilterDraft>
+  );
+};
+
+const FilterDraft = ({
+  children,
+  query,
+  setQuery,
+}: {
+  children: ReactNode;
+  query: QueryFilterParams;
+  setQuery: ReturnType<typeof useQueryFilterParams>["setQuery"];
+}) => {
+  const [data, setData] = useState(query);
+  const dataRef = useRef(query);
+  const validations = useRef(new Map<string, () => boolean>());
+  const registerValidation = useCallback(
+    (key: string, validate: () => boolean) => {
+      validations.current.set(key, validate);
+      return () => {
+        validations.current.delete(key);
+      };
+    },
+    [],
+  );
 
   const onUpdate = useCallback(
     (queryKey: string, value?: string | string[]) => {
@@ -82,21 +100,20 @@ const FilterContextProvider = ({ children }: { children: ReactNode }) => {
   );
 
   const onSubmit = useCallback(() => {
+    for (const validate of validations.current.values()) {
+      if (!validate()) return false;
+    }
     setQuery.updateQuery(
       dataRef.current as Record<
         string,
         string | number | (string | number)[] | undefined
       >,
     );
+    return true;
   }, [setQuery]);
 
-  useEffect(() => {
-    setData(query);
-    dataRef.current = query;
-  }, [query]);
-
   return (
-    <Context.Provider value={{ onUpdate, onSubmit, data }}>
+    <Context.Provider value={{ onUpdate, onSubmit, registerValidation, data }}>
       {children}
     </Context.Provider>
   );
@@ -115,259 +132,37 @@ const useFilterData = (queryKey: string) => {
   }, [data, queryKey]);
 };
 
-const BadgesFilter = ({
-  label,
-  queryKey,
-  options,
-  singleSelect = false,
-}: {
-  label: string;
-  queryKey: string;
-  options: FilterOption[];
-  singleSelect?: boolean;
-}) => {
-  const { onUpdate } = useFilterContext();
-  const data = useFilterData(queryKey);
-
-  const onSelect = useCallback(
-    (option: FilterOption) => {
-      if (singleSelect) {
-        onUpdate(queryKey, [option.value]);
-        return;
-      }
-      const newData = data?.includes(option.value)
-        ? data.filter((it) => it !== option.value)
-        : [...(data || []), option.value];
-      onUpdate(queryKey, newData);
-    },
-    [data, onUpdate, queryKey, singleSelect],
-  );
-
-  const onReset = useCallback(() => {
-    onUpdate(queryKey, []);
-  }, [onUpdate, queryKey]);
-
-  return (
-    <FilterSection>
-      <FilterHeader
-        label={label}
-        onReset={onReset}
-        showReset={Boolean(data?.length)}
-      />
-      <FilterBadgesContainer>
-        {options.map((option) => {
-          const selected = data?.includes(option.value);
-          return (
-            <button
-              key={option.value}
-              onClick={() => onSelect(option)}
-              className={cn(
-                "inline-flex items-center px-3 py-1.5 rounded-lg text-sm font-medium transition-all duration-200 cursor-pointer",
-                "border gap-2",
-                selected
-                  ? "bg-primary/20 border-primary/50 text-primary"
-                  : "bg-muted/50 border-border text-muted-foreground hover:bg-muted hover:text-foreground hover:border-border",
-              )}
-            >
-              <span className="text-sm font-medium capitalize">
-                {option.label}
-              </span>
-              {option.logo && (
-                <Avatar className="w-4 h-4">
-                  <AvatarImage src={option.logo} />
-                  <AvatarFallback>{option.label.charAt(0)}</AvatarFallback>
-                </Avatar>
-              )}
-            </button>
-          );
-        })}
-      </FilterBadgesContainer>
-    </FilterSection>
-  );
-};
-
-const SingleValueBadgesFilter = ({
-  label,
-  queryKey,
-  options,
-}: {
-  label: string;
-  queryKey: string;
-  options: FilterOption[];
-}) => {
-  const { onUpdate } = useFilterContext();
-  const selectedValue = useFilterData(queryKey)[0];
-
-  const onSelect = useCallback(
-    (option: FilterOption) => {
-      onUpdate(
-        queryKey,
-        selectedValue === option.value ? undefined : option.value,
-      );
-    },
-    [onUpdate, queryKey, selectedValue],
-  );
-
-  const onReset = useCallback(() => {
-    onUpdate(queryKey, undefined);
-  }, [onUpdate, queryKey]);
-
-  return (
-    <FilterSection>
-      <FilterHeader
-        label={label}
-        onReset={onReset}
-        showReset={Boolean(selectedValue)}
-      />
-      <FilterBadgesContainer isEmpty={!options.length}>
-        {options.map((option) => {
-          const selected = selectedValue === option.value;
-          return (
-            <button
-              key={option.value}
-              onClick={() => onSelect(option)}
-              className={cn(
-                "inline-flex items-center px-3 py-1.5 rounded-lg text-sm font-medium transition-all duration-200 cursor-pointer",
-                "border gap-2",
-                selected
-                  ? "bg-primary/20 border-primary/50 text-primary"
-                  : "bg-muted/50 border-border text-muted-foreground hover:bg-muted hover:text-foreground hover:border-border",
-              )}
-            >
-              <span className="text-sm font-medium capitalize">
-                {option.label}
-              </span>
-              {option.logo && (
-                <Avatar className="w-4 h-4">
-                  <AvatarImage src={option.logo} />
-                  <AvatarFallback>{option.label.charAt(0)}</AvatarFallback>
-                </Avatar>
-              )}
-            </button>
-          );
-        })}
-      </FilterBadgesContainer>
-    </FilterSection>
-  );
-};
-
-const SearchableMultiSelectFilter = ({
-  label,
-  queryKey,
-  options,
-  placeholder = "Search",
-}: {
+type OptionsFilterProps = {
   label: string;
   queryKey: string;
   options: FilterOption[];
   placeholder?: string;
-}) => {
+};
+
+const OptionsFilter = ({
+  queryKey,
+  mode,
+  ...props
+}: OptionsFilterProps & { mode: "single" | "multiple" }) => {
   const { onUpdate } = useFilterContext();
   const data = useFilterData(queryKey);
-  const [search, setSearch] = useState("");
-  const [open, setOpen] = useState(false);
-  const selected = useMemo(() => new Set(data), [data]);
-  const selectedOptions = useMemo(
-    () => options.filter((option) => selected.has(option.value)),
-    [options, selected],
-  );
-  const filteredOptions = useMemo(() => {
-    const term = search.trim().toLowerCase();
-    return options
-      .filter((option) => !selected.has(option.value))
-      .filter((option) => {
-        if (!term) return true;
-        return (
-          option.label.toLowerCase().includes(term) ||
-          option.value.toLowerCase().includes(term)
-        );
-      })
-      .slice(0, 8);
-  }, [options, search, selected]);
-
-  const onSelect = useCallback(
-    (option: FilterOption) => {
-      onUpdate(queryKey, [...data, option.value]);
-      setSearch("");
-      setOpen(false);
-    },
-    [data, onUpdate, queryKey],
-  );
-
-  const onRemove = useCallback(
-    (value: string) => {
-      onUpdate(
-        queryKey,
-        data.filter((item) => item !== value),
-      );
-    },
-    [data, onUpdate, queryKey],
-  );
-
-  const onReset = useCallback(() => {
-    onUpdate(queryKey, []);
-    setSearch("");
-  }, [onUpdate, queryKey]);
-
   return (
-    <FilterSection>
-      <FilterHeader
-        label={label}
-        onReset={onReset}
-        showReset={Boolean(data.length)}
-      />
-      <div className="relative">
-        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-        <Input
-          value={search}
-          onChange={(event) => {
-            setSearch(event.target.value);
-            setOpen(true);
-          }}
-          onFocus={() => setOpen(true)}
-          onBlur={() => window.setTimeout(() => setOpen(false), 120)}
-          placeholder={placeholder}
-          className="h-10 bg-background/50 pl-9"
-        />
-        {open && (
-          <div className="absolute z-50 mt-1 max-h-56 w-full overflow-y-auto rounded-md border bg-popover p-1 text-popover-foreground shadow-md">
-            {filteredOptions.length ? (
-              filteredOptions.map((option) => (
-                <button
-                  key={option.value}
-                  type="button"
-                  onMouseDown={(event) => event.preventDefault()}
-                  onClick={() => onSelect(option)}
-                  className="flex w-full items-center justify-between gap-3 rounded-sm px-3 py-2 text-left text-sm hover:bg-accent hover:text-accent-foreground"
-                >
-                  <span>{option.label}</span>
-                  <span className="font-mono text-xs text-muted-foreground">
-                    {option.value}
-                  </span>
-                </button>
-              ))
-            ) : (
-              <div className="px-3 py-2 text-sm text-muted-foreground">
-                No actions found
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-      {selectedOptions.length > 0 && (
-        <div className="flex flex-wrap gap-2 border-t border-border pt-2">
-          {selectedOptions.map((option) => (
-            <SelectedBadge
-              key={option.value}
-              onClick={() => onRemove(option.value)}
-              text={option.label}
-            />
-          ))}
-        </div>
-      )}
-    </FilterSection>
+    <FilterCombobox
+      {...props}
+      mode={mode}
+      value={data}
+      onChange={(values) =>
+        onUpdate(queryKey, filterQueryValue(queryKey, values))
+      }
+    />
   );
 };
+const SelectFilter = (props: OptionsFilterProps) => (
+  <OptionsFilter {...props} mode="single" />
+);
+const MultiSelectFilter = (props: OptionsFilterProps) => (
+  <OptionsFilter {...props} mode="multiple" />
+);
 
 const FilterSection = ({
   children,
@@ -377,31 +172,7 @@ const FilterSection = ({
   className?: string;
 }) => {
   return (
-    <div
-      className={cn(
-        "flex flex-col gap-3 p-4 bg-muted/30 rounded-xl border border-border",
-        className,
-      )}
-    >
-      {children}
-    </div>
-  );
-};
-
-const FilterBadgesContainer = ({
-  children,
-  className,
-  isEmpty = false,
-}: {
-  children: ReactNode;
-  className?: string;
-  isEmpty?: boolean;
-}) => {
-  if (isEmpty) return null;
-  return (
-    <div
-      className={cn("flex items-center gap-2 flex-row flex-wrap", className)}
-    >
+    <div className={cn("flex min-w-0 flex-col gap-1.5", className)}>
       {children}
     </div>
   );
@@ -411,14 +182,21 @@ const FilterHeader = ({
   label,
   onReset,
   showReset = false,
+  controlId,
 }: {
   label: string;
   onReset: () => void;
   showReset?: boolean;
+  controlId?: string;
 }) => {
   return (
     <div className="flex items-center gap-2 w-full justify-between">
-      <span className="text-sm font-medium text-foreground">{label}</span>
+      <label
+        htmlFor={controlId}
+        className="text-sm font-medium text-foreground"
+      >
+        {label}
+      </label>
       {showReset && (
         <button
           className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors cursor-pointer"
@@ -432,96 +210,96 @@ const FilterHeader = ({
   );
 };
 
-const InputWithBadgesFilter = ({
+const acceptFilterValue = () => true;
+const ValuesFilter = ({
   label,
   queryKey,
   placeholder,
   className,
   inputType = "text",
-  validateValue = () => true,
-  modifyDisplayValue = (value: string) => value,
+  validateValue = acceptFilterValue,
 }: {
   label: string;
   queryKey: string;
   placeholder: string;
   className?: string;
   inputType?: "text" | "number";
-  modifyDisplayValue?: (value: string) => string;
   validateValue?: (value: string) => boolean;
 }) => {
-  const [inputValue, setInputValue] = useState("");
-  const { onUpdate } = useFilterContext();
+  const { onUpdate, registerValidation } = useFilterContext();
   const data = useFilterData(queryKey);
-
-  const onSelect = useCallback(
-    (option: string) => {
-      const newData = data?.includes(option)
-        ? data.filter((it) => it !== option)
-        : [...(data || []), option];
-      onUpdate(queryKey, newData);
+  const multiple = FILTER_ARRAY_KEYS.has(queryKey);
+  const [text, setText] = useState(() => data.join(", "));
+  const textRef = useRef(text);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const id = useId();
+  const [error, setError] = useState("");
+  const validate = useCallback(
+    (focus = false) => {
+      const values = multiple
+        ? splitFilterValues(textRef.current)
+        : [textRef.current.trim()].filter(Boolean);
+      const invalid = values.some((value) => !validateValue(value));
+      setError(
+        invalid
+          ? `Enter a valid ${queryKey === URL_QUERY_KEYS.USER ? "wallet address" : label.toLowerCase()}.`
+          : "",
+      );
+      if (invalid && focus) inputRef.current?.focus();
+      return !invalid;
     },
-    [data, onUpdate, queryKey],
+    [multiple, validateValue, label, queryKey],
   );
-
-  const disabledBtn = useMemo(() => {
-    return !inputValue || data?.includes(inputValue);
-  }, [inputValue, data]);
-
-  const onKeyDown = useCallback(
-    (e: any) => {
-      if (e.key === "Enter" && !disabledBtn) {
-        if (!validateValue(inputValue)) {
-          return;
-        }
-        onSelect(inputValue);
-        setInputValue("");
-      }
-    },
-    [onSelect, inputValue, disabledBtn, validateValue],
+  useEffect(
+    () => registerValidation(queryKey, () => validate(true)),
+    [registerValidation, queryKey, validate],
   );
-
+  const update = (value: string) => {
+    textRef.current = value;
+    setText(value);
+    setError("");
+    onUpdate(
+      queryKey,
+      filterQueryValue(
+        queryKey,
+        multiple ? splitFilterValues(value) : [value.trim()],
+      ),
+    );
+  };
   return (
     <FilterSection className={className}>
       <FilterHeader
         label={label}
-        onReset={() => onUpdate(queryKey, [])}
-        showReset={Boolean(data?.length)}
+        controlId={id}
+        onReset={() => update("")}
+        showReset={Boolean(text)}
       />
-      <div className="flex items-center gap-2 w-full">
-        <Input
-          onKeyDown={onKeyDown}
-          className="flex-1 h-10 bg-background/50 border-border/50 focus:border-primary/50 focus:ring-primary/20 placeholder:text-muted-foreground/60"
-          type={inputType}
-          placeholder={placeholder}
-          onChange={(e) => setInputValue(e.target.value)}
-          value={inputValue}
-        />
-        <Button
-          disabled={disabledBtn}
-          onClick={() => {
-            if (!inputValue) return;
-            if (!validateValue(inputValue)) {
-              return;
-            }
-            onSelect(inputValue);
-            setInputValue("");
-          }}
-          size="icon"
-          className="shrink-0 h-10 w-10 bg-primary hover:bg-primary/80 text-white disabled:opacity-50 cursor-pointer"
+      <Input
+        id={id}
+        ref={inputRef}
+        type={inputType}
+        aria-label={label}
+        autoComplete="off"
+        spellCheck={false}
+        placeholder={placeholder}
+        value={text}
+        onChange={(event) => update(event.target.value)}
+        onBlur={() => validate()}
+        aria-invalid={Boolean(error)}
+        aria-describedby={error || multiple ? `${id}-help` : undefined}
+        className="h-10 placeholder:text-muted-foreground"
+      />
+      {(error || multiple) && (
+        <p
+          id={`${id}-help`}
+          role={error ? "alert" : undefined}
+          className={cn(
+            "text-xs",
+            error ? "text-destructive" : "text-muted-foreground",
+          )}
         >
-          <Plus className="w-4 h-4" />
-        </Button>
-      </div>
-      {data && data.length > 0 && (
-        <div className="flex flex-wrap gap-2 pt-2 border-t border-border">
-          {data.map((option) => (
-            <SelectedBadge
-              key={option}
-              onClick={() => onSelect(option)}
-              text={modifyDisplayValue(option)}
-            />
-          ))}
-        </div>
+          {error || "Separate multiple values with commas."}
+        </p>
       )}
     </FilterSection>
   );
@@ -530,19 +308,17 @@ const InputWithBadgesFilter = ({
 const TokensFilter = () => {
   return (
     <>
-      <InputWithBadgesFilter
+      <ValuesFilter
         className="flex-1"
         queryKey={URL_QUERY_KEYS.IN_TOKEN}
-        label="In Token"
-        placeholder="In Token"
-        modifyDisplayValue={(value) => value.toUpperCase()}
+        label="Token to trade"
+        placeholder="Token address…"
       />
-      <InputWithBadgesFilter
+      <ValuesFilter
         className="flex-1"
         queryKey={URL_QUERY_KEYS.OUT_TOKEN}
-        label="Out Token"
-        placeholder="Out Token"
-        modifyDisplayValue={(value) => value.toUpperCase()}
+        label="Token to receive"
+        placeholder="Token address…"
       />
     </>
   );
@@ -558,11 +334,10 @@ const ChainsFilter = () => {
   }, []);
 
   return (
-    <BadgesFilter
+    <SelectFilter
       queryKey={URL_QUERY_KEYS.CHAIN_ID}
-      label="Chains"
+      label="Networks"
       options={options}
-      singleSelect={true}
     />
   );
 };
@@ -577,22 +352,20 @@ const PartnersFilter = () => {
   }, []);
 
   return (
-    <BadgesFilter
+    <SelectFilter
       queryKey={URL_QUERY_KEYS.PARTNER_ID}
-      label="Partners"
+      label="Trading apps"
       options={options}
-      singleSelect={true}
     />
   );
 };
 
 const UserFilter = () => {
   return (
-    <InputWithBadgesFilter
+    <ValuesFilter
       queryKey={URL_QUERY_KEYS.USER}
-      label="Users"
-      placeholder="Insert User Address"
-      modifyDisplayValue={(value) => shortenAddress(value)}
+      label="Wallet addresses"
+      placeholder="0x…"
       validateValue={(value) => isValidWalletAddress(value)}
     />
   );
@@ -600,7 +373,7 @@ const UserFilter = () => {
 
 const FilterModalButtons = ({ onClose }: { onClose: () => void }) => {
   const { onSubmit } = useFilterContext();
-  const { setQuery } = useQueryFilterParams();
+  const { setQuery, query } = useQueryFilterParams();
 
   return (
     <div className="flex gap-2">
@@ -609,7 +382,11 @@ const FilterModalButtons = ({ onClose }: { onClose: () => void }) => {
         variant="outline"
         className="gap-2 cursor-pointer"
         onClick={() => {
-          setQuery.resetQuery();
+          setQuery.updateQuery(
+            Object.fromEntries(
+              Object.keys(query).map((key) => [key, undefined]),
+            ),
+          );
           onClose();
         }}
       >
@@ -621,8 +398,7 @@ const FilterModalButtons = ({ onClose }: { onClose: () => void }) => {
         variant="default"
         className="flex-1 gap-2 cursor-pointer"
         onClick={() => {
-          onSubmit();
-          onClose();
+          if (onSubmit()) onClose();
         }}
       >
         <Check className="w-4 h-4" />
@@ -641,6 +417,7 @@ const InputFilter = ({
   queryKey: string;
   label: string;
 }) => {
+  const id = useId();
   const data = useFilterData(queryKey)[0];
   const { onUpdate } = useFilterContext();
 
@@ -648,11 +425,16 @@ const InputFilter = ({
     <FilterSection>
       <FilterHeader
         label={label}
+        controlId={id}
         onReset={() => onUpdate(queryKey, undefined)}
         showReset={!!data}
       />
       <Input
-        className="h-10 bg-background/50 border-border/50 focus:border-primary/50 focus:ring-primary/20 placeholder:text-muted-foreground/60"
+        id={id}
+        className="h-10 bg-background/50 border-border/50 focus:border-primary/50 focus:ring-primary/20 placeholder:text-muted-foreground"
+        aria-label={label}
+        autoComplete="off"
+        spellCheck={false}
         placeholder={placeholder}
         onChange={(e) => onUpdate(queryKey, e.target.value)}
         value={data || ""}
@@ -736,12 +518,14 @@ const TimestampRangeFilter = ({
       <div className="grid gap-2 sm:grid-cols-2">
         <Input
           type="datetime-local"
+          aria-label={`${label} from`}
           value={toDatetimeLocal(from)}
           onChange={(event) => updateFrom(event.target.value)}
           className="h-10 bg-background/50 border-border/50 focus:border-primary/50 focus:ring-primary/20"
         />
         <Input
           type="datetime-local"
+          aria-label={`${label} to`}
           value={toDatetimeLocal(to)}
           onChange={(event) => updateTo(event.target.value)}
           className="h-10 bg-background/50 border-border/50 focus:border-primary/50 focus:ring-primary/20"
@@ -754,9 +538,9 @@ const TimestampRangeFilter = ({
 const MinDollarValueFilter = () => {
   return (
     <InputFilter
-      placeholder="Input Min Dollar Value"
+      placeholder="e.g. 100"
       queryKey={URL_QUERY_KEYS.MIN_DOLLAR_VALUE}
-      label="Min Dollar Value"
+      label="Minimum value (USD)"
     />
   );
 };
@@ -777,7 +561,7 @@ const FiltersTrigger = ({ countKeys }: { countKeys?: string[] }) => {
 
   return (
     <DrawerTrigger asChild>
-      <Button variant="outline" className="gap-2">
+      <Button variant="outline" className="gap-2" aria-label="Filters">
         <SlidersHorizontal className="w-4 h-4" />
         <span className="hidden sm:inline">Filters</span>
         {filtersCount > 0 && (
@@ -808,10 +592,21 @@ export const QueryFilters = ({
   const [open, setOpen] = useState(false);
 
   return (
-    <FilterContextProvider>
-      <Drawer direction="right" open={open} onOpenChange={setOpen}>
-        <FiltersTrigger countKeys={countKeys} />
-        <DrawerContent className="fixed right-0 top-0 h-full bg-card border-l border-border outline-none flex flex-col">
+    <Drawer direction="right" open={open} onOpenChange={setOpen}>
+      <FiltersTrigger countKeys={countKeys} />
+      <DrawerContent
+        className="fixed right-0 top-0 h-full bg-card border-l border-border outline-none flex flex-col data-[vaul-drawer-direction=right]:w-full sm:data-[vaul-drawer-direction=right]:max-w-[420px]"
+        onEscapeKeyDown={(event) => {
+          const target = event.target;
+          if (
+            target instanceof HTMLElement &&
+            target.getAttribute("role") === "combobox" &&
+            target.getAttribute("aria-expanded") === "true"
+          )
+            event.preventDefault();
+        }}
+      >
+        <FilterContextProvider>
           <DrawerHeader className="border-b border-border pb-4 shrink-0">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -823,14 +618,19 @@ export const QueryFilters = ({
                 </DrawerTitle>
               </div>
               <DrawerClose asChild>
-                <Button variant="ghost" size="icon" className="h-8 w-8">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8"
+                  aria-label="Close filters"
+                >
                   <X className="w-4 h-4" />
                 </Button>
               </DrawerClose>
             </div>
           </DrawerHeader>
 
-          <div className="flex-1 overflow-y-auto p-4">
+          <div data-filter-scroll className="flex-1 overflow-y-auto p-4">
             <div className="flex flex-col gap-4">
               {children}
               <>
@@ -846,34 +646,9 @@ export const QueryFilters = ({
           <div className="shrink-0 p-4 border-t border-border bg-card">
             <FilterModalButtons onClose={() => setOpen(false)} />
           </div>
-        </DrawerContent>
-      </Drawer>
-    </FilterContextProvider>
-  );
-};
-
-const SelectedBadge = ({
-  text,
-  onClick,
-  className,
-}: {
-  text: string;
-  onClick: () => void;
-  className?: string;
-}) => {
-  return (
-    <button
-      className={cn(
-        "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium cursor-pointer",
-        "bg-primary/20 text-primary border border-primary/30",
-        "hover:bg-primary/30 transition-colors",
-        className,
-      )}
-      onClick={onClick}
-    >
-      <span>{text}</span>
-      <X className="w-3 h-3" />
-    </button>
+        </FilterContextProvider>
+      </DrawerContent>
+    </Drawer>
   );
 };
 
@@ -886,7 +661,7 @@ const ActiveFilterBadge = ({
 }) => {
   return (
     <button
-      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20 transition-colors group cursor-pointer"
+      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium bg-primary/10 text-link border border-primary/20 hover:bg-primary/20 transition-colors group cursor-pointer"
       onClick={onClick}
     >
       <span>{text}</span>
@@ -925,7 +700,13 @@ function ActiveQueryFilters() {
         </div>
         <button
           className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-primary transition-colors cursor-pointer"
-          onClick={() => setQuery.resetQuery()}
+          onClick={() =>
+            setQuery.updateQuery(
+              Object.fromEntries(
+                Object.keys(query).map((key) => [key, undefined]),
+              ),
+            )
+          }
         >
           <Trash2 className="w-3.5 h-3.5" />
           Clear all
@@ -958,10 +739,9 @@ function ActiveQueryFilters() {
   );
 }
 
-QueryFilters.Badge = BadgesFilter;
-QueryFilters.SingleBadge = SingleValueBadgesFilter;
-QueryFilters.SearchableMultiSelect = SearchableMultiSelectFilter;
-QueryFilters.BadgeWithInput = InputWithBadgesFilter;
+QueryFilters.Select = SelectFilter;
+QueryFilters.MultiSelect = MultiSelectFilter;
+QueryFilters.Values = ValuesFilter;
 QueryFilters.Input = InputFilter;
 QueryFilters.Timestamp = TimestampRangeFilter;
 QueryFilters.Active = ActiveQueryFilters;

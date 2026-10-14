@@ -1,12 +1,10 @@
 "use client";
 
+import { ActivitySummary, ActivityTime } from "@/components/activity-summary";
+import { getPerpetualStory } from "@/lib/activity/perpetual-story";
+import { isSettlementConfirmed } from "@/lib/activity/settlement-story";
 import Link from "next/link";
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "@/components/ui/tabs";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ROUTES } from "@/lib/routes";
 import { useExplorerBlock, useExplorerBlockBatch } from "@/lib/explorer/hooks";
 import { Hash } from "@/components/explorer/ui/hash";
@@ -28,11 +26,28 @@ import type {
   PerpetualHubStateDetail,
 } from "@/lib/perpetual-hub/types";
 
-export function ExplorerBlock({ seq }: { seq: string }) {
+export function ExplorerBlock({
+  seq,
+  initialView = "transition",
+}: {
+  seq: string;
+  initialView?: "transition" | "state";
+}) {
   const blockQ = useExplorerBlock(seq);
   const block = blockQ.data;
   const rollupId = block?.transition?.rollupId;
   const batchQ = useExplorerBlockBatch(rollupId, block?.sequenceNumber);
+
+  if (!/^\d+$/.test(seq)) {
+    return (
+      <p
+        role="alert"
+        className="rounded-md border border-destructive/40 bg-destructive/10 p-4 text-sm"
+      >
+        Enter a valid block number.
+      </p>
+    );
+  }
 
   if (blockQ.isPending) {
     return <BlockSkeleton seq={seq} />;
@@ -53,11 +68,59 @@ export function ExplorerBlock({ seq }: { seq: string }) {
 
   return (
     <div className="flex flex-col gap-4 sm:gap-5">
-      <BlockHeader block={block} />
-      <Tabs defaultValue="transition">
+      <BlockHeader
+        block={block}
+        confirmed={isSettlementConfirmed(batchQ.data?.rollup)}
+      />
+      <ActivitySummary
+        {...(batchQ.data?.op
+          ? getPerpetualStory(batchQ.data.op, batchQ.data.rollup)
+          : {
+              title: "Account change recorded",
+              tone: "success" as const,
+              explanation:
+                "This block records an account change. Blockchain confirmation happens separately. Balances at this time shows the account data saved after this change; it may differ from the account today.",
+            })}
+        onRefresh={() => {
+          void blockQ.refetch();
+          if (rollupId !== undefined) void batchQ.refetch();
+        }}
+        refreshing={blockQ.isFetching || batchQ.isFetching}
+        facts={[
+          {
+            label: "Change recorded",
+            value: <ActivityTime value={block.transition?.createdAt} />,
+          },
+          {
+            label: "Settlement",
+            value: batchQ.isError
+              ? "Batch data unavailable"
+              : isSettlementConfirmed(batchQ.data?.rollup)
+                ? "Batch confirmation reported"
+                : rollupId !== undefined
+                  ? `Assigned to batch #${rollupId}; confirmation not established`
+                  : "No batch reported yet",
+          },
+          {
+            label: "Last updated",
+            value: <ActivityTime value={blockQ.dataUpdatedAt} />,
+          },
+        ]}
+        actions={
+          batchQ.data?.op?.userAddress && (
+            <Link
+              href={ROUTES.EXPLORER.ADDRESS(batchQ.data.op.userAddress)}
+              className="text-sm text-primary hover:underline"
+            >
+              Open current account
+            </Link>
+          )
+        }
+      />
+      <Tabs defaultValue={initialView}>
         <TabsList>
-          <TabsTrigger value="transition">Transition</TabsTrigger>
-          <TabsTrigger value="state">State</TabsTrigger>
+          <TabsTrigger value="transition">What changed</TabsTrigger>
+          <TabsTrigger value="state">Balances at this time</TabsTrigger>
         </TabsList>
         <TabsContent value="transition">
           <TransitionTab
@@ -77,7 +140,13 @@ export function ExplorerBlock({ seq }: { seq: string }) {
 
 // ---------- Header ----------
 
-function BlockHeader({ block }: { block: PerpetualHubStateDetail }) {
+function BlockHeader({
+  block,
+  confirmed,
+}: {
+  block: PerpetualHubStateDetail;
+  confirmed: boolean;
+}) {
   const rollupId = block.transition?.rollupId;
   const createdAt = block.transition?.createdAt;
   return (
@@ -91,7 +160,8 @@ function BlockHeader({ block }: { block: PerpetualHubStateDetail }) {
             href={ROUTES.EXPLORER.BATCH(rollupId)}
             className="font-mono text-xs uppercase tracking-wider text-[var(--explorer-success)] hover:underline"
           >
-            ✓ settled in batch {formatId(rollupId)}
+            {confirmed ? "Confirmed in batch" : "Included in batch"}{" "}
+            {formatId(rollupId)}
           </Link>
         ) : (
           <span className="font-mono text-xs uppercase tracking-wider text-[var(--explorer-warning)]">
@@ -100,11 +170,14 @@ function BlockHeader({ block }: { block: PerpetualHubStateDetail }) {
         )}
       </div>
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
-        {block.transition?.opType ? <OpTypePill type={block.transition.opType} /> : null}
+        {block.transition?.opType ? (
+          <OpTypePill type={block.transition.opType} />
+        ) : null}
         {createdAt ? (
           <>
             <span>
-              applied <RelativeTime timestamp={createdAt} className="text-foreground" />
+              applied{" "}
+              <RelativeTime timestamp={createdAt} className="text-foreground" />
             </span>
             <span aria-hidden>·</span>
             <span className="font-mono">{formatTimestamp(createdAt)}</span>
@@ -131,30 +204,40 @@ function TransitionTab({
   return (
     <div className="grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
       <div className="flex flex-col gap-4">
-        <SectionCard title="Transition">
-          <DataRow label="Operation">
-            {block.transition?.opType ? (
-              <OpTypePill type={block.transition.opType} />
-            ) : (
-              <Mono className="text-muted-foreground">—</Mono>
-            )}
-          </DataRow>
-          <DataRow label="Sequence">
-            <Mono className="text-foreground">{formatId(block.sequenceNumber)}</Mono>
-          </DataRow>
-          <DataRow label="Previous root">
-            <Hash value={block.transition?.prevRoot} full />
-          </DataRow>
-          <DataRow label="New root">
-            <Hash
-              value={block.transition?.newRoot ?? block.merkleRoot}
-              full
-            />
-          </DataRow>
-          <DataRow label="State Merkle root">
-            <Hash value={block.merkleRoot} full />
-          </DataRow>
-        </SectionCard>
+        <details className="rounded-md border border-border bg-card p-3">
+          <summary className="cursor-pointer text-sm font-medium">
+            Technical verification IDs
+          </summary>
+          <div className="mt-3">
+            {" "}
+            <SectionCard title="Technical verification">
+              <DataRow label="Account change">
+                {block.transition?.opType ? (
+                  <OpTypePill type={block.transition.opType} />
+                ) : (
+                  <Mono className="text-muted-foreground">—</Mono>
+                )}
+              </DataRow>
+              <DataRow label="Change number">
+                <Mono className="text-foreground">
+                  {formatId(block.sequenceNumber)}
+                </Mono>
+              </DataRow>
+              <DataRow label="Previous root">
+                <Hash value={block.transition?.prevRoot} full />
+              </DataRow>
+              <DataRow label="New root">
+                <Hash
+                  value={block.transition?.newRoot ?? block.merkleRoot}
+                  full
+                />
+              </DataRow>
+              <DataRow label="State Merkle root">
+                <Hash value={block.merkleRoot} full />
+              </DataRow>
+            </SectionCard>
+          </div>
+        </details>
 
         <OperationCard op={op} loading={batchLoading} block={block} />
       </div>
@@ -179,9 +262,10 @@ function OperationCard({
 
   if (rollupId === undefined) {
     return (
-      <SectionCard title="Operation payload">
+      <SectionCard title="Change details">
         <p className="px-3 py-3 text-xs text-muted-foreground">
-          Payload will be available once this sequence is rolled up to L1.
+          No batch has been reported for this sequence, so its batch operation
+          payload is not available here.
         </p>
       </SectionCard>
     );
@@ -189,7 +273,7 @@ function OperationCard({
 
   if (loading) {
     return (
-      <SectionCard title="Operation payload">
+      <SectionCard title="Change details">
         <ul className="divide-y divide-border">
           {Array.from({ length: 6 }).map((_, i) => (
             <li key={i} className="grid grid-cols-[7rem_1fr] gap-3 px-3 py-2">
@@ -204,7 +288,7 @@ function OperationCard({
 
   if (!op) {
     return (
-      <SectionCard title="Operation payload">
+      <SectionCard title="Change details">
         <p className="px-3 py-3 text-xs text-muted-foreground">
           Couldn&apos;t locate the matching operation in batch{" "}
           {formatId(rollupId)}.
@@ -214,9 +298,9 @@ function OperationCard({
   }
 
   return (
-    <SectionCard title="Operation payload">
+    <SectionCard title="Change details">
       {op.userAddress ? (
-        <DataRow label="Address">
+        <DataRow label="Wallet address">
           <Hash
             value={op.userAddress}
             href={ROUTES.EXPLORER.ADDRESS(op.userAddress)}
@@ -225,7 +309,7 @@ function OperationCard({
         </DataRow>
       ) : null}
       {op.symbol ? (
-        <DataRow label="Symbol">
+        <DataRow label="Market">
           <Mono className="text-foreground">{op.symbol}</Mono>
         </DataRow>
       ) : null}
@@ -246,24 +330,28 @@ function OperationCard({
       ) : null}
       {op.amount ? (
         <DataRow label="Amount">
-          <Mono className="text-foreground">{formatUsdShort(op.amount) || formatNumber(op.amount)}</Mono>
+          <Mono className="text-foreground">
+            {formatUsdShort(op.amount) || formatNumber(op.amount)}
+          </Mono>
         </DataRow>
       ) : null}
       {op.fee ? (
         <DataRow label="Fee">
-          <Mono className="text-muted-foreground">{formatNumber(op.fee, 6)}</Mono>
+          <Mono className="text-muted-foreground">
+            {formatNumber(op.fee, 6)}
+          </Mono>
         </DataRow>
       ) : null}
       {op.realizedPnl ? (
-        <DataRow label="Realized PnL">
+        <DataRow label="Realized profit / loss">
           <PnlValue value={op.realizedPnl} />
         </DataRow>
       ) : null}
-      <DataRow label="Status">
+      <DataRow label="Result">
         <StatusBadge status={op.status} />
       </DataRow>
       {op.rejectReason ? (
-        <DataRow label="Reject reason">
+        <DataRow label="Why it was rejected">
           <span className="text-xs text-destructive">{op.rejectReason}</span>
         </DataRow>
       ) : null}
@@ -286,7 +374,7 @@ function SettlementCard({
   const status = rollup?.status;
 
   return (
-    <SectionCard title="L1 settlement">
+    <SectionCard title="Blockchain confirmation">
       {rollupId !== undefined ? (
         <DataRow label="Batch">
           <Link
@@ -309,22 +397,22 @@ function SettlementCard({
         </DataRow>
       ) : null}
       {txHash ? (
-        <DataRow label="L1 anchor tx">
+        <DataRow label="Blockchain transaction">
           <Hash value={txHash} href={arbiscanTxUrl(txHash)} external />
         </DataRow>
       ) : rollupId !== undefined && loading ? (
-        <DataRow label="L1 anchor tx">
+        <DataRow label="Blockchain transaction">
           <span className="block h-3 w-40 animate-pulse rounded bg-muted/60" />
         </DataRow>
       ) : rollupId !== undefined ? (
-        <DataRow label="L1 anchor tx">
+        <DataRow label="Blockchain transaction">
           <span className="text-xs text-muted-foreground">
             awaiting confirmation
           </span>
         </DataRow>
       ) : null}
       {blockNumber ? (
-        <DataRow label="L1 block">
+        <DataRow label="Blockchain block">
           <Hash
             value={String(blockNumber)}
             href={arbiscanBlockUrl(blockNumber)}
@@ -333,12 +421,12 @@ function SettlementCard({
           />
         </DataRow>
       ) : null}
-      <DataRow label="Settlement chain">
+      <DataRow label="Blockchain network">
         <Mono className="text-muted-foreground">arbitrum one</Mono>
       </DataRow>
       <p className="px-3 py-2 text-[11px] leading-relaxed text-muted-foreground">
-        Sequences don&apos;t have their own L1 tx — settlement is anchored at
-        the batch level. All sequences in the same batch share its anchor tx.
+        Each account change belongs to a batch. Changes in the same batch share
+        one blockchain transaction.
       </p>
     </SectionCard>
   );
@@ -363,17 +451,38 @@ function MetricsRow({ block }: { block: PerpetualHubStateDetail }) {
       aria-label="State metrics"
       className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6 lg:gap-3"
     >
-      <SmallStat label="Addresses" value={formatNumber(m.users, 0)} />
-      <SmallStat label="Open positions" value={formatNumber(m.openPositions, 0)} />
-      <SmallStat label="Pending orders" value={formatNumber(m.pendingOrders, 0)} />
-      <SmallStat label="Open interest" value={formatUsdCompact(m.openInterest)} />
-      <SmallStat label="User balance" value={formatUsdCompact(m.totalUserBalance)} />
-      <SmallStat label="Platform fees" value={formatUsdCompact(m.platformFeesCollected)} />
+      <SmallStat label="Accounts" value={formatNumber(m.users, 0)} />
+      <SmallStat
+        label="Open positions"
+        value={formatNumber(m.openPositions, 0)}
+      />
+      <SmallStat
+        label="Pending orders"
+        value={formatNumber(m.pendingOrders, 0)}
+      />
+      <SmallStat
+        label="Open positions value"
+        value={formatUsdCompact(m.openInterest)}
+      />
+      <SmallStat
+        label="User balance"
+        value={formatUsdCompact(m.totalUserBalance)}
+      />
+      <SmallStat
+        label="Platform fees"
+        value={formatUsdCompact(m.platformFeesCollected)}
+      />
     </section>
   );
 }
 
-function SmallStat({ label, value }: { label: string; value: React.ReactNode }) {
+function SmallStat({
+  label,
+  value,
+}: {
+  label: string;
+  value: React.ReactNode;
+}) {
   return (
     <div className="rounded-md border border-border bg-card px-3 py-2 min-w-0">
       <p className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
@@ -389,27 +498,44 @@ function SmallStat({ label, value }: { label: string; value: React.ReactNode }) 
 function ExposureTable({ block }: { block: PerpetualHubStateDetail }) {
   const rows = block.exposureBySymbol;
   return (
-    <SectionCard title="Exposure by symbol">
+    <SectionCard title="Positions by market">
       {rows.length === 0 ? (
         <p className="px-3 py-6 text-center text-xs text-muted-foreground">
           no open exposure
         </p>
       ) : (
-        <div className="overflow-x-auto">
+        <div
+          tabIndex={0}
+          role="region"
+          aria-label="Market exposure table"
+          className="overflow-x-auto"
+        >
           <table className="w-full text-sm">
             <thead className="border-b border-border bg-muted/30">
               <tr className="text-[10px] uppercase tracking-wider text-muted-foreground">
-                <th className="px-3 py-2 text-left font-mono font-medium">Symbol</th>
-                <th className="px-3 py-2 text-right font-mono font-medium">Long OI</th>
-                <th className="px-3 py-2 text-right font-mono font-medium">Short OI</th>
-                <th className="px-3 py-2 text-right font-mono font-medium">Net qty</th>
-                <th className="px-3 py-2 text-right font-mono font-medium">Positions</th>
+                <th className="px-3 py-2 text-left font-mono font-medium">
+                  Market
+                </th>
+                <th className="px-3 py-2 text-right font-mono font-medium">
+                  Long positions value
+                </th>
+                <th className="px-3 py-2 text-right font-mono font-medium">
+                  Short positions value
+                </th>
+                <th className="px-3 py-2 text-right font-mono font-medium">
+                  Net quantity
+                </th>
+                <th className="px-3 py-2 text-right font-mono font-medium">
+                  Positions
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
               {rows.map((row) => (
                 <tr key={row.symbol}>
-                  <td className="px-3 py-2 font-mono text-foreground">{row.symbol}</td>
+                  <td className="px-3 py-2 font-mono text-foreground">
+                    {row.symbol}
+                  </td>
                   <td className="px-3 py-2 text-right font-mono text-[var(--explorer-success)]">
                     {formatUsdCompact(row.longNotional)}
                   </td>
@@ -435,20 +561,33 @@ function ExposureTable({ block }: { block: PerpetualHubStateDetail }) {
 function TopAddressesTable({ block }: { block: PerpetualHubStateDetail }) {
   const rows = block.users;
   return (
-    <SectionCard title="Top addresses at this sequence">
+    <SectionCard title="Accounts at this change">
       {rows.length === 0 ? (
         <p className="px-3 py-6 text-center text-xs text-muted-foreground">
           no addresses in this state
         </p>
       ) : (
-        <div className="overflow-x-auto">
+        <div
+          tabIndex={0}
+          role="region"
+          aria-label="Accounts at this sequence"
+          className="overflow-x-auto"
+        >
           <table className="w-full text-sm">
             <thead className="border-b border-border bg-muted/30">
               <tr className="text-[10px] uppercase tracking-wider text-muted-foreground">
-                <th className="px-3 py-2 text-left font-mono font-medium">Address</th>
-                <th className="px-3 py-2 text-right font-mono font-medium">Balance</th>
-                <th className="px-3 py-2 text-right font-mono font-medium">Positions</th>
-                <th className="px-3 py-2 text-right font-mono font-medium">Pending orders</th>
+                <th className="px-3 py-2 text-left font-mono font-medium">
+                  Wallet address
+                </th>
+                <th className="px-3 py-2 text-right font-mono font-medium">
+                  Balance
+                </th>
+                <th className="px-3 py-2 text-right font-mono font-medium">
+                  Positions
+                </th>
+                <th className="px-3 py-2 text-right font-mono font-medium">
+                  Pending orders
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
@@ -545,8 +684,8 @@ function PnlValue({ value }: { value: number | string }) {
     n > 0
       ? "text-[var(--explorer-success)]"
       : n < 0
-      ? "text-destructive"
-      : "text-foreground";
+        ? "text-destructive"
+        : "text-foreground";
   return (
     <Mono className={tone}>
       {n > 0 ? "+" : ""}

@@ -7,7 +7,11 @@ function PerpetualHubEventPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = use(params);
-  return <PerpetualHubEventView id={id} />;
+  return (
+    <main id="main-content" className="min-w-0">
+      <PerpetualHubEventView id={id} />
+    </main>
+  );
 }
 
 export default PerpetualHubEventPage;

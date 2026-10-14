@@ -12,12 +12,14 @@ import type {
   PerpetualHubRollup,
 } from "@/lib/perpetual-hub/types";
 
+const EXPLORER_SCOPE = { chain_id: "42161" };
+
 const ADDRESS_RE = /^0x[a-fA-F0-9]{40}$/;
 
 export function useExplorerHome() {
   return useQuery({
     queryKey: ["explorerHome"],
-    queryFn: ({ signal }) => getPerpetualHubSummary(signal),
+    queryFn: ({ signal }) => getPerpetualHubSummary(EXPLORER_SCOPE, signal),
     refetchInterval: 7_000,
     staleTime: 5_000,
   });
@@ -26,8 +28,8 @@ export function useExplorerHome() {
 export function useExplorerBlock(seq: string | number) {
   return useQuery({
     queryKey: ["explorerBlock", String(seq)],
-    queryFn: ({ signal }) => getPerpetualHubState(seq, signal),
-    enabled: String(seq).length > 0,
+    queryFn: ({ signal }) => getPerpetualHubState(seq, signal, EXPLORER_SCOPE),
+    enabled: /^\d+$/.test(String(seq)),
     staleTime: 30_000,
   });
 }
@@ -35,8 +37,8 @@ export function useExplorerBlock(seq: string | number) {
 export function useExplorerBatch(id: string | number) {
   return useQuery({
     queryKey: ["explorerBatch", String(id)],
-    queryFn: ({ signal }) => getPerpetualHubRollup(id, signal),
-    enabled: String(id).length > 0,
+    queryFn: ({ signal }) => getPerpetualHubRollup(id, signal, EXPLORER_SCOPE),
+    enabled: /^\d+$/.test(String(id)),
     staleTime: 30_000,
   });
 }
@@ -44,7 +46,8 @@ export function useExplorerBatch(id: string | number) {
 export function useExplorerBatches(params: { limit: number; offset: number }) {
   return useQuery({
     queryKey: ["explorerBatches", params.limit, params.offset],
-    queryFn: ({ signal }) => getPerpetualHubRollups(params, signal),
+    queryFn: ({ signal }) =>
+      getPerpetualHubRollups({ ...params, filters: EXPLORER_SCOPE }, signal),
     // Keep the previous page visible while the next page loads to avoid
     // the table collapsing to a skeleton during pagination.
     placeholderData: keepPreviousData,
@@ -56,7 +59,11 @@ export function useExplorerBatches(params: { limit: number; offset: number }) {
 export function useExplorerBlocks(params: { limit: number; offset: number }) {
   return useQuery({
     queryKey: ["explorerBlocks", params.limit, params.offset],
-    queryFn: ({ signal }) => getPerpetualHubEvents(params, signal),
+    queryFn: ({ signal }) =>
+      getPerpetualHubEvents(
+        { ...params, filters: { ...EXPLORER_SCOPE, status: "SUCCESS" } },
+        signal,
+      ),
     placeholderData: keepPreviousData,
     refetchInterval: 7_000,
     staleTime: 3_000,
@@ -66,7 +73,8 @@ export function useExplorerBlocks(params: { limit: number; offset: number }) {
 export function useExplorerAddress(address: string) {
   return useQuery({
     queryKey: ["explorerAddress", address],
-    queryFn: ({ signal }) => getPerpetualHubUser(address, signal),
+    queryFn: ({ signal }) =>
+      getPerpetualHubUser(address, signal, EXPLORER_SCOPE),
     enabled: ADDRESS_RE.test(address),
     staleTime: 30_000,
   });
@@ -84,7 +92,7 @@ type BlockBatchEnrichment = {
  */
 export function useExplorerBlockBatch(
   rollupId: number | undefined,
-  seq: number | undefined
+  seq: number | undefined,
 ) {
   return useQuery<BlockBatchEnrichment>({
     queryKey: ["explorerBlockBatch", rollupId ?? null, seq ?? null],
@@ -93,7 +101,11 @@ export function useExplorerBlockBatch(
       if (rollupId === undefined || seq === undefined) {
         throw new Error("rollupId/seq missing");
       }
-      const data = await getPerpetualHubRollup(rollupId, signal);
+      const data = await getPerpetualHubRollup(
+        rollupId,
+        signal,
+        EXPLORER_SCOPE,
+      );
       return {
         rollup: data.rollup,
         op: data.operations.find((o) => o.teeSequence === seq),

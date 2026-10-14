@@ -12,7 +12,14 @@ export function ExplorerHome() {
 
   return (
     <div className="flex flex-col gap-4 sm:gap-5">
-      {summary && (summary.health.errors.length > 0 || summary.sync.rollupPaused) ? (
+      <header className="flex flex-wrap items-baseline justify-between gap-2">
+        <h1 className="text-xl font-semibold">Perpetual Hub Explorer</h1>
+        <p className="text-xs text-muted-foreground">
+          Account changes and blockchain confirmation on Arbitrum
+        </p>
+      </header>
+      {summary &&
+      (summary.health.errors.length > 0 || summary.sync.rollupPaused) ? (
         <HealthBanner
           paused={!!summary.sync.rollupPaused}
           pauseReason={summary.sync.rollupPauseReason}
@@ -26,7 +33,9 @@ export function ExplorerHome() {
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 lg:gap-5">
         <RecentBlocks
-          events={summary?.activity.recentEvents}
+          events={summary?.activity.recentEvents.filter(
+            (event) => event.teeSequence !== undefined,
+          )}
           isLoading={query.isPending}
           isError={query.isError}
           onRetry={() => query.refetch()}

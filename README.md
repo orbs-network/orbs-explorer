@@ -1,36 +1,58 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Orbs Explorer
 
-## Getting Started
+Track advanced orders, trade progress, and activity across trading apps.
+Built with Next.js and React.
 
-First, run the development server:
+## Local development
+
+Install dependencies with `yarn install --frozen-lockfile`, then run:
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [localhost:3003](http://localhost:3003). Fonts are Montserrat and JetBrains Mono.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Deploy to Vercel
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+The deployment script targets project `prj_iCIuRd8iUPHYmu2bePAcTj6fRNUD` explicitly,
+including when this checkout's existing `.vercel` link points to another project.
+It runs lint, typecheck, and tests before uploading source. Vercel builds remotely
+with the selected environment's project settings and variables.
 
-## Learn More
+Use Node.js 22 or newer. The script runs a pinned Vercel CLI through `npx`.
+Authenticate before each run with `npx vercel@58.9.0 login`, or provide `VERCEL_TOKEN` through
+your shell or CI secrets. If needed, set `VERCEL_SCOPE` to the project's team slug.
 
-To learn more about Next.js, take a look at the following resources:
+The script logs out the saved Vercel CLI session when it exits, including failed
+checks or deployments. Logout does not revoke environment tokens or change your
+parent shell's environment. Help and dry runs do not log out. If logout fails,
+the script reports it and returns a failure status.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```bash
+npm run deploy                 # Preview target
+npm run deploy:prod            # Production target
+npm run deploy -- --dry-run    # Show commands without executing anything
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Vercel treats a project's first deployment as production even if the preview
+target is requested; subsequent deployments follow the selected target.
 
-## Deploy on Vercel
+Configure application environment variables in the Vercel project dashboard.
+Local `.env` files, credentials, build output, and browser audit artifacts are
+excluded by `.vercelignore`. Authentication tokens stay in the environment,
+rather than in command arguments or script output.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+The existing `vercel.json` includes the production Telegram-alert cron schedule.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+See the [Vercel deployment CLI documentation](https://vercel.com/docs/cli/deploy)
+and [project selection options](https://vercel.com/docs/cli/global-options#project).
+
+## Checks
+
+```bash
+npm run lint
+npm run typecheck
+npm test
+npm run build
+```

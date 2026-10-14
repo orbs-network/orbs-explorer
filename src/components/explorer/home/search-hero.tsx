@@ -26,9 +26,12 @@ export function SearchHero() {
         <input
           type="text"
           inputMode="search"
+          name="q"
+          autoComplete="off"
+          spellCheck={false}
           value={q}
           onChange={(e) => setQ(e.target.value)}
-          placeholder="Sequence, state root, address, batch id, or L1 tx hash"
+          placeholder="Wallet address, change number, or transaction ID…"
           className="h-11 w-full rounded-md bg-transparent pl-10 pr-12 font-mono text-sm text-foreground placeholder:text-muted-foreground/70 focus:outline-none focus:ring-1 focus:ring-ring"
           aria-label="Search the chain"
         />

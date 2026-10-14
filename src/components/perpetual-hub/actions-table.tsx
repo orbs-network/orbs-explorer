@@ -1,5 +1,7 @@
 "use client";
 
+import { formatPerpetualHubStatus } from "@/lib/perpetual-hub/format";
+
 import { useCallback, useMemo, useRef } from "react";
 import moment from "moment";
 import { useRouter } from "next/navigation";
@@ -131,7 +133,8 @@ function SideBadge({ side }: { side?: string }) {
       variant="outline"
       className={cn(
         "text-[11px] uppercase",
-        isLong && "border-emerald-500/40 bg-emerald-500/10 text-emerald-500",
+        isLong &&
+          "border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400",
         isShort && "border-destructive/40 bg-destructive/10 text-destructive",
       )}
     >
@@ -155,16 +158,16 @@ function StatusBadge({ status }: { status: string }) {
       className={cn(
         "text-[11px] uppercase",
         (isSuccess || isOpen) &&
-          "border-emerald-500/40 bg-emerald-500/10 text-emerald-500",
+          "border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400",
         isRejected &&
           "border-destructive/40 bg-destructive/10 text-destructive",
         !isSuccess &&
           !isOpen &&
           !isRejected &&
-          "border-amber-500/40 bg-amber-500/10 text-amber-500",
+          "border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-400",
       )}
     >
-      {status}
+      {formatPerpetualHubStatus(status)}
     </Badge>
   );
 }
@@ -266,7 +269,7 @@ function FeePnlCell({ item }: { item: ActionTableRow }) {
     <span
       className={cn(
         value ? "font-mono text-foreground" : "text-muted-foreground",
-        isPnl && value > 0 && "text-emerald-500",
+        isPnl && value > 0 && "text-emerald-700 dark:text-emerald-400",
         isPnl && value < 0 && "text-destructive",
       )}
     >
@@ -295,18 +298,30 @@ function TimestampCell({ item }: { item: ActionTableRow }) {
 }
 
 function StatusCell({ item }: { item: ActionTableRow }) {
-  return <StatusBadge status={rowStatus(item)} />;
+  return (
+    <div className="max-w-64 space-y-1">
+      <StatusBadge status={rowStatus(item)} />
+      {item.event.rejectReason && (
+        <p
+          className="line-clamp-2 text-xs text-muted-foreground"
+          title={item.event.rejectReason}
+        >
+          {item.event.rejectReason}
+        </p>
+      )}
+    </div>
+  );
 }
 
 const TABLE_COLUMNS = [
   { Component: ActionTypeCell, text: "Action" },
-  { Component: UserCell, text: "User" },
-  { Component: PartnerCell, text: "Partner" },
-  { Component: ChainCell, text: "Chain" },
+  { Component: UserCell, text: "Account" },
+  { Component: PartnerCell, text: "Trading app" },
+  { Component: ChainCell, text: "Network" },
   { Component: MarketCell, text: "Market" },
-  { Component: NotionalCell, text: "Notional" },
+  { Component: NotionalCell, text: "Trade value" },
   { Component: QuantityCell, text: "Quantity" },
-  { Component: FeePnlCell, text: "Fees / PnL" },
+  { Component: FeePnlCell, text: "Fees / profit & loss" },
   { Component: TimestampCell, text: "Timestamp" },
   { Component: StatusCell, text: "Status" },
 ];
@@ -364,6 +379,10 @@ export function PerpetualHubActionsTable() {
   return (
     <VirtualTable<ActionTableRow>
       isLoading={actionsQuery.isLoading}
+      isError={actionsQuery.isError}
+      onRetry={() => actionsQuery.refetch()}
+      hasNextPage={actionsQuery.hasNextPage}
+      warnings={actionsQuery.data?.pages[0]?.warnings ?? []}
       isFetchingNextPage={actionsQuery.isFetchingNextPage}
       fetchNextPage={handleFetchNextPage}
       tableItems={rows}
@@ -371,7 +390,7 @@ export function PerpetualHubActionsTable() {
       desktopRows={TABLE_COLUMNS}
       onSelect={handleSelect}
       onMobileRowClick={handleSelect}
-      title="Actions"
+      title="Trading activity"
       headerAction={<PerpetualActionsFilter />}
     />
   );

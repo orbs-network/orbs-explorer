@@ -42,7 +42,7 @@ function SideBadge({ item }: { item: PerpetualHubHedgerPosition }) {
       className={cn(
         "text-[11px] uppercase",
         lower.includes("long") &&
-          "border-emerald-500/40 bg-emerald-500/10 text-emerald-500",
+          "border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400",
         lower.includes("short") &&
           "border-destructive/40 bg-destructive/10 text-destructive",
         lower.includes("flat") && "text-muted-foreground",
@@ -86,7 +86,7 @@ function AmountCell({ item }: { item: PerpetualHubHedgerPosition }) {
     <span
       className={cn(
         "font-mono",
-        amount > 0 && "text-emerald-500",
+        amount > 0 && "text-emerald-700 dark:text-emerald-400",
         amount < 0 && "text-destructive",
         amount === 0 && "text-muted-foreground",
       )}
@@ -134,7 +134,7 @@ function PnlCell({ item }: { item: PerpetualHubHedgerPosition }) {
     <span
       className={cn(
         "font-mono",
-        pnl > 0 && "text-emerald-500",
+        pnl > 0 && "text-emerald-700 dark:text-emerald-400",
         pnl < 0 && "text-destructive",
         pnl === 0 && "text-muted-foreground",
       )}
@@ -159,7 +159,8 @@ function StatusCell({ item }: { item: PerpetualHubHedgerPosition }) {
       variant="outline"
       className={cn(
         "text-[11px] uppercase",
-        connected && "border-emerald-500/40 bg-emerald-500/10 text-emerald-500",
+        connected &&
+          "border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400",
         !connected &&
           "border-destructive/40 bg-destructive/10 text-destructive",
       )}
@@ -171,19 +172,23 @@ function StatusCell({ item }: { item: PerpetualHubHedgerPosition }) {
 
 const TABLE_COLUMNS = [
   { Component: MarketCell, text: "Market" },
-  { Component: PartnerCell, text: "Partner" },
-  { Component: ChainCell, text: "Chain" },
+  { Component: PartnerCell, text: "Trading app" },
+  { Component: ChainCell, text: "Network" },
   { Component: SideBadge, text: "Side" },
   { Component: AmountCell, text: "Amount", className: "text-right" },
   { Component: EntryCell, text: "Entry", className: "text-right" },
-  { Component: NotionalCell, text: "Notional", className: "text-right" },
+  { Component: NotionalCell, text: "Trade value", className: "text-right" },
   {
     Component: InitialMarginCell,
-    text: "Initial Margin",
+    text: "Initial margin",
     className: "text-right",
   },
-  { Component: MaintenanceCell, text: "Maint Margin", className: "text-right" },
-  { Component: PnlCell, text: "PnL", className: "text-right" },
+  {
+    Component: MaintenanceCell,
+    text: "Maintenance margin",
+    className: "text-right",
+  },
+  { Component: PnlCell, text: "Profit / loss", className: "text-right" },
   { Component: UpdatedCell, text: "Updated" },
   { Component: StatusCell, text: "Status" },
 ];
@@ -221,12 +226,16 @@ export function PerpetualHubHedgerTable() {
   return (
     <VirtualTable<PerpetualHubHedgerPosition>
       isLoading={hedgerQuery.isLoading}
+      isError={hedgerQuery.isError}
+      onRetry={() => hedgerQuery.refetch()}
+      hasNextPage={hedgerQuery.hasNextPage}
+      warnings={hedgerQuery.data?.pages[0]?.warnings ?? []}
       isFetchingNextPage={hedgerQuery.isFetchingNextPage}
       fetchNextPage={handleFetchNextPage}
       tableItems={rows}
       headerLabels={HEADER_LABELS}
       desktopRows={TABLE_COLUMNS}
-      title="Hedger"
+      title="Protocol hedging"
       headerAction={<PerpetualHedgerFilter />}
     />
   );

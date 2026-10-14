@@ -1,4 +1,5 @@
 "use client";
+
 import { useCallback } from "react";
 import moment from "moment";
 import BN from "bignumber.js";
@@ -24,7 +25,9 @@ const Timestamp = ({ item }: { item: ListOrder }) => {
   return (
     <div className="flex items-center gap-1.5">
       <Clock className="w-3.5 h-3.5 text-muted-foreground" />
-      <span className="text-foreground">{moment(item.timestamp).format("MMM D, YYYY")}</span>
+      <span className="text-foreground">
+        {moment(item.timestamp).format("MMM D, YYYY")}
+      </span>
       <span className="text-muted-foreground text-xs">
         {moment(item.timestamp).format("HH:mm")}
       </span>
@@ -35,7 +38,11 @@ const Timestamp = ({ item }: { item: ListOrder }) => {
 const TradeUSDValue = ({ item }: { item: ListOrder }) => {
   const hasAmount = BN(item.totalUSDAmount || 0).gt(0);
   return (
-    <span className={hasAmount ? "text-foreground font-medium" : "text-muted-foreground"}>
+    <span
+      className={
+        hasAmount ? "text-foreground font-medium" : "text-muted-foreground"
+      }
+    >
       {hasAmount ? (
         <Amount amount={item.totalUSDAmount || "0"} prefix="$" />
       ) : (
@@ -65,12 +72,18 @@ const OrderTypeComponent = ({ item }: { item: ListOrder }) => {
 
 const PartnerCell = ({ item }: { item: ListOrder }) => {
   const dex = useSpotPartnerListOrder(item);
-  
-  const network = useNetwork(dex?.chainId);
+
+  const network = useNetwork(getTwapOrderChainId(item));
 
   return (
     <Partner
-      data={dex?.partner || undefined}
+      data={
+        dex?.partner || {
+          name: dex?.partnerId
+            ? dex.partnerId.charAt(0).toUpperCase() + dex.partnerId.slice(1)
+            : "Unknown partner",
+        }
+      }
       variant="with-subtitle"
       subtitle={network?.name}
     />
@@ -79,9 +92,7 @@ const PartnerCell = ({ item }: { item: ListOrder }) => {
 
 const TxHash = ({ item }: { item: ListOrder }) => {
   return (
-    <span className="font-mono text-primary">
-          {shortenAddress(item.hash)}
-        </span>
+    <span className="font-mono text-link">{shortenAddress(item.hash)}</span>
   );
 };
 
@@ -90,9 +101,17 @@ const TokenPair = ({ item }: { item: ListOrder }) => {
 
   return (
     <div className="flex flex-row gap-2 items-center">
-      <TokenDisplay address={item.inputToken} chainId={chainId} className="pointer-events-none" />
+      <TokenDisplay
+        address={item.inputToken}
+        chainId={chainId}
+        className="pointer-events-none"
+      />
       <ArrowRight className="w-3.5 h-3.5 text-muted-foreground" />
-      <TokenDisplay address={item.outputToken} chainId={chainId} className="pointer-events-none" />
+      <TokenDisplay
+        address={item.outputToken}
+        chainId={chainId}
+        className="pointer-events-none"
+      />
     </div>
   );
 };
@@ -100,11 +119,11 @@ const TokenPair = ({ item }: { item: ListOrder }) => {
 const desktopRows = [
   {
     Component: TxHash,
-    text: "Tx Hash",
+    text: "Order ID",
   },
   {
     Component: PartnerCell,
-    text: "Partner",
+    text: "Trading app",
   },
   {
     Component: OrderTypeComponent,
@@ -112,11 +131,11 @@ const desktopRows = [
   },
   {
     Component: Timestamp,
-    text: "Timestamp",
+    text: "Placed at",
   },
   {
     Component: TradeUSDValue,
-    text: "USD",
+    text: "Order value",
   },
   {
     Component: TokenPair,
@@ -136,28 +155,44 @@ export function TwapOrdersTable() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const isDev = searchParams.get("dev") === "true";
-  const { orders, isLoading, isFetchingNextPage, fetchNextPage } =
-    useSpotOrdersPaginated();
+  const {
+    orders,
+    warnings,
+    isLoading,
+    isError,
+    refetch,
+    isFetching,
+    isFetchingNextPage,
+    hasNextPage,
+    fetchNextPage,
+  } = useSpotOrdersPaginated();
 
   const navigateToOrder = useCallback(
     (order: ListOrder) => {
-      const search = typeof window !== "undefined" ? window.location.search : "";
-      router.push(`${ROUTES.TWAP.ORDER(order.hash)}${search}`);
+      const params = new URLSearchParams(searchParams.toString());
+      params.set("order_source", order.source ?? "v1");
+      router.push(`${ROUTES.TWAP.ORDER(order.hash)}?${params}`);
     },
-    [router],
+    [router, searchParams],
   );
 
   return (
     <VirtualTable<ListOrder>
       isLoading={isLoading}
       isFetchingNextPage={isFetchingNextPage}
-      fetchNextPage={fetchNextPage}
+      fetchNextPage={() => {
+        if (hasNextPage && !isFetching) void fetchNextPage();
+      }}
+      hasNextPage={hasNextPage}
+      isError={isError}
+      onRetry={() => refetch()}
+      warnings={warnings}
       tableItems={orders}
       headerLabels={headerLabels}
       desktopRows={desktopRows}
       onSelect={navigateToOrder}
       onMobileRowClick={navigateToOrder}
-      title="TWAP Orders"
+      title="Advanced orders"
       headerAction={
         <div className="flex items-center gap-2">
           {isDev && <TwapSinkEnvSelect />}

@@ -7,7 +7,11 @@ function PerpetualHubStatePage({
   params: Promise<{ seq: string }>;
 }) {
   const { seq } = use(params);
-  return <PerpetualHubStateView seq={seq} />;
+  return (
+    <main id="main-content" className="min-w-0">
+      <PerpetualHubStateView seq={seq} />
+    </main>
+  );
 }
 
 export default PerpetualHubStatePage;

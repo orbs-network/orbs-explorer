@@ -1,5 +1,6 @@
 "use client";
 
+import { ActivitySummary, ActivityTime } from "@/components/activity-summary";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import {
@@ -86,7 +87,15 @@ export function PerpetualHubStateView({ seq }: { seq: string }) {
   const searchParams = useSearchParams();
   const scopedHref = (href: string) =>
     appendPerpetualHubScope(href, searchParams);
-  const { data, isLoading, isError, error } = usePerpetualHubState(seq);
+  const {
+    data,
+    isLoading,
+    isError,
+    error,
+    refetch,
+    isFetching,
+    dataUpdatedAt,
+  } = usePerpetualHubState(seq);
 
   if (isLoading) {
     return (
@@ -104,26 +113,39 @@ export function PerpetualHubStateView({ seq }: { seq: string }) {
         <p className="mt-2 text-sm opacity-90">
           {error instanceof Error ? error.message : "Unknown error"}
         </p>
+        <Button
+          variant="outline"
+          size="sm"
+          className="mt-3"
+          onClick={() => refetch()}
+        >
+          Retry
+        </Button>
       </div>
     );
   }
 
   return (
-    <div className="mx-auto flex max-w-[1500px] flex-col gap-6 py-4 pb-16">
+    <div className="mx-auto flex max-w-[1440px] px-4 sm:px-6 flex-col gap-6 py-4 pb-16">
       <div className="flex flex-col gap-3 border-b pb-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <div className="flex flex-wrap items-center gap-2">
             <h1 className="text-2xl font-semibold tracking-tight">
-              Sequence #{formatNumber(data.sequenceNumber)}
+              Account change #{formatNumber(data.sequenceNumber)}
             </h1>
             <Badge variant="outline" className="gap-1.5">
               <Database className="h-3.5 w-3.5" />
               {data.source || "state"}
             </Badge>
           </div>
-          <p className="mt-1 font-mono text-sm text-muted-foreground">
-            {data.merkleRoot || "-"}
-          </p>
+          <details className="mt-2 text-xs text-muted-foreground">
+            <summary className="cursor-pointer font-medium">
+              Technical verification ID
+            </summary>
+            <p className="mt-2 break-all font-mono">
+              {data.merkleRoot || "Not reported"}
+            </p>
+          </details>
         </div>
         <Button variant="outline" size="sm" asChild>
           <Link href={scopedHref(ROUTES.PERPETUAL_HUB.ROOT)}>
@@ -133,9 +155,25 @@ export function PerpetualHubStateView({ seq }: { seq: string }) {
         </Button>
       </div>
 
+      <ActivitySummary
+        title="Balances at that time"
+        explanation={`These balances, positions, and waiting orders were saved after change #${data.sequenceNumber}. They may have changed since then. Open an account below for its current balance and positions.`}
+        onRefresh={() => refetch()}
+        refreshing={isFetching}
+        facts={[
+          {
+            label: "Applied at",
+            value: <ActivityTime value={data.transition?.createdAt} />,
+          },
+          {
+            label: "Last updated",
+            value: <ActivityTime value={dataUpdatedAt} />,
+          },
+        ]}
+      />
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <MetricCard
-          label="Users"
+          label="Accounts"
           value={formatNumber(data.metrics.users)}
           icon={Users}
         />
@@ -165,12 +203,12 @@ export function PerpetualHubStateView({ seq }: { seq: string }) {
           icon={CircleDollarSign}
         />
         <MetricCard
-          label="Hedger Deposits"
+          label="Hedging deposits"
           value={formatUsd(data.metrics.hedgerTotalDeposits)}
           icon={CircleDollarSign}
         />
         <MetricCard
-          label="Hedger PnL"
+          label="Hedging profit / loss"
           value={formatUsd(data.metrics.hedgerRealizedPnl)}
           icon={Gauge}
         />
@@ -212,14 +250,25 @@ export function PerpetualHubStateView({ seq }: { seq: string }) {
         </Card>
 
         <Card className="overflow-hidden rounded-lg py-0">
-          <div className="overflow-x-auto">
+          <div
+            tabIndex={0}
+            role="region"
+            aria-label="Market exposure table"
+            className="overflow-x-auto"
+          >
             <table className="w-full text-sm">
               <thead className="border-b bg-muted/30 text-xs text-muted-foreground">
                 <tr>
                   <th className="px-4 py-3 text-left font-medium">Symbol</th>
-                  <th className="px-4 py-3 text-right font-medium">Long OI</th>
-                  <th className="px-4 py-3 text-right font-medium">Short OI</th>
-                  <th className="px-4 py-3 text-right font-medium">Net Qty</th>
+                  <th className="px-4 py-3 text-right font-medium">
+                    Long positions value
+                  </th>
+                  <th className="px-4 py-3 text-right font-medium">
+                    Short positions value
+                  </th>
+                  <th className="px-4 py-3 text-right font-medium">
+                    Net quantity
+                  </th>
                   <th className="px-4 py-3 text-right font-medium">
                     Positions
                   </th>
@@ -229,7 +278,7 @@ export function PerpetualHubStateView({ seq }: { seq: string }) {
                 {data.exposureBySymbol.slice(0, 12).map((row) => (
                   <tr key={row.symbol} className="border-b last:border-b-0">
                     <td className="px-4 py-3 font-medium">{row.symbol}</td>
-                    <td className="px-4 py-3 text-right font-mono text-emerald-500">
+                    <td className="px-4 py-3 text-right font-mono text-emerald-700 dark:text-emerald-400">
                       {formatUsd(row.longNotional)}
                     </td>
                     <td className="px-4 py-3 text-right font-mono text-destructive">
@@ -260,11 +309,16 @@ export function PerpetualHubStateView({ seq }: { seq: string }) {
       </div>
 
       <Card className="overflow-hidden rounded-lg py-0">
-        <div className="overflow-x-auto">
+        <div
+          tabIndex={0}
+          role="region"
+          aria-label="Accounts at this sequence"
+          className="overflow-x-auto"
+        >
           <table className="w-full text-sm">
             <thead className="border-b bg-muted/30 text-xs text-muted-foreground">
               <tr>
-                <th className="px-4 py-3 text-left font-medium">User</th>
+                <th className="px-4 py-3 text-left font-medium">Account</th>
                 <th className="px-4 py-3 text-right font-medium">Balance</th>
                 <th className="px-4 py-3 text-right font-medium">Positions</th>
                 <th className="px-4 py-3 text-right font-medium">

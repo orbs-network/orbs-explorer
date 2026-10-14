@@ -16,10 +16,10 @@ import {
 } from "@/lib/perpetual-hub";
 import { URL_QUERY_KEYS } from "@/lib/consts";
 import { useQueryFilterParams } from "@/lib/hooks/use-query-filter-params";
-import { isValidWalletAddress, shortenAddress } from "@/lib/utils/utils";
+import { isValidWalletAddress } from "@/lib/utils/utils";
 
 const STATUS_OPTIONS = [
-  { label: "Success", value: "SUCCESS" },
+  { label: "Account updated", value: "SUCCESS" },
   { label: "Rejected", value: "REJECTED" },
 ];
 
@@ -82,7 +82,7 @@ const ALL_PARTNERS_VALUE = "all";
 
 function ActionFilter() {
   return (
-    <QueryFilters.SearchableMultiSelect
+    <QueryFilters.MultiSelect
       queryKey={URL_QUERY_KEYS.ACTION_TYPE}
       label="Action"
       options={ACTION_TYPE_OPTIONS}
@@ -93,7 +93,7 @@ function ActionFilter() {
 
 function StatusFilter() {
   return (
-    <QueryFilters.SingleBadge
+    <QueryFilters.Select
       queryKey={URL_QUERY_KEYS.STATUS}
       label="Status"
       options={STATUS_OPTIONS}
@@ -113,7 +113,7 @@ function MarketFilter() {
 
 function ContractFilter() {
   return (
-    <QueryFilters.SingleBadge
+    <QueryFilters.Select
       queryKey={URL_QUERY_KEYS.CONTRACT}
       label="Contract"
       options={PERPETUAL_HUB_CONTRACT_OPTIONS}
@@ -123,11 +123,10 @@ function ContractFilter() {
 
 function UserWalletFilter() {
   return (
-    <QueryFilters.BadgeWithInput
+    <QueryFilters.Values
       queryKey={URL_QUERY_KEYS.USER}
-      label="User Wallet"
-      placeholder="Insert wallet address"
-      modifyDisplayValue={shortenAddress}
+      label="Wallet address"
+      placeholder="Enter a wallet address…"
       validateValue={isValidWalletAddress}
     />
   );
@@ -137,7 +136,7 @@ function MinUserBalanceFilter() {
   return (
     <QueryFilters.Input
       queryKey={URL_QUERY_KEYS.MIN_DOLLAR_VALUE}
-      label="Min Balance"
+      label="Minimum balance"
       placeholder="Minimum wallet or margin balance"
     />
   );
@@ -163,15 +162,15 @@ function RollupLookupFilter() {
   return (
     <QueryFilters.Input
       queryKey={URL_QUERY_KEYS.HASH}
-      label="Rollup / Tx"
-      placeholder="Search rollup ID or tx hash"
+      label="Batch or transaction ID"
+      placeholder="Enter a batch or transaction ID…"
     />
   );
 }
 
 function RollupStatusFilter() {
   return (
-    <QueryFilters.SingleBadge
+    <QueryFilters.Select
       queryKey={URL_QUERY_KEYS.STATUS}
       label="Status"
       options={ROLLUP_STATUS_OPTIONS}
@@ -181,7 +180,7 @@ function RollupStatusFilter() {
 
 function SideFilter() {
   return (
-    <QueryFilters.SingleBadge
+    <QueryFilters.Select
       queryKey={URL_QUERY_KEYS.POSITION_SIDE}
       label="Side"
       options={SIDE_OPTIONS}
@@ -191,7 +190,7 @@ function SideFilter() {
 
 function PositionItemTypeFilter() {
   return (
-    <QueryFilters.SingleBadge
+    <QueryFilters.Select
       queryKey={URL_QUERY_KEYS.POSITION_ITEM_TYPE}
       label="Type"
       options={POSITION_ITEM_TYPE_OPTIONS}
@@ -201,7 +200,7 @@ function PositionItemTypeFilter() {
 
 function PositionOrderActionFilter() {
   return (
-    <QueryFilters.SearchableMultiSelect
+    <QueryFilters.MultiSelect
       queryKey={URL_QUERY_KEYS.ACTION_TYPE}
       label="Action"
       options={POSITION_ORDER_ACTION_OPTIONS}
@@ -212,20 +211,19 @@ function PositionOrderActionFilter() {
 
 function ChainsFilter() {
   return (
-    <QueryFilters.Badge
+    <QueryFilters.Select
       queryKey={URL_QUERY_KEYS.CHAIN_ID}
-      label="Chains"
+      label="Networks"
       options={PERPETUAL_HUB_CHAIN_OPTIONS}
-      singleSelect
     />
   );
 }
 
 function OverviewChainsFilter() {
   return (
-    <QueryFilters.Badge
+    <QueryFilters.MultiSelect
       queryKey={URL_QUERY_KEYS.CHAIN_ID}
-      label="Chains"
+      label="Networks"
       options={PERPETUAL_HUB_CHAIN_OPTIONS}
     />
   );
@@ -233,11 +231,10 @@ function OverviewChainsFilter() {
 
 function PartnersFilter() {
   return (
-    <QueryFilters.Badge
+    <QueryFilters.Select
       queryKey={URL_QUERY_KEYS.PARTNER_ID}
-      label="Partners"
+      label="Trading apps"
       options={PERPETUAL_HUB_PARTNER_OPTIONS}
-      singleSelect
     />
   );
 }
@@ -262,7 +259,7 @@ export function PerpetualOverviewPartnerSelect() {
         });
       }}
     >
-      <SelectTrigger className="h-9 w-[11.5rem]" aria-label="Partner">
+      <SelectTrigger className="h-9 w-[11.5rem]" aria-label="Trading app">
         <SelectValue />
       </SelectTrigger>
       <SelectContent>
@@ -336,8 +333,8 @@ export function PerpetualRiskFilter() {
       <ContractFilter />
       <MarketFilter />
       <MinDollarFilter
-        label="Min Exposure"
-        placeholder="Minimum long + short open interest"
+        label="Minimum positions value"
+        placeholder="Minimum combined positions value…"
       />
       <PartnersFilter />
     </QueryFilters>
@@ -351,7 +348,10 @@ export function PerpetualHedgerFilter() {
       <ContractFilter />
       <MarketFilter />
       <SideFilter />
-      <MinDollarFilter label="Min Notional" placeholder="Minimum notional" />
+      <MinDollarFilter
+        label="Minimum trade value"
+        placeholder="Minimum trade value…"
+      />
       <PartnersFilter />
     </QueryFilters>
   );

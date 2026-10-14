@@ -1,8 +1,8 @@
 "use client";
 
-import { FilterOption, QueryFilters } from "../query-filters";
+import { QueryFilters } from "../query-filters";
 import { URL_QUERY_KEYS } from "@/lib/consts";
-import { isValidWalletAddress, shortenAddress } from "@/lib/utils/utils";
+import { isValidWalletAddress } from "@/lib/utils/utils";
 
 // ============================================================================
 // Filter Options
@@ -18,39 +18,35 @@ const STATUS_OPTIONS = [
 // ============================================================================
 
 const SessionIdFilter = () => (
-  <QueryFilters.BadgeWithInput
+  <QueryFilters.Values
     queryKey={URL_QUERY_KEYS.SESSION_ID}
-    label="Session ID"
-    placeholder="Enter session ID"
-    modifyDisplayValue={shortenAddress}
+    label="Swap attempt ID"
+    placeholder="Enter a swap attempt ID…"
   />
 );
 
 const TxHashFilter = () => (
-  <QueryFilters.BadgeWithInput
+  <QueryFilters.Values
     queryKey={URL_QUERY_KEYS.HASH}
-    label="Tx Hash"
-    placeholder="Enter transaction hash"
-    modifyDisplayValue={shortenAddress}
+    label="Transaction ID"
+    placeholder="Enter a transaction ID…"
   />
 );
 
 const UserAddressFilter = () => (
-  <QueryFilters.BadgeWithInput
+  <QueryFilters.Values
     queryKey={URL_QUERY_KEYS.USER}
-    label="User Address"
-    placeholder="Enter user address"
-    modifyDisplayValue={shortenAddress}
+    label="Wallet addresses"
+    placeholder="0x…"
     validateValue={isValidWalletAddress}
   />
 );
 
 const SwapStatusFilter = () => (
-  <QueryFilters.Badge
+  <QueryFilters.Select
     queryKey={URL_QUERY_KEYS.STATUS}
     label="Status"
     options={STATUS_OPTIONS}
-    singleSelect
   />
 );
 

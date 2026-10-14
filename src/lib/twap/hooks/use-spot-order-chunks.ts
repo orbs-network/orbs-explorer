@@ -10,7 +10,7 @@ function computeExpectedOutputInOutTokenDecimals(
   inAmountRaw: string,
   exchangeRate: string,
   srcDecimals: number,
-  dstDecimals: number
+  dstDecimals: number,
 ): string {
   const inAmountUi = BN(inAmountRaw).dividedBy(BN(10).pow(srcDecimals));
   const expectedOutUi = inAmountUi.multipliedBy(exchangeRate);
@@ -37,9 +37,9 @@ export type OrderChunksResult = {
 
 export function parseOrderChunks(
   order: Order | undefined,
-  context: GetOrderChunksContext
+  context: GetOrderChunksContext,
 ): OrderChunksResult {
-  const { srcToken, dstToken, chainId, status: orderStatus } = context;
+  const { srcToken, dstToken, chainId } = context;
   const chunkList = order?.metadata.chunks;
 
   const chunks: ParsedOrderChunk[] =
@@ -47,28 +47,25 @@ export function parseOrderChunks(
       ?.map((chunk: OrderChunk) => {
         const oracle = chunk.oraclePricingData?.[0];
         const description = chunk.description?.trim() || undefined;
-        const inputTokenUsd = BN(
-          oracle?.message.input.value.toString() ?? "0"
-        )
+        const inputTokenUsd = BN(oracle?.message.input.value.toString() ?? "0")
           .dividedBy(1e18)
           .toFixed();
         const outputTokenUsd = BN(
-          oracle?.message.output.value.toString() ?? "0"
+          oracle?.message.output.value.toString() ?? "0",
         )
           .dividedBy(1e18)
           .toFixed();
-        const exchangeRate = BN(inputTokenUsd)
-          .div(BN(outputTokenUsd))
-          .toFixed();
+        const exchangeRate = BN(outputTokenUsd).gt(0)
+          ? BN(inputTokenUsd).div(BN(outputTokenUsd)).toFixed()
+          : "0";
         const inAmount = chunk.inAmount ?? "0";
         const outAmount = chunk.outAmount ?? "0";
-        const solverOutAmount =
-          chunk.solverReportedOutput?.outputAmount ?? "0";
+        const solverOutAmount = chunk.solverReportedOutput?.outputAmount ?? "0";
         const expectedOutputOracle = computeExpectedOutputInOutTokenDecimals(
           inAmount,
           exchangeRate,
           srcToken?.decimals ?? 0,
-          dstToken?.decimals ?? 0
+          dstToken?.decimals ?? 0,
         );
         const outAmountDiff = BN(expectedOutputOracle).isZero()
           ? "0"
@@ -77,19 +74,13 @@ export function parseOrderChunks(
               .div(BN(expectedOutputOracle))
               .multipliedBy(100)
               .toFixed();
-        const feeOnTransfer =
-          chunk.transferFeeEstimation?.inputTokenFee ?? "0";
+        const feeOnTransfer = chunk.transferFeeEstimation?.inputTokenFee ?? "0";
 
         return {
           inAmount,
           outAmount: chunk.outAmount ?? "0",
           feesUsd: chunk.displayOnlyFee?.replace("$", "") || "0",
-          status:
-            orderStatus === Status.CANCELLED
-              ? "cancelled"
-              : orderStatus === Status.FAILED
-                ? "failed"
-                : chunk.status,
+          status: chunk.status.toLowerCase(),
           dueTime: chunk.displayOnlyDueTime,
           updatedAt: chunk.timestamp,
           createdAt: chunk.createdAt,
@@ -119,14 +110,10 @@ export function parseOrderChunks(
           exchangeRate,
           expectedOutputOracle,
           outAmountDiff,
-          inputTotalUsd: BN(
-            toAmountUI(inAmount, srcToken?.decimals ?? 0)
-          )
+          inputTotalUsd: BN(toAmountUI(inAmount, srcToken?.decimals ?? 0))
             .multipliedBy(inputTokenUsd)
             .toFixed(),
-          outputTotalUsd: BN(
-            toAmountUI(outAmount, dstToken?.decimals ?? 0)
-          )
+          outputTotalUsd: BN(toAmountUI(outAmount, dstToken?.decimals ?? 0))
             .multipliedBy(outputTokenUsd)
             .toFixed(),
           feeOnTransfer,
@@ -138,15 +125,14 @@ export function parseOrderChunks(
   return {
     expectedChunks: order?.metadata.expectedChunks,
     successChunks: chunks.filter((c) => c.status === ChunkStatus.SUCCESS),
-    failedChunks: chunks.filter(
-      (c) =>
-        c.status === ChunkStatus.FAILED || c.status === Status.CANCELLED
+    failedChunks: chunks.filter((c) =>
+      ["failed", "error", "cancelled", "canceled"].includes(c.status),
     ),
     pendingChunks: chunks.filter(
       (c) =>
-        c.status !== ChunkStatus.SUCCESS &&
-        c.status !== ChunkStatus.FAILED &&
-        c.status !== Status.CANCELLED
+        !["success", "failed", "error", "cancelled", "canceled"].includes(
+          c.status,
+        ),
     ),
     chunks,
   };

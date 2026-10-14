@@ -113,7 +113,7 @@ export const wTokensByChainId: Record<number, Token> = {
       symbol: "WETH",
       address: "0x4200000000000000000000000000000000000006",
       decimals: 18,
-      logoUrl: "https://katana.network/assets/weth-logo.svg",
+      logoUrl: "https://tokens-data.1inch.io/images/0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2.png",
     },
     80094: {
       symbol: "WBERA",
@@ -139,7 +139,6 @@ export const wTokensByChainId: Record<number, Token> = {
     43114: "https://app.1inch.io/assets/images/network-logos/avalanche.svg",
     250: "https://app.1inch.io/assets/images/network-logos/fantom.svg",
     8453: "https://app.1inch.io/assets/images/network-logos/base.svg",
-    59144: "https://lineascan.build/images/logo.svg",
     324: "https://raw.githubusercontent.com/matter-labs/zksync/0a4ca2145a0c95b5bafa84c2f095c644907a8825/zkSyncLogo.svg",
     1101: "https://user-images.githubusercontent.com/18598517/235932702-bc47eae5-d672-4dd9-9da2-8ea8f51a93f3.png",
     169: "https://icons.llamao.fi/icons/chains/rsz_manta.jpg",
@@ -149,7 +148,5 @@ export const wTokensByChainId: Record<number, Token> = {
     48900: "https://app.1inch.io/assets/images/network-logos/ethereum.svg",
     14: "https://icons.llamao.fi/icons/chains/rsz_flare?w=48&h=48",
     388: "https://cryptologos.cc/logos/cronos-cro-logo.png",
-    747474: "https://katana.network/assets/katana-logo.svg",
-    80094: "https://katana.network/assets/katana-logo.svg",
     143: "https://s2.coinmarketcap.com/static/img/coins/128x128/30495.png",
   };

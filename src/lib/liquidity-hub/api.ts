@@ -10,7 +10,7 @@ import type { LiquidityHubSwap } from "./types";
 
 export async function getLiquidityHubTx(
   identifier: string,
-  signal?: AbortSignal
+  signal?: AbortSignal,
 ) {
   let query;
   if (isHash(identifier)) {
@@ -22,33 +22,44 @@ export async function getLiquidityHubTx(
   const response = await fetchElastic<LiquidityHubSwap>(
     LIQUIDITY_HUB_ELASTIC_SERVER_URL,
     query,
-    signal
+    signal,
   );
 
   const swap = response[0];
   if (!swap) return;
   const { sessionId } = swap;
 
-  const [quotes, clientLogs] = await Promise.all([
+  const results = await Promise.allSettled([
     fetchElastic<LiquidityHubQuote>(
       LIQUIDITY_HUB_ELASTIC_SERVER_URL,
       elasticQueries.getSwapQuotesById(sessionId),
-      signal
+      signal,
     ),
     fetchElastic<unknown>(
       LIQUIDITY_HUB_ELASTIC_CLIENT_URL,
       elasticQueries.getClientBySessionId(sessionId),
-      signal
+      signal,
     ),
   ]);
 
+  signal?.throwIfAborted();
+  const quotes = results[0].status === "fulfilled" ? results[0].value : [];
+  const clientLogs = results[1].status === "fulfilled" ? results[1].value : [];
+  const warnings = results.flatMap((result, index) =>
+    result.status === "rejected"
+      ? [
+          `${index === 0 ? "Quote history is" : "Client logs are"} currently unavailable. Swap status is still shown.`,
+        ]
+      : [],
+  );
   return {
+    warnings,
     swap,
     quotes: quotes || [],
     clientLogs:
       (clientLogs as Array<{ timestamp: string }>)?.sort(
         (a, b) =>
-          new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+          new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime(),
       ) || [],
     quote: quotes?.[quotes.length - 1] as LiquidityHubQuote | undefined,
   };

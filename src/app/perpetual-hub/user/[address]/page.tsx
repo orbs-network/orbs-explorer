@@ -7,7 +7,11 @@ function PerpetualHubUserPage({
   params: Promise<{ address: string }>;
 }) {
   const { address } = use(params);
-  return <PerpetualHubUserView address={address} />;
+  return (
+    <main id="main-content" className="min-w-0">
+      <PerpetualHubUserView address={address} />
+    </main>
+  );
 }
 
 export default PerpetualHubUserPage;

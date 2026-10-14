@@ -12,8 +12,7 @@ type NavLink = { href: string; label: string; exact?: boolean };
 
 const NAV_LINKS: readonly NavLink[] = [
   { href: ROUTES.EXPLORER.ROOT, label: "Home", exact: true },
-  { href: ROUTES.EXPLORER.BLOCKS, label: "Blocks" },
-  { href: ROUTES.EXPLORER.BATCHES, label: "Batches" },
+  { href: ROUTES.EXPLORER.BATCHES, label: "Confirmation batches" },
 ];
 
 export function ExplorerNavbar() {
@@ -38,9 +37,12 @@ export function ExplorerNavbar() {
         <input
           type="text"
           inputMode="search"
+          name="q"
+          autoComplete="off"
+          spellCheck={false}
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search sequence, address, hash, or batch id"
+          placeholder="Change number, wallet, or transaction ID…"
           className="h-9 w-full rounded-md border border-border bg-card pl-9 pr-3 font-mono text-xs text-foreground placeholder:text-muted-foreground/70 focus:outline-none focus:ring-1 focus:ring-ring"
           aria-label="Search the explorer"
         />
@@ -61,7 +63,7 @@ export function ExplorerNavbar() {
             alt=""
             width={28}
             height={28}
-            className="shrink-0"
+            className="h-7 w-7 shrink-0"
             priority
           />
           <span className="flex flex-col leading-none">
@@ -81,11 +83,12 @@ export function ExplorerNavbar() {
               <Link
                 key={link.href}
                 href={link.href}
+                aria-current={active ? "page" : undefined}
                 className={cn(
                   "rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
                   active
                     ? "bg-primary/10 text-primary"
-                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                    : "text-muted-foreground hover:bg-muted hover:text-foreground",
                 )}
               >
                 {link.label}
@@ -94,9 +97,13 @@ export function ExplorerNavbar() {
           })}
         </nav>
 
-        <div className="ml-auto hidden md:block w-full max-w-md">
-          {searchForm}
-        </div>
+        <Link
+          href={ROUTES.HOME}
+          className="ml-auto shrink-0 text-xs text-muted-foreground hover:text-primary"
+        >
+          All products
+        </Link>
+        <div className="hidden md:block w-full max-w-md">{searchForm}</div>
       </div>
 
       {/* Row 2 (mobile only): search form gets its own full-width row */}
@@ -113,11 +120,12 @@ export function ExplorerNavbar() {
               <Link
                 key={link.href}
                 href={link.href}
+                aria-current={active ? "page" : undefined}
                 className={cn(
                   "rounded-md px-3 py-1 text-xs font-medium transition-colors",
                   active
                     ? "bg-primary/10 text-primary"
-                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                    : "text-muted-foreground hover:bg-muted hover:text-foreground",
                 )}
               >
                 {link.label}

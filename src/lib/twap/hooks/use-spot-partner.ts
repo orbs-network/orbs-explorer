@@ -6,19 +6,20 @@ import { getTwapOrderChainId } from "../utils";
 
 const getPartner = (partner: string) => {
   return PARTNERS.find((item) =>
-    item.identifiers.some((i) => i.toLowerCase() === partner.toLowerCase())
+    item.identifiers.some((i) => i.toLowerCase() === partner.toLowerCase()),
   );
 };
 
 const EMPTY_PARTNER = {
   chainId: 0,
   partner: null,
+  partnerId: undefined as string | undefined,
   config: null,
 };
 
 export function useSpotPartner(
   adapterOrPartnerId?: string,
-  partnerChainId?: number
+  partnerChainId?: number,
 ) {
   const { data: config } = useSpotConfig();
 
@@ -29,7 +30,9 @@ export function useSpotPartner(
     for (const [chainId, chainConfig] of Object.entries(config)) {
       if (
         !chainConfig?.dex ||
-        (partnerChainId && Number(chainId) !== partnerChainId)
+        (partnerChainId &&
+          chainId !== "*" &&
+          Number(chainId) !== partnerChainId)
       )
         continue;
 
@@ -40,7 +43,8 @@ export function useSpotPartner(
           partner.toLowerCase() === target
         ) {
           return {
-            chainId: Number(chainId),
+            partnerId: partner,
+            chainId: chainId === "*" ? (partnerChainId ?? 0) : Number(chainId),
             partner: getPartner(partner),
             config: dexConfig,
           };

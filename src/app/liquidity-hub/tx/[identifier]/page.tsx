@@ -9,11 +9,13 @@ function LiquidityHubTxPage({
 }) {
   const { identifier } = use(params);
   return (
-    <LiquidityHubTxView
-      isPreview={false}
-      identifier={identifier}
-      defaultBackHref={ROUTES.LIQUIDITY_HUB.ROOT}
-    />
+    <main id="main-content" className="min-w-0">
+      <LiquidityHubTxView
+        isPreview={false}
+        identifier={identifier}
+        defaultBackHref={ROUTES.LIQUIDITY_HUB.ROOT}
+      />
+    </main>
   );
 }
 

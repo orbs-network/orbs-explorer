@@ -34,7 +34,7 @@ export type Resolution =
  */
 export async function resolveSearch(
   q: string,
-  origin: string
+  origin: string,
 ): Promise<Resolution> {
   const input = classifySearchInput(q);
 
@@ -62,8 +62,8 @@ export async function resolveSearch(
     // 1) Try as a settled state root (matches some rollup's newStateRoot).
     try {
       const r = await fetch(
-        `${origin}/api/perpetual-hub/rollup-root/${input.trimmed}`,
-        { cache: "no-store", signal: AbortSignal.timeout(15_000) }
+        `${origin}/api/perpetual-hub/rollup-root/${input.trimmed}?chain_id=42161`,
+        { cache: "no-store", signal: AbortSignal.timeout(15_000) },
       );
       if (r.ok) {
         const data = (await r.json()) as { rollup?: PerpetualHubRollup };
@@ -83,15 +83,18 @@ export async function resolveSearch(
     // 2 & 3) Pull a snapshot of the recent window and look for tx-hash or
     // op-stateRoot matches.
     try {
-      const r = await fetch(`${origin}/api/perpetual-hub/summary`, {
-        cache: "no-store",
-        signal: AbortSignal.timeout(10_000),
-      });
+      const r = await fetch(
+        `${origin}/api/perpetual-hub/summary?chain_id=42161`,
+        {
+          cache: "no-store",
+          signal: AbortSignal.timeout(10_000),
+        },
+      );
       if (r.ok) {
         const summary = (await r.json()) as PerpetualHubSummary;
 
         const batch = summary.rollups.latest.find(
-          (b) => b.txHash?.toLowerCase() === lower
+          (b) => b.txHash?.toLowerCase() === lower,
         );
         if (batch) {
           return {
@@ -102,7 +105,7 @@ export async function resolveSearch(
         }
 
         const op = summary.activity.recentEvents.find(
-          (o) => o.stateRoot?.toLowerCase() === lower
+          (o) => o.stateRoot?.toLowerCase() === lower,
         );
         if (op && typeof op.teeSequence === "number") {
           return {

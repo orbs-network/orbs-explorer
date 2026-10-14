@@ -1,0 +1,21 @@
+# Local credentials, build output, and development artifacts.
+.env*
+**/*.pem
+.git
+.vercel
+.aws
+.agents
+.codex
+.DS_Store
+*.log
+node_modules
+.next
+out
+build
+coverage
+*.tsbuildinfo
+.screenshots
+.playwright-cli
+.telegram-seen-errors.json
+/scripts/*
+!/scripts/deploy-vercel.sh

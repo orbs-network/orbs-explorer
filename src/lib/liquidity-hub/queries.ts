@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import {
   LIQUIDITY_HUB_ELASTIC_CLIENT_URL,
@@ -65,7 +64,11 @@ export const useLHSwaps = () => {
       status,
     ],
     queryFn: async ({ signal, pageParam }) => {
+      const { from: startDate, to: endDate } =
+        parseTimestampFromQuery(timestamp);
       const data = elasticQueries.getSwaps({
+        startDate,
+        endDate,
         page: pageParam,
         chainId: chain_id,
         limit: 100,
@@ -86,27 +89,11 @@ export const useLHSwaps = () => {
         signal,
       );
 
-      const clientLogs = await Promise.all(
-        swaps.map(async (swap) => {
-          return fetchElastic<any>(
-            LIQUIDITY_HUB_ELASTIC_CLIENT_URL,
-            elasticQueries.getClientBySessionId(swap.sessionId),
-            signal,
-          );
-        }),
-      );
-      return swaps.map((swap, index) => {
-        const swapClientLogs = clientLogs[index] as ClientLog[];
-        const clientLog = swapClientLogs[0];
-        return {
-          ...swap,
-          userAgent: swap.userAgent || clientLog?.userAgent || clientLog?.ua,
-        };
-      });
+      return swaps;
     },
     initialPageParam: 0,
     getNextPageParam: (lastPage, pages) => {
-      return lastPage.length > 0 ? pages.length : undefined; // Return next page number or undefined if no more pages
+      return lastPage.length >= 100 ? pages.length : undefined; // Return next page number or undefined if no more pages
     },
     getPreviousPageParam: (firstPage) => {
       return firstPage ? undefined : 0; // Modify based on how you paginate backwards

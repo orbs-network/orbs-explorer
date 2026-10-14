@@ -1,9 +1,8 @@
 import { useMutation } from "@tanstack/react-query";
-import { getSpotOrder } from "../api";
+import { getSpotOrder } from "../twap/api";
 import { useRouter } from "next/navigation";
 import { isHash } from "viem";
 import { toast } from "sonner";
-import { getLiquidityHubTx } from "../liquidity-hub";
 import { ROUTES } from "../routes";
 
 export function useAppSearch() {
@@ -11,36 +10,31 @@ export function useAppSearch() {
   return useMutation({
     mutationFn: async (value: string) => {
       const identifier = value.trim();
-
-      if (!isHash(identifier)) {
-        toast.error("Invalid order identifier");
+      if (/^0x[a-fA-F0-9]{40}$/.test(identifier)) {
+        router.push(
+          `${ROUTES.TWAP.ROOT}?user=${encodeURIComponent(identifier)}`,
+        );
         return;
       }
-
-      const [twapOrderResult, liquidityHubTxResult] = await Promise.allSettled([
-        getSpotOrder({ hash: identifier }),
-        getLiquidityHubTx(identifier),
-      ]);
-
-      const twapOrder =
-        twapOrderResult.status === "fulfilled"
-          ? twapOrderResult.value
-          : undefined;
-      const liquidityHubTx =
-        liquidityHubTxResult.status === "fulfilled"
-          ? liquidityHubTxResult.value
-          : undefined;
-
-      if (twapOrder) {
-        router.push(ROUTES.TWAP.ORDER(twapOrder.hash));
-      } else if (liquidityHubTx) {
-        router.push(ROUTES.LIQUIDITY_HUB.TX(liquidityHubTx.swap.txHash));
+      if (!isHash(identifier)) {
+        toast.error(
+          "Enter an order ID (64 hex characters) or wallet address (40 hex characters), starting with 0x.",
+        );
+        return;
+      }
+      const order = await getSpotOrder({ hash: identifier });
+      if (order) {
+        router.push(
+          `${ROUTES.TWAP.ORDER(order.hash)}?order_source=${order.source ?? "v1"}`,
+        );
       } else {
-        toast.error("Transaction not found");
+        toast.error(
+          "No advanced order found for this ID. Check the order ID in your trading app, or search by wallet address.",
+        );
       }
     },
-    onError: (error) => {
-      console.log(error);
+    onError: () => {
+      toast.error("Order search is unavailable. Please try again.");
     },
   });
 }

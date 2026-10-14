@@ -11,19 +11,35 @@ function syncStatus(summary: PerpetualHubSummary | undefined): {
 } {
   if (!summary) return { label: "…", tone: "warning", sublabel: "loading" };
   const { sync, health } = summary;
-  if (health.errors.length > 0) {
-    return { label: "Issues", tone: "danger", sublabel: `${health.errors.length} error${health.errors.length === 1 ? "" : "s"}` };
+  const syncErrors = health.errors.filter(
+    (error) => !error.startsWith("Hedger:"),
+  );
+  if (syncErrors.length > 0) {
+    return {
+      label: "Issues",
+      tone: "danger",
+      sublabel: `${syncErrors.length} error${syncErrors.length === 1 ? "" : "s"}`,
+    };
   }
   if (sync.rollupPaused) {
-    return { label: "Paused", tone: "warning", sublabel: sync.rollupPauseReason ?? "rollup paused" };
+    return {
+      label: "Paused",
+      tone: "warning",
+      sublabel: sync.rollupPauseReason ?? "blockchain confirmation paused",
+    };
   }
   if (sync.rootsMatch === false) {
-    return { label: "Drift", tone: "danger", sublabel: `gap ${sync.sequenceGap}` };
+    return {
+      label: "Drift",
+      tone: "danger",
+      sublabel: `gap ${sync.sequenceGap}`,
+    };
   }
   return {
     label: "OK",
     tone: "success",
-    sublabel: sync.rootsMatch === true ? "roots match" : `gap ${sync.sequenceGap}`,
+    sublabel:
+      sync.rootsMatch === true ? "roots match" : `gap ${sync.sequenceGap}`,
   };
 }
 
@@ -50,12 +66,12 @@ export function StatsStrip({ summary }: Props) {
         sublabel="all-time"
       />
       <StatCard
-        label="Addresses"
+        label="Accounts"
         value={formatInteger(summary?.risk.users)}
         sublabel="active"
       />
       <StatCard
-        label="Open interest"
+        label="Open positions value"
         value={summary ? formatUsdCompact(summary.risk.openInterest) : "…"}
         sublabel={
           summary

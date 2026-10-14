@@ -1,3 +1,4 @@
+import { findEvent } from "@/lib/perpetual-hub/find-event";
 import { NextResponse } from "next/server";
 import {
   type PerpetualHubDeployment,
@@ -11,7 +12,6 @@ import type {
 } from "@/lib/perpetual-hub/types";
 
 const PAGE_SIZE = 100;
-const PAGE_BATCH_SIZE = 8;
 
 function trimTrailingSlash(value: string) {
   return value.replace(/\/+$/, "");
@@ -65,56 +65,6 @@ async function fetchEventsPage({
   };
 }
 
-function matchesEvent(event: PerpetualHubOperation, id: number, seq?: number) {
-  if (event.id !== id) return false;
-  return seq === undefined || event.teeSequence === seq;
-}
-
-async function findEventInDeployment({
-  deployment,
-  id,
-  seq,
-  signal,
-}: {
-  deployment: PerpetualHubDeployment;
-  id: number;
-  seq?: number;
-  signal: AbortSignal;
-}) {
-  let offset = 0;
-  let total = Number.POSITIVE_INFINITY;
-
-  while (offset < total) {
-    const pageOffsets = Array.from(
-      { length: PAGE_BATCH_SIZE },
-      (_, index) => offset + index * PAGE_SIZE,
-    );
-
-    const pages = await Promise.all(
-      pageOffsets.map(async (pageOffset) => ({
-        pageOffset,
-        page: await fetchEventsPage({
-          deployment,
-          offset: pageOffset,
-          signal,
-        }),
-      })),
-    );
-
-    for (const { pageOffset, page } of pages) {
-      if (page.total) total = page.total;
-
-      const event = page.events.find((item) => matchesEvent(item, id, seq));
-      if (event) return event;
-
-      offset = pageOffset + PAGE_SIZE;
-      if (page.events.length < PAGE_SIZE || offset >= total) return undefined;
-    }
-  }
-
-  return undefined;
-}
-
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ id: string }> },
@@ -145,17 +95,23 @@ export async function GET(
   const timeout = setTimeout(() => controller.abort(), 15_000);
 
   try {
-    const results = await Promise.all(
+    const results = await Promise.allSettled(
       deployments.map((deployment) =>
-        findEventInDeployment({
-          deployment,
+        findEvent({
           id: eventId,
           seq,
-          signal: controller.signal,
+          fetchPage: (offset) =>
+            fetchEventsPage({ deployment, offset, signal: controller.signal }),
         }),
       ),
     );
-    const event = results.find(Boolean);
+    const event = results.flatMap((result) =>
+      result.status === "fulfilled" && result.value ? [result.value] : [],
+    )[0];
+    if (!event) {
+      const failed = results.find((result) => result.status === "rejected");
+      if (failed?.status === "rejected") throw failed.reason;
+    }
 
     if (!event) {
       return NextResponse.json({ error: "Event not found" }, { status: 404 });

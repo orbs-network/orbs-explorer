@@ -1,4 +1,12 @@
 "use client";
+import { formatPerpetualHubStatus } from "@/lib/perpetual-hub/format";
+import Link from "next/link";
+
+import { CurrentPositions } from "./current-positions";
+import {
+  usePathname,
+  useSearchParams as usePositionViewParams,
+} from "next/navigation";
 
 import { useCallback, useMemo, useRef } from "react";
 import moment from "moment";
@@ -117,7 +125,8 @@ function SideBadge({ side }: { side?: string }) {
       variant="outline"
       className={cn(
         "text-[11px] uppercase",
-        isLong && "border-emerald-500/40 bg-emerald-500/10 text-emerald-500",
+        isLong &&
+          "border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400",
         isShort && "border-destructive/40 bg-destructive/10 text-destructive",
       )}
     >
@@ -139,15 +148,16 @@ function StatusBadge({ status }: { status: string }) {
       variant="outline"
       className={cn(
         "text-[11px] uppercase",
-        isSuccess && "border-emerald-500/40 bg-emerald-500/10 text-emerald-500",
+        isSuccess &&
+          "border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400",
         isRejected &&
           "border-destructive/40 bg-destructive/10 text-destructive",
         !isSuccess &&
           !isRejected &&
-          "border-amber-500/40 bg-amber-500/10 text-amber-500",
+          "border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-400",
       )}
     >
-      {status}
+      {formatPerpetualHubStatus(status)}
     </Badge>
   );
 }
@@ -163,7 +173,7 @@ function TypeCell({ item }: { item: PositionOrderTableRow }) {
         "text-[11px] uppercase",
         isPosition
           ? "border-primary/40 bg-primary/10 text-primary"
-          : "border-amber-500/40 bg-amber-500/10 text-amber-500",
+          : "border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-400",
       )}
     >
       {group}
@@ -277,7 +287,7 @@ function FeePnlCell({ item }: { item: PositionOrderTableRow }) {
     <span
       className={cn(
         value ? "font-mono text-foreground" : "text-muted-foreground",
-        isPnl && value > 0 && "text-emerald-500",
+        isPnl && value > 0 && "text-emerald-700 dark:text-emerald-400",
         isPnl && value < 0 && "text-destructive",
       )}
     >
@@ -312,14 +322,18 @@ function StatusCell({ item }: { item: PositionOrderTableRow }) {
 const TABLE_COLUMNS = [
   { Component: TypeCell, text: "Type" },
   { Component: ActionCell, text: "Action" },
-  { Component: UserCell, text: "User" },
-  { Component: PartnerCell, text: "Partner" },
-  { Component: ChainCell, text: "Chain" },
+  { Component: UserCell, text: "Account" },
+  { Component: PartnerCell, text: "Trading app" },
+  { Component: ChainCell, text: "Network" },
   { Component: MarketCell, text: "Market" },
   { Component: QuantityCell, text: "Quantity", className: "text-right" },
   { Component: PriceCell, text: "Price", className: "text-right" },
-  { Component: NotionalCell, text: "Notional", className: "text-right" },
-  { Component: FeePnlCell, text: "Fees / PnL", className: "text-right" },
+  { Component: NotionalCell, text: "Trade value", className: "text-right" },
+  {
+    Component: FeePnlCell,
+    text: "Fees / profit & loss",
+    className: "text-right",
+  },
   { Component: TimestampCell, text: "Timestamp" },
   { Component: StatusCell, text: "Status" },
 ];
@@ -329,7 +343,7 @@ const HEADER_LABELS = TABLE_COLUMNS.map((column) => ({
   className: column.className,
 }));
 
-export function PerpetualHubPositionsTable() {
+function PositionOrderHistory() {
   const router = useRouter();
   const eventsQuery = usePerpetualHubPositionOrderEventsPaginated();
   const loadingMoreRef = useRef(false);
@@ -378,6 +392,10 @@ export function PerpetualHubPositionsTable() {
   return (
     <VirtualTable<PositionOrderTableRow>
       isLoading={eventsQuery.isLoading}
+      isError={eventsQuery.isError}
+      onRetry={() => eventsQuery.refetch()}
+      hasNextPage={eventsQuery.hasNextPage}
+      warnings={eventsQuery.data?.pages[0]?.warnings ?? []}
       isFetchingNextPage={eventsQuery.isFetchingNextPage}
       fetchNextPage={handleFetchNextPage}
       tableItems={rows}
@@ -385,8 +403,48 @@ export function PerpetualHubPositionsTable() {
       desktopRows={TABLE_COLUMNS}
       onSelect={handleSelect}
       onMobileRowClick={handleSelect}
-      title="Positions"
+      title="Position & order history"
       headerAction={<PerpetualPositionsFilter />}
     />
+  );
+}
+
+export function PerpetualHubPositionsTable() {
+  const params = usePositionViewParams();
+  const pathname = usePathname();
+  const current = params.get("view") !== "history";
+  const href = (view: string) => {
+    const next = new URLSearchParams(params);
+    next.set("view", view);
+    if (view === "history") next.delete("min_dollar_value");
+    for (const key of ["type", "status", "order_type", "side", "timestamp"])
+      next.delete(key);
+    return `${pathname}?${next}`;
+  };
+  return (
+    <div className="space-y-4">
+      <nav aria-label="Position data view" className="flex flex-wrap gap-2">
+        <Link
+          href={href("current")}
+          aria-current={current ? "page" : undefined}
+          className={`rounded-md border px-3 py-2 text-sm hover:bg-muted ${current ? "border-primary bg-primary/10 text-primary" : "border-border"}`}
+        >
+          Current positions & orders
+        </Link>
+        <Link
+          href={href("history")}
+          aria-current={!current ? "page" : undefined}
+          className={`rounded-md border px-3 py-2 text-sm hover:bg-muted ${!current ? "border-primary bg-primary/10 text-primary" : "border-border"}`}
+        >
+          Activity history
+        </Link>
+      </nav>
+      <p className="text-sm text-muted-foreground">
+        {current
+          ? "Open an account for its balance and the activity behind these positions and orders."
+          : "Earlier activity explains what changed. An order placed in the past may already have traded or been cancelled."}
+      </p>
+      {current ? <CurrentPositions /> : <PositionOrderHistory />}
+    </div>
   );
 }

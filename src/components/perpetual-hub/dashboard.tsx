@@ -146,7 +146,7 @@ function eventDetails(event: PerpetualHubOperation) {
   const realizedPnl = amountToUsd(event.realizedPnl);
 
   if (event.operationType === "CHANGE_LEVERAGE" && event.amount) {
-    details.push({ label: "Lev", value: `${event.amount}x` });
+    details.push({ label: "Leverage", value: `${event.amount}x` });
   }
   if (event.operationType === "CANCEL_ORDER" && event.amount) {
     details.push({ label: "Order", value: String(event.amount) });
@@ -158,7 +158,7 @@ function eventDetails(event: PerpetualHubOperation) {
     details.push({ label: "Amount", value: formatUsd(amount) });
   }
   if (quantity) {
-    details.push({ label: "Qty", value: formatCompact(quantity, 4) });
+    details.push({ label: "Quantity", value: formatCompact(quantity, 4) });
   }
   if (price) {
     details.push({ label: "Price", value: formatUsd(price, 4) });
@@ -168,7 +168,7 @@ function eventDetails(event: PerpetualHubOperation) {
   }
   if (event.realizedPnl) {
     details.push({
-      label: "PnL",
+      label: "Profit / loss",
       value: formatUsd(realizedPnl),
       tone: realizedPnl >= 0 ? "positive" : "danger",
     });
@@ -229,9 +229,9 @@ function statusBadge(status: "ok" | "warn" | "bad" | "idle", label: string) {
       className={cn(
         "gap-1.5",
         status === "ok" &&
-          "border-emerald-500/40 text-emerald-500 bg-emerald-500/10",
+          "border-emerald-500/40 text-emerald-700 dark:text-emerald-400 bg-emerald-500/10",
         status === "warn" &&
-          "border-amber-500/40 text-amber-500 bg-amber-500/10",
+          "border-amber-500/40 text-amber-700 dark:text-amber-400 bg-amber-500/10",
         status === "bad" &&
           "border-destructive/50 text-destructive bg-destructive/10",
         status === "idle" && "text-muted-foreground",
@@ -268,8 +268,8 @@ function MetricCard({
             <p
               className={cn(
                 "mt-1 text-2xl font-semibold tabular-nums tracking-normal",
-                tone === "positive" && "text-emerald-500",
-                tone === "warning" && "text-amber-500",
+                tone === "positive" && "text-emerald-700 dark:text-emerald-400",
+                tone === "warning" && "text-amber-700 dark:text-amber-400",
                 tone === "danger" && "text-destructive",
                 tone === "info" && "text-primary",
               )}
@@ -363,14 +363,23 @@ function ExposureTable({
 
   return (
     <Card className="overflow-hidden rounded-lg py-0">
-      <div className="overflow-x-auto">
+      <div
+        tabIndex={0}
+        role="region"
+        aria-label="Market positions"
+        className="w-full min-w-0 overflow-x-auto"
+      >
         <table className="w-full text-sm">
           <thead className="border-b bg-muted/30 text-xs text-muted-foreground">
             <tr>
               <th className="px-4 py-3 text-left font-medium">Symbol</th>
-              <th className="px-4 py-3 text-right font-medium">Long OI</th>
-              <th className="px-4 py-3 text-right font-medium">Short OI</th>
-              <th className="px-4 py-3 text-right font-medium">Net Qty</th>
+              <th className="px-4 py-3 text-right font-medium">
+                Long positions value
+              </th>
+              <th className="px-4 py-3 text-right font-medium">
+                Short positions value
+              </th>
+              <th className="px-4 py-3 text-right font-medium">Net quantity</th>
               <th className="px-4 py-3 text-right font-medium">Positions</th>
             </tr>
           </thead>
@@ -378,7 +387,7 @@ function ExposureTable({
             {rows.slice(0, 8).map((row) => (
               <tr key={row.symbol} className="border-b last:border-b-0">
                 <td className="px-4 py-3 font-medium">{row.symbol}</td>
-                <td className="px-4 py-3 text-right font-mono text-emerald-500">
+                <td className="px-4 py-3 text-right font-mono text-emerald-700 dark:text-emerald-400">
                   {formatUsd(row.longNotional)}
                 </td>
                 <td className="px-4 py-3 text-right font-mono text-destructive">
@@ -416,7 +425,12 @@ function HedgerPositionsTable({
 
   return (
     <Card className="overflow-hidden rounded-lg py-0">
-      <div className="overflow-x-auto">
+      <div
+        tabIndex={0}
+        role="region"
+        aria-label="Protocol hedging positions"
+        className="w-full min-w-0 overflow-x-auto"
+      >
         <table className="w-full text-sm">
           <thead className="border-b bg-muted/30 text-xs text-muted-foreground">
             <tr>
@@ -424,12 +438,16 @@ function HedgerPositionsTable({
               <th className="px-4 py-3 text-left font-medium">Side</th>
               <th className="px-4 py-3 text-right font-medium">Amount</th>
               <th className="px-4 py-3 text-right font-medium">Entry</th>
-              <th className="px-4 py-3 text-right font-medium">Notional</th>
+              <th className="px-4 py-3 text-right font-medium">Trade value</th>
               <th className="px-4 py-3 text-right font-medium">
-                Initial Margin
+                Initial margin
               </th>
-              <th className="px-4 py-3 text-right font-medium">Maint Margin</th>
-              <th className="px-4 py-3 text-right font-medium">PnL</th>
+              <th className="px-4 py-3 text-right font-medium">
+                Maintenance margin
+              </th>
+              <th className="px-4 py-3 text-right font-medium">
+                Profit / loss
+              </th>
               <th className="px-4 py-3 text-left font-medium">Updated</th>
             </tr>
           </thead>
@@ -450,7 +468,7 @@ function HedgerPositionsTable({
                   <td
                     className={cn(
                       "px-4 py-3 text-right font-mono",
-                      amount > 0 && "text-emerald-500",
+                      amount > 0 && "text-emerald-700 dark:text-emerald-400",
                       amount < 0 && "text-destructive",
                     )}
                   >
@@ -471,7 +489,7 @@ function HedgerPositionsTable({
                   <td
                     className={cn(
                       "px-4 py-3 text-right font-mono",
-                      pnl > 0 && "text-emerald-500",
+                      pnl > 0 && "text-emerald-700 dark:text-emerald-400",
                       pnl < 0 && "text-destructive",
                     )}
                   >
@@ -515,22 +533,31 @@ function RecentEventsTable({
 
   return (
     <Card className="overflow-hidden rounded-lg py-0">
-      <div className="overflow-x-auto">
+      <div
+        tabIndex={0}
+        role="region"
+        aria-label="Account activity"
+        className="w-full min-w-0 overflow-x-auto"
+      >
         <table className="w-full text-sm">
           <thead className="border-b bg-muted/30 text-xs text-muted-foreground">
             <tr>
               <th className="px-4 py-3 text-left font-medium">Time</th>
-              <th className="px-4 py-3 text-right font-medium">SeqNo</th>
+              <th className="px-4 py-3 text-right font-medium">
+                Change number
+              </th>
               {showRollupColumns && (
                 <th className="px-4 py-3 text-right font-medium">RollupID</th>
               )}
               <th className="px-4 py-3 text-left font-medium">Type</th>
-              <th className="px-4 py-3 text-left font-medium">User</th>
+              <th className="px-4 py-3 text-left font-medium">Account</th>
               <th className="px-4 py-3 text-left font-medium">Symbol</th>
-              <th className="px-4 py-3 text-right font-medium">Notional</th>
+              <th className="px-4 py-3 text-right font-medium">Trade value</th>
               <th className="px-4 py-3 text-left font-medium">Details</th>
               {showRollupColumns && (
-                <th className="px-4 py-3 text-left font-medium">Tx</th>
+                <th className="px-4 py-3 text-left font-medium">
+                  Blockchain record
+                </th>
               )}
               <th className="px-4 py-3 text-left font-medium">Status</th>
             </tr>
@@ -604,7 +631,7 @@ function RecentEventsTable({
                             className={cn(
                               "max-w-full gap-1 font-mono text-xs",
                               detail.tone === "positive" &&
-                                "border-emerald-500/40 text-emerald-500 bg-emerald-500/10",
+                                "border-emerald-500/40 text-emerald-700 dark:text-emerald-400 bg-emerald-500/10",
                               detail.tone === "danger" &&
                                 "border-destructive/50 text-destructive bg-destructive/10",
                             )}
@@ -639,7 +666,7 @@ function RecentEventsTable({
                   )}
                   <td className="px-4 py-3">
                     {event.status === "SUCCESS"
-                      ? statusBadge("ok", "Success")
+                      ? statusBadge("ok", "Account updated")
                       : statusBadge("bad", event.status || "Rejected")}
                   </td>
                 </tr>
@@ -674,7 +701,12 @@ function UserPositionsTable({
 
   return (
     <Card className="overflow-hidden rounded-lg py-0">
-      <div className="overflow-x-auto">
+      <div
+        tabIndex={0}
+        role="region"
+        aria-label="Open positions"
+        className="w-full min-w-0 overflow-x-auto"
+      >
         <table className="w-full text-sm">
           <thead className="border-b bg-muted/30 text-xs text-muted-foreground">
             <tr>
@@ -682,8 +714,10 @@ function UserPositionsTable({
               <th className="px-4 py-3 text-right font-medium">Quantity</th>
               <th className="px-4 py-3 text-right font-medium">Entry</th>
               <th className="px-4 py-3 text-right font-medium">Mark</th>
-              <th className="px-4 py-3 text-right font-medium">Notional</th>
-              <th className="px-4 py-3 text-right font-medium">PnL</th>
+              <th className="px-4 py-3 text-right font-medium">Trade value</th>
+              <th className="px-4 py-3 text-right font-medium">
+                Profit / loss
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -701,7 +735,7 @@ function UserPositionsTable({
                   <td
                     className={cn(
                       "px-4 py-3 text-right font-mono",
-                      quantity > 0 && "text-emerald-500",
+                      quantity > 0 && "text-emerald-700 dark:text-emerald-400",
                       quantity < 0 && "text-destructive",
                     )}
                   >
@@ -721,7 +755,7 @@ function UserPositionsTable({
                   <td
                     className={cn(
                       "px-4 py-3 text-right font-mono",
-                      pnl > 0 && "text-emerald-500",
+                      pnl > 0 && "text-emerald-700 dark:text-emerald-400",
                       pnl < 0 && "text-destructive",
                     )}
                   >
@@ -742,7 +776,12 @@ function UserOrdersTable({ orders }: { orders: PerpetualHubUserOrder[] }) {
 
   return (
     <Card className="overflow-hidden rounded-lg py-0">
-      <div className="overflow-x-auto">
+      <div
+        tabIndex={0}
+        role="region"
+        aria-label="Waiting orders"
+        className="w-full min-w-0 overflow-x-auto"
+      >
         <table className="w-full text-sm">
           <thead className="border-b bg-muted/30 text-xs text-muted-foreground">
             <tr>
@@ -788,7 +827,12 @@ function UserTradesTable({ trades }: { trades: PerpetualHubTrade[] }) {
 
   return (
     <Card className="overflow-hidden rounded-lg py-0">
-      <div className="overflow-x-auto">
+      <div
+        tabIndex={0}
+        role="region"
+        aria-label="Trade history"
+        className="w-full min-w-0 overflow-x-auto"
+      >
         <table className="w-full text-sm">
           <thead className="border-b bg-muted/30 text-xs text-muted-foreground">
             <tr>
@@ -835,7 +879,7 @@ export function UserLookupResults({ data }: { data: PerpetualHubUserDetail }) {
   const pendingOrders = current?.pendingOrders ?? [];
 
   return (
-    <div className="space-y-4">
+    <div className="min-w-0 w-full space-y-4">
       <div className="flex flex-wrap items-center gap-2">
         <Badge variant="outline" className="font-mono">
           {truncate(address, 6)}
@@ -844,13 +888,17 @@ export function UserLookupResults({ data }: { data: PerpetualHubUserDetail }) {
           Updated {moment(data.updatedAt).format("HH:mm:ss")}
         </span>
         {data.errors.map((item) => (
-          <Badge key={item} variant="outline" className="text-amber-500">
+          <Badge
+            key={item}
+            variant="outline"
+            className="text-amber-700 dark:text-amber-400"
+          >
             {item}
           </Badge>
         ))}
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <MetricCard
           label="Balance"
           value={formatUsd(amountToUsd(current?.user?.balance))}
@@ -864,7 +912,7 @@ export function UserLookupResults({ data }: { data: PerpetualHubUserDetail }) {
           tone="positive"
         />
         <MetricCard
-          label="Unrealized PnL"
+          label="Unrealized profit / loss"
           value={formatUsd(amountToUsd(current?.unrealizedPnl))}
           icon={TrendingUp}
           tone={
@@ -872,7 +920,7 @@ export function UserLookupResults({ data }: { data: PerpetualHubUserDetail }) {
           }
         />
         <MetricCard
-          label="Realized PnL"
+          label="Realized profit / loss"
           value={formatUsd(amountToUsd(data.accounting?.realizedPnl))}
           icon={TrendingUp}
           tone={
@@ -882,7 +930,7 @@ export function UserLookupResults({ data }: { data: PerpetualHubUserDetail }) {
           }
         />
         <MetricCard
-          label="Margin Used"
+          label="Margin used"
           value={formatUsd(amountToUsd(current?.marginUsed))}
           icon={Gauge}
         />
@@ -912,7 +960,7 @@ export function UserLookupResults({ data }: { data: PerpetualHubUserDetail }) {
       <UserPositionsTable positions={positions} />
       <UserOrdersTable orders={pendingOrders} />
 
-      <div className="grid gap-3 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <MetricCard
           label="Transactions"
           value={formatNumber(data.history.totalTransactions)}
@@ -936,7 +984,7 @@ export function UserLookupResults({ data }: { data: PerpetualHubUserDetail }) {
         />
       </div>
 
-      <div className="grid gap-4 xl:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
         <div className="space-y-2">
           <h3 className="text-sm font-semibold text-muted-foreground">
             Trades
@@ -1050,71 +1098,52 @@ function RollupList({ latest }: { latest: RollupListItem[] }) {
 function ConnectionNotice({
   backendUrl,
   errors,
+  onRetry,
 }: {
   backendUrl: string;
   errors: string[];
+  onRetry: () => void;
 }) {
   if (!errors.length) return null;
-
-  const backendDown = errors.some((item) => item.startsWith("Backend"));
-
   return (
-    <Card
-      className={cn(
-        "rounded-lg py-4",
-        backendDown
-          ? "border-destructive/35 bg-destructive/5"
-          : "border-amber-500/35 bg-amber-500/5",
-      )}
-    >
+    <Card className="rounded-lg border-amber-500/35 bg-amber-500/5 py-4">
       <CardContent className="px-4">
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+        <div
+          className="flex flex-wrap items-center justify-between gap-3"
+          role="status"
+        >
           <div className="flex items-start gap-3">
-            <div
-              className={cn(
-                "mt-0.5 rounded-md p-2",
-                backendDown
-                  ? "bg-destructive/10 text-destructive"
-                  : "bg-amber-500/10 text-amber-500",
-              )}
-            >
-              <AlertTriangle className="h-4 w-4" />
-            </div>
+            <AlertTriangle
+              aria-hidden
+              className="mt-0.5 size-4 shrink-0 text-amber-700 dark:text-amber-400"
+            />
             <div>
               <p className="text-sm font-medium">
-                {backendDown
-                  ? "Waiting for Perpetual Hub API"
-                  : "Perpetual Hub data is partially available"}
+                Some Perpetual Hub data is unavailable
               </p>
               <p className="mt-1 text-sm text-muted-foreground">
-                The dashboard uses the backend API only, including reflected TEE
-                state.
+                Showing available data. Totals may be incomplete. Try again to
+                refresh.
               </p>
             </div>
           </div>
-          <div className="grid gap-2 text-xs lg:min-w-[320px]">
-            <div className="rounded-md border bg-background/50 px-3 py-2">
-              <span className="text-muted-foreground">API</span>
-              <p className="mt-1 truncate font-mono">{backendUrl}</p>
-            </div>
-          </div>
+          <Button variant="outline" size="sm" onClick={onRetry}>
+            Try again
+          </Button>
         </div>
-        <div className="mt-3 flex flex-wrap gap-2">
-          {errors.slice(0, 4).map((item) => (
-            <Badge
-              key={item}
-              variant="outline"
-              className="border-border bg-background/50 text-muted-foreground"
-            >
-              {item.replace(": fetch failed", " unreachable")}
-            </Badge>
-          ))}
-          {errors.length > 4 && (
-            <Badge variant="outline" className="text-muted-foreground">
-              +{errors.length - 4} more
-            </Badge>
-          )}
-        </div>
+        <details className="mt-3 text-xs text-muted-foreground">
+          <summary className="cursor-pointer hover:text-foreground">
+            Service details
+          </summary>
+          <p className="mt-2 break-all font-mono">{backendUrl}</p>
+          <ul className="mt-2 list-inside list-disc space-y-1">
+            {errors.map((error) => (
+              <li className="break-words" key={error}>
+                {error.replace(": fetch failed", " unreachable")}
+              </li>
+            ))}
+          </ul>
+        </details>
       </CardContent>
     </Card>
   );
@@ -1133,7 +1162,7 @@ export function PerpetualHubDashboard({
     query: { [URL_QUERY_KEYS.PARTNER_ID]: selectedPartner },
   } = useQueryFilterParams();
   const isAllPartnersOverview = !firstFilterValue(selectedPartner);
-  const { data, isLoading, isError, error } = usePerpetualHubSummary();
+  const { data, isLoading, isError, error, refetch } = usePerpetualHubSummary();
   const [activeTab, setActiveTab] =
     useState<PerpetualHubDashboardTab>(initialTab);
   const [rollupLookup, setRollupLookup] = useState("");
@@ -1231,8 +1260,13 @@ export function PerpetualHubDashboard({
       <div className="mx-auto max-w-xl rounded-lg border border-destructive/40 bg-destructive/5 p-6 text-destructive">
         <p className="font-semibold">Failed to load Perpetual Hub</p>
         <p className="mt-2 text-sm opacity-90">
-          {error instanceof Error ? error.message : "Unknown error"}
+          {error instanceof Error
+            ? error.message
+            : "The selected data is unavailable."}
         </p>
+        <Button variant="outline" className="mt-4" onClick={() => refetch()}>
+          Try again
+        </Button>
       </div>
     );
   }
@@ -1242,6 +1276,7 @@ export function PerpetualHubDashboard({
       <ConnectionNotice
         backendUrl={data.source.backendUrl}
         errors={data.health.errors}
+        onRetry={() => refetch()}
       />
 
       <Tabs value={activeTab} className="space-y-5">
@@ -1267,27 +1302,27 @@ export function PerpetualHubDashboard({
 
           {!isAllPartnersOverview && (
             <Section title="System" icon={ShieldCheck}>
-              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
                 <MetricCard
-                  label="TEE Seq"
+                  label="Latest account change"
                   value={`#${formatNumber(data.sync.teeSeq)}`}
                   icon={Database}
                   tone="info"
                 />
                 <MetricCard
-                  label="Chain Seq"
+                  label="Confirmed account change"
                   value={`#${formatNumber(data.sync.chainSeq)}`}
                   icon={Layers}
                 />
                 <MetricCard
-                  label="Pending Ops"
+                  label="Changes awaiting confirmation"
                   value={formatNumber(data.sync.pendingOps)}
                   icon={Clock}
                   tone={data.sync.pendingOps > 0 ? "warning" : "positive"}
                   sub={`Next rollup ${data.sync.nextRollupIn || 0}s`}
                 />
                 <MetricCard
-                  label="Proof Chain"
+                  label="Verification network"
                   value={data.proofs.chainValid === false ? "Broken" : "Valid"}
                   icon={ShieldCheck}
                   tone={
@@ -1325,7 +1360,7 @@ export function PerpetualHubDashboard({
                 tone={data.activity.rejectRate > 0.05 ? "warning" : "default"}
               />
               <MetricCard
-                label="Recent Notional"
+                label="Recent trade value"
                 value={formatUsd(data.volume.recentNotional)}
                 icon={TrendingUp}
                 sub="latest 100 events"
@@ -1336,10 +1371,10 @@ export function PerpetualHubDashboard({
         </TabsContent>
 
         <TabsContent value="risk" className="mt-0 space-y-6">
-          <Section title="Risk" icon={Gauge}>
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <Section title="Market risk" icon={Gauge}>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
               <MetricCard
-                label="Users"
+                label="Accounts"
                 value={formatNumber(data.risk.users)}
                 icon={Wallet}
               />
@@ -1355,7 +1390,7 @@ export function PerpetualHubDashboard({
                 tone="info"
               />
               <MetricCard
-                label="Near Liquidation"
+                label="Positions near liquidation"
                 value={formatNumber(data.risk.nearLiquidationCount)}
                 icon={AlertTriangle}
                 tone={data.risk.nearLiquidationCount ? "danger" : "default"}
@@ -1372,7 +1407,7 @@ export function PerpetualHubDashboard({
                 tone="positive"
               />
               <MetricCard
-                label="Unrealized PnL"
+                label="Unrealized profit / loss"
                 value={formatUsd(data.risk.totalUnrealizedPnl)}
                 icon={TrendingUp}
                 tone={data.risk.totalUnrealizedPnl >= 0 ? "positive" : "danger"}
@@ -1388,10 +1423,10 @@ export function PerpetualHubDashboard({
         </TabsContent>
 
         <TabsContent value="hedger" className="mt-0 space-y-6">
-          <Section title="Hedger" icon={Wallet}>
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <Section title="Protocol hedging" icon={Wallet}>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
               <MetricCard
-                label="Connection"
+                label="Service connection"
                 value={
                   data.hedger.connected === false
                     ? "Down"
@@ -1421,7 +1456,7 @@ export function PerpetualHubDashboard({
                 icon={CircleDollarSign}
               />
               <MetricCard
-                label="Unrealized PnL"
+                label="Unrealized profit / loss"
                 value={formatUsd(data.hedger.unrealizedPnl)}
                 icon={TrendingUp}
                 tone={
@@ -1434,7 +1469,7 @@ export function PerpetualHubDashboard({
                 icon={BarChart3}
               />
               <MetricCard
-                label="Position Notional"
+                label="Positions value"
                 value={formatUsd(data.hedger.positionNotional)}
                 icon={Gauge}
               />
@@ -1444,31 +1479,31 @@ export function PerpetualHubDashboard({
         </TabsContent>
 
         <TabsContent value="rollups" className="mt-0 space-y-6">
-          <Section title="Rollups" icon={Layers}>
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <Section title="Settlement batches" icon={Layers}>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
               <MetricCard
-                label="Total Rollups"
+                label="Total batches"
                 value={formatNumber(data.rollups.totalRollups)}
                 icon={Layers}
               />
               <MetricCard
-                label="Avg Ops"
+                label="Changes per batch"
                 value={formatNumber(data.rollups.avgOpsPerRollup, 1)}
                 icon={Activity}
               />
               <MetricCard
-                label="Latest Seq"
+                label="Latest change"
                 value={`#${formatNumber(data.rollups.latestSequence)}`}
                 icon={Database}
                 tone="info"
               />
               <MetricCard
-                label="Total Ops"
+                label="Total changes"
                 value={formatNumber(data.rollups.totalOps)}
                 icon={Activity}
               />
             </div>
-            <div className="grid gap-3 lg:grid-cols-3">
+            <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
               <form onSubmit={handleRollupLookup} className="flex gap-2">
                 <div className="relative min-w-0 flex-1">
                   <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -1477,7 +1512,7 @@ export function PerpetualHubDashboard({
                     pattern="[0-9#]*"
                     value={rollupLookup}
                     onChange={(event) => setRollupLookup(event.target.value)}
-                    placeholder="Go to rollup ID"
+                    placeholder="Find a settlement batch"
                     className="pl-9"
                   />
                 </div>
@@ -1493,7 +1528,7 @@ export function PerpetualHubDashboard({
                     pattern="[0-9#]*"
                     value={seqLookup}
                     onChange={(event) => setSeqLookup(event.target.value)}
-                    placeholder="Go to SeqNo"
+                    placeholder="Find an account change"
                     className="pl-9"
                   />
                 </div>
@@ -1510,7 +1545,7 @@ export function PerpetualHubDashboard({
                       setRootLookup(event.target.value);
                       if (rootLookupError) setRootLookupError("");
                     }}
-                    placeholder="Go to new root"
+                    placeholder="Find a verification ID"
                     className="pl-9 font-mono"
                   />
                 </div>
@@ -1540,7 +1575,7 @@ export function PerpetualHubDashboard({
 
           {data.activity.topRejectReasons.length > 0 && (
             <Section title="Reject Reasons" icon={AlertTriangle}>
-              <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-5">
                 {data.activity.topRejectReasons.map((item) => (
                   <Card key={item.reason} className="rounded-lg py-4">
                     <CardHeader className="px-4">

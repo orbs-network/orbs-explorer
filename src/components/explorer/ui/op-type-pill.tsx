@@ -1,3 +1,4 @@
+import { formatPerpetualHubActionName } from "@/lib/perpetual-hub/format";
 import { cn } from "@/lib/utils/utils";
 
 type Props = {
@@ -5,17 +6,26 @@ type Props = {
   className?: string;
 };
 
-type Tone = "trade" | "deposit" | "withdraw" | "liquidation" | "cancel" | "order" | "neutral";
+type Tone =
+  | "trade"
+  | "deposit"
+  | "withdraw"
+  | "liquidation"
+  | "cancel"
+  | "order"
+  | "neutral";
 
 function classify(type: string | undefined): Tone {
   if (!type) return "neutral";
   const t = type.toLowerCase();
   if (t.includes("liquidat")) return "liquidation";
-  if (t.includes("trade") || t.includes("fill") || t.includes("match")) return "trade";
+  if (t.includes("trade") || t.includes("fill") || t.includes("match"))
+    return "trade";
   if (t.includes("deposit")) return "deposit";
   if (t.includes("withdraw")) return "withdraw";
   if (t.includes("cancel")) return "cancel";
-  if (t.includes("order") || t.includes("limit") || t.includes("stop")) return "order";
+  if (t.includes("order") || t.includes("limit") || t.includes("stop"))
+    return "order";
   return "neutral";
 }
 
@@ -31,13 +41,13 @@ const TONES: Record<Tone, string> = {
 
 export function OpTypePill({ type, className }: Props) {
   const tone = classify(type);
-  const label = (type ?? "UNKNOWN").toUpperCase().replace(/_/g, " ");
+  const label = formatPerpetualHubActionName(type);
   return (
     <span
       className={cn(
         "inline-flex items-center rounded px-1.5 py-0.5 font-mono text-[10px] font-medium uppercase tracking-wide",
         TONES[tone],
-        className
+        className,
       )}
     >
       {label}

@@ -7,12 +7,20 @@ import {
   LHPartnerStatsCard,
   LHDashboardSummary,
 } from "@/components/liquidity-hub-dashboard";
+import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { BarChart3, LayoutGrid, Users } from "lucide-react";
 
 export default function LiquidityHubDashboardPage() {
-  const { isLoading, isError, error, stats, swapsByPartnerId, allSwaps } =
-    useLiquidityHubDashboard();
+  const {
+    isLoading,
+    isError,
+    error,
+    retry,
+    stats,
+    swapsByPartnerId,
+    allSwaps,
+  } = useLiquidityHubDashboard();
 
   if (isLoading) {
     return (
@@ -36,8 +44,12 @@ export default function LiquidityHubDashboardPage() {
         <div className="rounded-2xl border border-destructive/40 bg-destructive/5 p-8 text-destructive max-w-lg">
           <p className="font-semibold">Failed to load overview</p>
           <p className="mt-2 text-sm opacity-90">
-            {error?.message ?? "Unknown error"}
+            The analytics service is unavailable. Try again to reload the
+            overview.
           </p>
+          <Button variant="outline" className="mt-4" onClick={retry}>
+            Try again
+          </Button>
         </div>
       </Page>
     );

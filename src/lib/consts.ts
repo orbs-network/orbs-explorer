@@ -25,8 +25,8 @@ export enum URL_QUERY_KEYS {
 
 export const FILTER_KEY_NAMES = {
   [URL_QUERY_KEYS.TIMESTAMP]: "Timestamp",
-  [URL_QUERY_KEYS.HASH]: "Hash",
-  [URL_QUERY_KEYS.USER]: "User",
+  [URL_QUERY_KEYS.HASH]: "Order or transaction ID",
+  [URL_QUERY_KEYS.USER]: "Wallet",
   [URL_QUERY_KEYS.CHAIN_ID]: "Chain ID",
   [URL_QUERY_KEYS.TWAP_ADDRESS]: "Twap Address",
   [URL_QUERY_KEYS.IN_TOKEN]: "In Token",
@@ -34,9 +34,9 @@ export const FILTER_KEY_NAMES = {
   [URL_QUERY_KEYS.FEE_OUT_AMOUNT_USD]: "Fee Out Amount USD",
   [URL_QUERY_KEYS.ORDER_STATUS]: "Order Status",
   [URL_QUERY_KEYS.MIN_DOLLAR_VALUE]: "Min Dollar Value",
-  [URL_QUERY_KEYS.PARTNER_ID]: "Partner",
+  [URL_QUERY_KEYS.PARTNER_ID]: "Trading app",
   [URL_QUERY_KEYS.ORDER_TYPE]: "Order Type",
-  [URL_QUERY_KEYS.SESSION_ID]: "Session ID",
+  [URL_QUERY_KEYS.SESSION_ID]: "Swap attempt ID",
   [URL_QUERY_KEYS.STATUS]: "Status",
   [URL_QUERY_KEYS.SYMBOL]: "Market",
   [URL_QUERY_KEYS.ACTION_TYPE]: "Action",

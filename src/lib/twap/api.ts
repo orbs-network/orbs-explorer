@@ -1,5 +1,4 @@
 import axios from "axios";
-import _, { flatten } from "lodash";
 import type { ListOrder, Order, SpotConfig } from "./types";
 import {
   fetchElastic,
@@ -8,240 +7,234 @@ import {
 } from "../api/fetch-elastic";
 import { TWAP_ELASTIC_CLIENT_URL } from "../consts";
 
+export const SINK_API_URLS = {
+  prod: "https://order-sink.orbs.network",
+  dev: "https://order-sink-dev.orbs.network",
+} as const;
+export const CURRENT_SINK_API_URL = "https://order-sink-v2.orbs.network";
+
 type Filters = {
-  account?: string;
+  account?: string | string[];
   chainIds?: number[];
   hash?: string;
   status?: string;
   exchange?: string;
 };
 
-export const SINK_API_URLS = {
-  prod: "https://order-sink.orbs.network",
-  dev: "https://order-sink-dev.orbs.network",
-} as const;
+function endpoints(baseUrl?: string): string[] {
+  return !baseUrl || baseUrl === SINK_API_URLS.prod
+    ? [CURRENT_SINK_API_URL, SINK_API_URLS.prod]
+    : [baseUrl];
+}
 
-const SINK_API_URL = SINK_API_URLS.prod;
+function orderQuery(
+  filters: Filters,
+  page?: number,
+  limit?: number,
+  list = true,
+) {
+  const query = new URLSearchParams();
+  if (list) query.set("view", "list");
+  // UI pages are zero-based; both order services treat 0 and 1 as the first page.
+  if (page !== undefined) query.set("page", String(page + 1));
+  if (limit !== undefined) query.set("limit", String(limit));
+  if (filters.chainIds?.length)
+    query.set("chainId", filters.chainIds.join(","));
+  const accounts = Array.isArray(filters.account)
+    ? filters.account
+    : filters.account
+      ? [filters.account]
+      : [];
+  if (accounts.length) query.set("swapper", accounts.join(","));
+  if (filters.hash) query.set("hash", filters.hash);
+  if (filters.status) query.set("status", filters.status);
+  if (filters.exchange) query.set("exchange", filters.exchange);
+  return query;
+}
 
-function isCanceledRequest(error: unknown) {
-  return (
-    axios.isCancel(error) ||
-    (typeof error === "object" &&
-      error !== null &&
-      "code" in error &&
-      error.code === "ERR_CANCELED")
+async function fetchOrders<T>(
+  endpoint: string,
+  query: URLSearchParams,
+  signal?: AbortSignal,
+): Promise<T[]> {
+  const response = await axios.get(`${endpoint}/orders?${query}`, {
+    signal,
+    timeout: 20_000,
+  });
+  if (!Array.isArray(response.data?.orders))
+    throw new Error("Invalid order history response");
+  return response.data.orders.map((order: T) => ({
+    ...order,
+    source: endpoint === CURRENT_SINK_API_URL ? "v2" : "v1",
+  }));
+}
+
+function successfulResults<T>(
+  results: PromiseSettledResult<T>[],
+  signal?: AbortSignal,
+) {
+  signal?.throwIfAborted();
+  const successful = results.filter(
+    (result): result is PromiseFulfilledResult<T> =>
+      result.status === "fulfilled",
+  );
+  if (!successful.length) {
+    const failure = results.find((result) => result.status === "rejected");
+    throw failure?.reason ?? new Error("Order history unavailable");
+  }
+  return successful.map((result) => result.value);
+}
+
+function deduplicateOrders(orders: ListOrder[]): ListOrder[] {
+  const byKey = new Map<string, ListOrder>();
+  for (const order of orders) {
+    const chainId = order.order.witness.chainId ?? order.order.witness.chainid;
+    const key = `${chainId}:${order.hash.toLowerCase()}`;
+    if (!byKey.has(key)) byKey.set(key, order);
+  }
+  return [...byKey.values()].sort(
+    (a, b) => Date.parse(b.timestamp) - Date.parse(a.timestamp),
   );
 }
 
-const handleFilters = (filters: Filters) => {
-  const chainQuery = filters.chainIds
-    ? `&chainId=${filters.chainIds.join(",")}`
-    : "";
-  const swapper = filters.account ? `&swapper=${filters.account}` : "";
-  const hash = filters.hash ? `&hash=${filters.hash}` : "";
-  const status = filters.status ? `&status=${filters.status}` : "";
-  const exchange = filters.exchange ? `&exchange=${filters.exchange}` : "";
-  return `${chainQuery}${swapper}${hash}${status}${exchange}`;
-};
-
-const getOrders = async ({
-  signal,
-  page,
-  limit,
-  filters,
-  baseUrl = SINK_API_URL,
-}: {
-  signal?: AbortSignal;
-  page?: number;
-  limit?: number;
-  filters: Filters;
-  baseUrl?: string;
-}) => {
-  const callback = async (): Promise<ListOrder[]> => {
-    const filtersQuery = handleFilters(filters);
-    const response = await axios.get(
-      `${baseUrl}/orders?view=list&page=${page}&limit=${limit}${filtersQuery}`,
-      { signal },
-    );
-    return response.data.orders as ListOrder[];
-  };
-
-  if (filters.chainIds) {
-    const results = await Promise.allSettled(filters.chainIds.map(callback));
-    const canceled = results.find(
-      (result): result is PromiseRejectedResult =>
-        result.status === "rejected" && isCanceledRequest(result.reason),
-    );
-    if (canceled) throw canceled.reason;
-
-    const res = results.map((r) => (r.status === "fulfilled" ? r.value : null));
-    return flatten(res).filter(Boolean) as ListOrder[];
-  }
-  return callback();
-};
-
 export type OrdersPageResponse = {
   orders: ListOrder[];
-  total: number;
+  hasMore: boolean;
+  warnings: string[];
 };
 
-export const getOrdersPageWithFilters = async ({
+export const getSpotOrdersPage = async ({
   signal,
   page = 0,
   limit = 400,
   filters,
+  sinkApiUrl,
 }: {
   signal?: AbortSignal;
   page?: number;
   limit?: number;
   filters: Filters;
+  sinkApiUrl?: string;
 }): Promise<OrdersPageResponse> => {
-  const filtersQuery = handleFilters(filters);
-  const response = await axios.get(
-    `${SINK_API_URL}/orders?view=list&page=${page}&limit=${limit}${filtersQuery}`,
-    { signal },
+  const sources = endpoints(sinkApiUrl);
+  const results = await Promise.allSettled(
+    sources.map((endpoint) =>
+      fetchOrders<ListOrder>(
+        endpoint,
+        orderQuery(filters, page, limit),
+        signal,
+      ),
+    ),
   );
-  const orders = (response.data.orders ?? []) as ListOrder[];
-  return { orders, total: orders.length };
+  const pages = successfulResults(results, signal);
+  return {
+    orders: deduplicateOrders(pages.flat()),
+    hasMore: pages.some((orders) => orders.length >= limit),
+    warnings: results.flatMap((result, index) =>
+      result.status === "rejected"
+        ? [
+            `${sources[index] === CURRENT_SINK_API_URL ? "Current" : "Original"} order history is unavailable. Showing available orders.`,
+          ]
+        : [],
+    ),
+  };
 };
 
-export const getAllOrdersForExchange = async ({
-  exchange: adapter,
-  signal,
+export const getSpotOrders = async (
+  params: Parameters<typeof getSpotOrdersPage>[0],
+): Promise<ListOrder[]> => (await getSpotOrdersPage(params)).orders;
+
+export const getOrdersPageWithFilters = getSpotOrdersPage;
+
+async function fetchAllOrders(
+  filters: Filters,
+  signal?: AbortSignal,
   limit = 400,
+): Promise<ListOrder[]> {
+  const results = await Promise.allSettled(
+    endpoints().map(async (endpoint) => {
+      const orders: ListOrder[] = [];
+      for (let page = 0; ; page++) {
+        const batch = await fetchOrders<ListOrder>(
+          endpoint,
+          orderQuery(filters, page, limit),
+          signal,
+        );
+        orders.push(...batch);
+        if (batch.length < limit) break;
+      }
+      return orders;
+    }),
+  );
+  // Overview totals must be complete: never silently present partial totals.
+  signal?.throwIfAborted();
+  const failure = results.find((result) => result.status === "rejected");
+  if (failure) throw failure.reason;
+  return deduplicateOrders(successfulResults(results, signal).flat());
+}
+
+export const getAllOrdersForExchange = ({
+  exchange,
+  signal,
+  limit,
 }: {
   exchange: string;
   signal?: AbortSignal;
   limit?: number;
-}): Promise<ListOrder[]> => {
-  const all: ListOrder[] = [];
-  let page = 0;
-  let totalFetched = 0;
-  let totalFromApi: number | null = null;
+}): Promise<ListOrder[]> => fetchAllOrders({ exchange }, signal, limit);
 
-  while (true) {
-    const { orders, total } = await getOrdersPageWithFilters({
-      signal,
-      page,
-      limit,
-      filters: { exchange: adapter },
-    });
-    if (totalFromApi === null) totalFromApi = total;
-    all.push(...orders);
-    totalFetched += orders.length;
-    if (
-      orders.length < limit ||
-      (totalFromApi !== null && totalFetched >= totalFromApi)
-    )
-      break;
-    page += 1;
-  }
-  return all.sort(
-    (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime(),
-  );
-};
-
-export const getAllOrdersForExchangeAndChain = async ({
-  exchange: adapter,
+export const getAllOrdersForExchangeAndChain = ({
+  exchange,
   chainId,
   signal,
-  limit = 400,
+  limit,
 }: {
   exchange: string;
   chainId: number;
   signal?: AbortSignal;
   limit?: number;
-}): Promise<ListOrder[]> => {
-  const all: ListOrder[] = [];
-  let page = 0;
-  let totalFetched = 0;
-  let totalFromApi: number | null = null;
+}): Promise<ListOrder[]> =>
+  fetchAllOrders({ exchange, chainIds: [chainId] }, signal, limit);
 
-  while (true) {
-    const { orders, total } = await getOrdersPageWithFilters({
-      signal,
-      page,
-      limit,
-      filters: { exchange: adapter, chainIds: [chainId] },
-    });
-    if (totalFromApi === null) totalFromApi = total;
-    all.push(...orders);
-    totalFetched += orders.length;
-    if (
-      orders.length < limit ||
-      (totalFromApi !== null && totalFetched >= totalFromApi)
-    )
-      break;
-    page += 1;
-  }
-  return all.sort(
-    (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime(),
-  );
-};
-
-export const getOrdersListPage = async ({
-  signal,
-  page = 0,
-  limit = 400,
-}: {
+export const getOrdersListPage = (params: {
   signal?: AbortSignal;
   page?: number;
   limit?: number;
-}): Promise<{ orders: ListOrder[]; total?: number }> => {
-  const response = await axios.get(
-    `${SINK_API_URL}/orders?view=list&page=${page}&limit=${limit}`,
-    { signal },
-  );
-  return {
-    orders: (response.data.orders ?? []) as ListOrder[],
-    total: response.data.total,
-  };
-};
-
-export const getSpotOrders = async ({
-  signal,
-  page,
-  limit = 300,
-  filters,
-  sinkApiUrl,
-}: {
-  signal?: AbortSignal;
-  page?: number;
-  limit?: number;
-  filters: Filters;
-  sinkApiUrl?: string;
-}): Promise<ListOrder[]> => {
-  try {
-    const orders = await getOrders({
-      signal,
-      page,
-      limit,
-      filters,
-      baseUrl: sinkApiUrl ?? SINK_API_URL,
-    });
-    return orders.sort(
-      (a, b) =>
-        new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime(),
-    );
-  } catch (error) {
-    if (isCanceledRequest(error)) throw error;
-    console.error(error);
-    return [];
-  }
-};
+}): Promise<OrdersPageResponse> =>
+  getSpotOrdersPage({ ...params, filters: {} });
 
 export const getSpotOrder = async ({
   signal,
   hash,
   sinkApiUrl,
+  source,
 }: {
   signal?: AbortSignal;
   hash: string;
   sinkApiUrl?: string;
+  source?: string;
 }): Promise<Order | undefined> => {
-  const url = sinkApiUrl ?? SINK_API_URL;
-  const response = await axios.get(`${url}/orders?hash=${hash}`, { signal });
-  return response.data.orders[0] as Order;
+  const sources =
+    source === "v1" && (!sinkApiUrl || sinkApiUrl === SINK_API_URLS.prod)
+      ? [SINK_API_URLS.prod]
+      : source === "v2"
+        ? [CURRENT_SINK_API_URL]
+        : endpoints(sinkApiUrl);
+  const results = await Promise.allSettled(
+    sources.map((endpoint) =>
+      fetchOrders<Order>(
+        endpoint,
+        orderQuery({ hash }, undefined, undefined, false),
+        signal,
+      ),
+    ),
+  );
+  const order = successfulResults(results, signal).flat()[0];
+  // A failed source cannot confirm that the order does not exist.
+  if (!order && results.some((result) => result.status === "rejected")) {
+    throw new Error("Some order history is unavailable. Try again.");
+  }
+  return order;
 };
 
 export const getSpotConfig = async (
@@ -251,7 +244,16 @@ export const getSpotConfig = async (
     "https://raw.githubusercontent.com/orbs-network/spot/master/config.json",
     { signal },
   );
-  return res.data;
+  const config = res.data as SpotConfig;
+  const sharedDexes = config["*"]?.dex;
+  return Object.fromEntries(
+    Object.entries(config).map(([chainId, chain]) => [
+      chainId,
+      chainId === "*"
+        ? chain
+        : { ...chain, dex: { ...sharedDexes, ...chain.dex } },
+    ]),
+  );
 };
 
 const getOrderLogs = (hash: string) => ({

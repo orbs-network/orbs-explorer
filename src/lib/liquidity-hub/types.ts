@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 export type LiquidityHubSwap = {
   amountInUSD2: number;
   remote_addr: string;
@@ -250,6 +249,7 @@ export interface LiquidityHubQuote {
 
 
   export type SwapQueryResponse = {
+    warnings?: string[];
     swap: LiquidityHubSwap;
     quotes: LiquidityHubQuote[];
     clientLogs: any[];

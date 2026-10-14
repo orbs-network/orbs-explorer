@@ -5,7 +5,7 @@ import * as chains from "viem/chains";
 import moment from "moment";
 import { Order } from "@/lib/types";
 import { getSpotConfig } from "@/lib/api";
-import { getSpotPartnerConfig } from "@/lib/twap";
+import { getSpotPartnerConfig } from "@/lib/twap/utils";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -68,7 +68,7 @@ async function fetchOrders(): Promise<Order[]> {
 
     while (hasMore) {
       const res = await fetch(
-        `${SINK_API_URL}/orders?page=${page}&limit=${PAGE_LIMIT}`
+        `${SINK_API_URL}/orders?page=${page}&limit=${PAGE_LIMIT}`,
       );
       if (!res.ok) {
         const body = await res.text();
@@ -153,7 +153,7 @@ export async function GET(request: Request) {
   if (!process.env.TELEGRAM_BOT_TOKEN || !process.env.TELEGRAM_CHAT_ID) {
     return NextResponse.json(
       { error: "TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID must be set" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 
@@ -167,7 +167,10 @@ export async function GET(request: Request) {
     let sent = 0;
     let errorChunksTotal = 0;
 
-    const sortedOrders = allOrders.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+    const sortedOrders = allOrders.sort(
+      (a, b) =>
+        new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime(),
+    );
 
     for (const order of sortedOrders) {
       if (!order.metadata?.chunks?.length) continue;
@@ -182,7 +185,7 @@ export async function GET(request: Request) {
         ? getSpotPartnerConfig(
             spotConfig,
             order.order.witness.exchange.adapter,
-            chainId
+            chainId,
           )
         : null;
       const partnerName = partner?.partner?.name ?? "—";
@@ -203,7 +206,7 @@ export async function GET(request: Request) {
         const extraTitle = truncate(chunk.extraTitle, MAX_EXTRA_TITLE_LENGTH);
         const extraTitleTranslated = truncate(
           chunk.extraTitleTranslated ?? "—",
-          MAX_EXTRA_TITLE_LENGTH
+          MAX_EXTRA_TITLE_LENGTH,
         );
 
         const message = [
@@ -237,7 +240,7 @@ export async function GET(request: Request) {
     console.error("telegram-error-alerts:", err);
     return NextResponse.json(
       { error: err instanceof Error ? err.message : "Unknown error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

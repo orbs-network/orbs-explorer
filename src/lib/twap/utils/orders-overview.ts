@@ -1,5 +1,4 @@
 import type { ListOrder } from "../types";
-import { Status } from "../types";
 import { PARTNERS } from "../../partners";
 import { Partners } from "../../types";
 
@@ -8,39 +7,101 @@ type SpotConfig = Record<
   { dex?: Record<string, { adapter?: string }> }
 >;
 
-/** Raw status string from ListOrder.metadata.status. */
+export const OVERVIEW_STATUSES = {
+  completed: {
+    label: "Completed",
+    description: "All planned trades are reported complete.",
+  },
+  partial: {
+    label: "Partly completed",
+    description: "The order ended after some of its planned trades completed.",
+  },
+  active: {
+    label: "Active",
+    description:
+      "Still waiting for a price condition, a scheduled time, or another execution attempt.",
+  },
+  cancelled: {
+    label: "Cancelled",
+    description:
+      "Cancelled orders can still have completed trades in their history.",
+  },
+  expired: {
+    label: "Expired",
+    description: "The expiry time passed before all planned trades completed.",
+  },
+  failed: {
+    label: "Failed",
+    description:
+      "The order stopped because execution could not complete. Open it to see the reason.",
+  },
+  unknown: {
+    label: "Other status",
+    description:
+      "The service returned an unrecognized status. Open the order for its latest update.",
+  },
+} as const;
+export type OverviewOrderStatus = keyof typeof OVERVIEW_STATUSES;
+
 export function getListOrderStatus(order: ListOrder): string {
   return order.metadata?.status ?? "";
 }
 
-export function isListOrderCompleted(order: ListOrder): boolean {
-  return getListOrderStatus(order) === Status.COMPLETED;
+export function getOverviewOrderStatus(order: ListOrder): OverviewOrderStatus {
+  const raw = getListOrderStatus(order).toLowerCase();
+  const display = (order.metadata?.displayOnlyStatus ?? "").toUpperCase();
+  if (raw === "cancelled" || display === "CANCELLED") return "cancelled";
+  if (raw === "expired" || display === "EXPIRED") return "expired";
+  if (raw === "completed" || display === "SUCCEEDED") return "completed";
+  if (raw === "partially_completed" || display === "PARTIALLY SUCCEEDED")
+    return "partial";
+  // An unsuccessful attempt does not end an order that is still active.
+  if (
+    raw === "pending" ||
+    raw === "eligible" ||
+    display === "PENDING" ||
+    display === "PENDING-PRICE-CHECK"
+  )
+    return "active";
+  if (
+    raw === "failed" ||
+    raw === "error" ||
+    display === "FAILED" ||
+    display === "ERROR"
+  )
+    return "failed";
+  return "unknown";
+}
+export const isListOrderCompleted = (order: ListOrder) =>
+  getOverviewOrderStatus(order) === "completed";
+export const isListOrderPartiallyCompleted = (order: ListOrder) =>
+  getOverviewOrderStatus(order) === "partial";
+export const isListOrderPending = (order: ListOrder) =>
+  getOverviewOrderStatus(order) === "active";
+export const isListOrderError = (order: ListOrder) =>
+  getOverviewOrderStatus(order) === "failed";
+export const classifyListOrderStatus = getOverviewOrderStatus;
+
+export function getOrderValueUsd(order: ListOrder): number {
+  const value = Number(order.totalUSDAmount);
+  return Number.isFinite(value) && value >= 0 ? value : 0;
 }
 
-export function isListOrderPartiallyCompleted(order: ListOrder): boolean {
-  return getListOrderStatus(order) === Status.PARTIALLY_COMPLETED;
-}
-
-export function isListOrderPending(order: ListOrder): boolean {
-  return getListOrderStatus(order) === Status.PENDING;
-}
-
-export function isListOrderError(order: ListOrder): boolean {
-  const s = getListOrderStatus(order);
-  return (
-    s !== Status.COMPLETED &&
-    s !== Status.PARTIALLY_COMPLETED &&
-    s !== Status.PENDING
-  );
-}
-
-/** Classify order for aggregation. */
-export function classifyListOrderStatus(order: ListOrder): Status {
-  const s = getListOrderStatus(order);
-  if (s === Status.COMPLETED) return Status.COMPLETED;
-  if (s === Status.PARTIALLY_COMPLETED) return Status.PARTIALLY_COMPLETED;
-  if (s === Status.PENDING) return Status.PENDING;
-  return Status.FAILED;
+export function groupOverviewOrders(
+  orders: ListOrder[],
+): Record<OverviewOrderStatus, ListOrder[]> {
+  const grouped: Record<OverviewOrderStatus, ListOrder[]> = {
+    completed: [],
+    partial: [],
+    active: [],
+    cancelled: [],
+    expired: [],
+    failed: [],
+    unknown: [],
+  };
+  for (const order of orders)
+    grouped[getOverviewOrderStatus(order)].push(order);
+  return grouped;
 }
 
 export type PartnerStats = {
@@ -58,6 +119,12 @@ export type PartnerStats = {
   errorUsd: number;
   pendingOrders: number;
   pendingUsd: number;
+  cancelledOrders: number;
+  cancelledUsd: number;
+  expiredOrders: number;
+  expiredUsd: number;
+  unknownOrders: number;
+  unknownUsd: number;
 };
 
 export type PartnerWithAdapter = {
@@ -85,7 +152,7 @@ function formatPartnerId(partnerId: string): string {
 }
 
 export function getPartnersWithAdapters(
-  config: SpotConfig | null
+  config: SpotConfig | null,
 ): PartnerWithAdapter[] {
   if (!config) return [];
   const byAdapter = new Map<string, PartnerWithAdapter>();
@@ -110,7 +177,7 @@ export function getPartnersWithAdapters(
 }
 
 export function getPartnerChainPairs(
-  config: SpotConfig | null
+  config: SpotConfig | null,
 ): PartnerChainPair[] {
   if (!config) return [];
   const pairs: PartnerChainPair[] = [];
@@ -160,7 +227,7 @@ export type PartnerCard = {
 
 export function getPartnerByAdapter(
   config: SpotConfig | null,
-  adapter: string
+  adapter: string,
 ): { partnerId: string; partnerName: string } | null {
   if (!config || !adapter) return null;
   const target = adapter.toLowerCase();
@@ -185,86 +252,28 @@ export function getPartnerByAdapter(
 export function aggregateOrdersByPartner(
   orders: ListOrder[],
   config: SpotConfig | null,
-  sinceDate: Date
+  sinceDate: Date,
 ): PartnerStats[] {
   const filtered = orders.filter(
-    (o) => new Date(o.timestamp).getTime() >= sinceDate.getTime()
+    (o) => new Date(o.timestamp).getTime() >= sinceDate.getTime(),
   );
 
-  const byPartner = new Map<
-    string,
-    {
-      partnerName: string;
-      totalOrders: number;
-      totalUsd: number;
-      filled: number;
-      filledUsd: number;
-      partiallyFilled: number;
-      partiallyFilledUsd: number;
-      error: number;
-      errorUsd: number;
-      pending: number;
-      pendingUsd: number;
-    }
-  >();
-
+  const groups = new Map<string, { name: string; orders: ListOrder[] }>();
   for (const order of filtered) {
     const resolved = getPartnerByAdapter(config, order.exchangeAdapter);
     const key = resolved?.partnerId ?? order.exchangeAdapter.toLowerCase();
-    const name =
-      resolved?.partnerName ?? `Adapter ${order.exchangeAdapter.slice(0, 10)}…`;
-
-    if (!byPartner.has(key)) {
-      byPartner.set(key, {
-        partnerName: name,
-        totalOrders: 0,
-        totalUsd: 0,
-        filled: 0,
-        filledUsd: 0,
-        partiallyFilled: 0,
-        partiallyFilledUsd: 0,
-        error: 0,
-        errorUsd: 0,
-        pending: 0,
-        pendingUsd: 0,
-      });
-    }
-
-    const row = byPartner.get(key)!;
-    row.totalOrders += 1;
-    const usd = parseFloat(order.totalUSDAmount) || 0;
-    row.totalUsd += usd;
-
-    const status = classifyListOrderStatus(order);
-    if (status === Status.COMPLETED) {
-      row.filled += 1;
-      row.filledUsd += usd;
-    } else if (status === Status.PARTIALLY_COMPLETED) {
-      row.partiallyFilled += 1;
-      row.partiallyFilledUsd += usd;
-    } else if (status === Status.PENDING) {
-      row.pending += 1;
-      row.pendingUsd += usd;
-    } else {
-      row.error += 1;
-      row.errorUsd += usd;
-    }
+    const group = groups.get(key) ?? {
+      name:
+        resolved?.partnerName ??
+        `Unknown app (${order.exchangeAdapter.slice(0, 6)}…)`,
+      orders: [],
+    };
+    group.orders.push(order);
+    groups.set(key, group);
   }
-
-  return Array.from(byPartner.entries()).map(([partnerId, row]) => ({
-    partnerId,
-    partnerName: row.partnerName,
-    totalOrders: row.totalOrders,
-    totalUsd: row.totalUsd,
-    filledOrders: row.filled,
-    filledUsd: row.filledUsd,
-    partiallyFilledOrders: row.partiallyFilled,
-    partiallyFilledUsd: row.partiallyFilledUsd,
-    errorOrders: row.error,
-    errorUsd: row.errorUsd,
-    pendingOrders: row.pending,
-    pendingUsd: row.pendingUsd,
-  }));
+  return [...groups.entries()].map(([key, group]) =>
+    ordersToPartnerStats(group.orders, key, group.name),
+  );
 }
 
 export function getLast7DaysDate(): Date {
@@ -274,10 +283,7 @@ export function getLast7DaysDate(): Date {
   return d;
 }
 
-export function getTopPairsByVolume(
-  orders: ListOrder[],
-  limit = 3
-): TopPair[] {
+export function getTopPairsByVolume(orders: ListOrder[], limit = 3): TopPair[] {
   const byPair = new Map<
     string,
     {
@@ -292,11 +298,8 @@ export function getTopPairsByVolume(
     const inAddr = (order.inputToken ?? "").toLowerCase();
     const outAddr = (order.outputToken ?? "").toLowerCase();
     if (!inAddr || !outAddr) continue;
-    const pairKey =
-      inAddr < outAddr ? `${inAddr}-${outAddr}` : `${outAddr}-${inAddr}`;
-    const first = inAddr < outAddr ? inAddr : outAddr;
-    const second = inAddr < outAddr ? outAddr : inAddr;
-    const usd = parseFloat(order.totalUSDAmount) || 0;
+    const pairKey = `${inAddr}-${outAddr}`;
+    const usd = getOrderValueUsd(order);
 
     const existing = byPair.get(pairKey);
     if (existing) {
@@ -304,8 +307,8 @@ export function getTopPairsByVolume(
       existing.orderCount += 1;
     } else {
       byPair.set(pairKey, {
-        inputToken: first,
-        outputToken: second,
+        inputToken: inAddr,
+        outputToken: outAddr,
         totalUsd: usd,
         orderCount: 1,
       });
@@ -321,51 +324,58 @@ export function ordersToPartnerStats(
   orders: ListOrder[],
   partnerId: string,
   partnerName: string,
-  options?: { chainId?: number; chainName?: string }
+  options?: { chainId?: number; chainName?: string },
 ): PartnerStats {
-  let totalUsd = 0;
-  let filled = 0;
-  let filledUsd = 0;
-  let partiallyFilled = 0;
-  let partiallyFilledUsd = 0;
-  let error = 0;
-  let errorUsd = 0;
-  let pending = 0;
-  let pendingUsd = 0;
-
-  for (const order of orders) {
-    const usd = parseFloat(order.totalUSDAmount) || 0;
-    totalUsd += usd;
-    const status = classifyListOrderStatus(order);
-    if (status === Status.COMPLETED) {
-      filled += 1;
-      filledUsd += usd;
-    } else if (status === Status.PARTIALLY_COMPLETED) {
-      partiallyFilled += 1;
-      partiallyFilledUsd += usd;
-    } else if (status === Status.PENDING) {
-      pending += 1;
-      pendingUsd += usd;
-    } else {
-      error += 1;
-      errorUsd += usd;
-    }
-  }
-
+  const groups = groupOverviewOrders(orders);
+  const value = (key: OverviewOrderStatus) =>
+    groups[key].reduce((sum, order) => sum + getOrderValueUsd(order), 0);
   return {
     partnerId,
     partnerName,
-    chainId: options?.chainId,
-    chainName: options?.chainName,
+    ...options,
     totalOrders: orders.length,
-    totalUsd,
-    filledOrders: filled,
-    filledUsd,
-    partiallyFilledOrders: partiallyFilled,
-    partiallyFilledUsd,
-    errorOrders: error,
-    errorUsd,
-    pendingOrders: pending,
-    pendingUsd,
+    totalUsd: orders.reduce((sum, order) => sum + getOrderValueUsd(order), 0),
+    filledOrders: groups.completed.length,
+    filledUsd: value("completed"),
+    partiallyFilledOrders: groups.partial.length,
+    partiallyFilledUsd: value("partial"),
+    pendingOrders: groups.active.length,
+    pendingUsd: value("active"),
+    errorOrders: groups.failed.length,
+    errorUsd: value("failed"),
+    cancelledOrders: groups.cancelled.length,
+    cancelledUsd: value("cancelled"),
+    expiredOrders: groups.expired.length,
+    expiredUsd: value("expired"),
+    unknownOrders: groups.unknown.length,
+    unknownUsd: value("unknown"),
   };
+}
+
+export function filterOverviewOrders(
+  orders: ListOrder[],
+  {
+    days,
+    updatedAt,
+    chainIds = [],
+    partnerIds = [],
+    resolvePartner,
+  }: {
+    days?: number;
+    updatedAt: number;
+    chainIds?: string[];
+    partnerIds?: string[];
+    resolvePartner: (order: ListOrder) => string;
+  },
+): ListOrder[] {
+  const since = days ? updatedAt - days * 24 * 60 * 60 * 1000 : undefined;
+  return orders.filter((order) => {
+    const chainId =
+      order.order.witness.chainId ?? order.order.witness.chainid ?? 0;
+    return (
+      (!since || Date.parse(order.timestamp) >= since) &&
+      (!chainIds.length || chainIds.includes(String(chainId))) &&
+      (!partnerIds.length || partnerIds.includes(resolvePartner(order)))
+    );
+  });
 }

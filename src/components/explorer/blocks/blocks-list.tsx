@@ -123,11 +123,7 @@ function StatsStrip({
       <StatCard
         label="Total events"
         value={
-          isLoading
-            ? "—"
-            : total !== undefined
-            ? formatInteger(total)
-            : "—"
+          isLoading ? "—" : total !== undefined ? formatInteger(total) : "—"
         }
       />
       <StatCard
@@ -136,19 +132,13 @@ function StatsStrip({
           isLoading
             ? "—"
             : typeCount !== undefined
-            ? formatInteger(typeCount)
-            : "—"
+              ? formatInteger(typeCount)
+              : "—"
         }
       />
       <StatCard
         label="Most common"
-        value={
-          isLoading
-            ? "—"
-            : topType
-            ? topType.label
-            : "—"
-        }
+        value={isLoading ? "—" : topType ? topType.label : "—"}
         sublabel={
           topType ? `${formatInteger(topType.count)} events` : undefined
         }
@@ -158,7 +148,7 @@ function StatsStrip({
 }
 
 function pickTopType(
-  byType: Record<string, number>
+  byType: Record<string, number>,
 ): { label: string; count: number } | undefined {
   let best: { label: string; count: number } | undefined;
   for (const [label, count] of Object.entries(byType)) {
@@ -215,7 +205,9 @@ function BlockRow({ op }: { op: PerpetualHubOperation }) {
             {truncateHash(op.userAddress)}
           </Link>
         ) : (
-          <Mono className="hidden sm:inline text-xs text-muted-foreground">—</Mono>
+          <Mono className="hidden sm:inline text-xs text-muted-foreground">
+            —
+          </Mono>
         )}
         <StatusBadge status={op.status} />
         <RelativeTime timestamp={op.timestamp} className="text-xs" />

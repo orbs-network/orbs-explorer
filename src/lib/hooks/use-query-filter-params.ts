@@ -1,5 +1,4 @@
 "use client";
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import moment from "moment";
 import { usePathname } from "next/navigation";
 import { useEffect, useMemo } from "react";
@@ -48,7 +47,9 @@ export const useQueryFilterParams = () => {
         [URL_QUERY_KEYS.FEE_OUT_AMOUNT_USD]: query[
           URL_QUERY_KEYS.FEE_OUT_AMOUNT_USD
         ] as string | undefined,
-        [URL_QUERY_KEYS.USER]: query[URL_QUERY_KEYS.USER] as string | undefined,
+        [URL_QUERY_KEYS.USER]: query[URL_QUERY_KEYS.USER] as
+          | string[]
+          | undefined,
         [URL_QUERY_KEYS.HASH]: query[URL_QUERY_KEYS.HASH] as string | undefined,
         [URL_QUERY_KEYS.TWAP_ADDRESS]: query[URL_QUERY_KEYS.TWAP_ADDRESS] as
           | string

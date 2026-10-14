@@ -14,10 +14,7 @@ import {
   Pagination,
   PAGE_SIZE_OPTIONS,
 } from "@/components/explorer/ui/pagination";
-import {
-  arbiscanTxUrl,
-  formatInteger,
-} from "@/lib/explorer/format";
+import { arbiscanTxUrl, formatInteger } from "@/lib/explorer/format";
 import type {
   PerpetualHubRollup,
   PerpetualHubRollupListStats,
@@ -120,11 +117,7 @@ function StatsStrip({
       <StatCard
         label="Total batches"
         value={
-          isLoading
-            ? "—"
-            : total !== undefined
-            ? formatInteger(total)
-            : "—"
+          isLoading ? "—" : total !== undefined ? formatInteger(total) : "—"
         }
       />
       <StatCard
@@ -133,8 +126,8 @@ function StatsStrip({
           isLoading
             ? "—"
             : stats?.totalOps !== undefined
-            ? formatInteger(stats.totalOps)
-            : "—"
+              ? formatInteger(stats.totalOps)
+              : "—"
         }
       />
       <StatCard
@@ -143,13 +136,13 @@ function StatsStrip({
           isLoading
             ? "—"
             : stats?.latestSequence !== undefined
-            ? `#${formatInteger(stats.latestSequence)}`
-            : "—"
+              ? `#${formatInteger(stats.latestSequence)}`
+              : "—"
         }
       />
       <StatCard
         label="Avg ops / batch"
-        value={isLoading ? "—" : stats?.avgOpsPerRollup ?? "—"}
+        value={isLoading ? "—" : (stats?.avgOpsPerRollup ?? "—")}
       />
     </section>
   );

@@ -1,60 +1,67 @@
 "use client";
-/* eslint-disable @typescript-eslint/no-explicit-any */
-import { useCallback, useState } from "react";
-import { ArrowUp } from "lucide-react";
+
+import { useState, type FormEvent } from "react";
+import { ArrowRight, Search } from "lucide-react";
 import { Input } from "./ui/input";
-import { toast } from "sonner";
 import { useAppSearch } from "@/lib/hooks/use-app-search";
 import { Spinner } from "./ui/spinner";
+import { cn } from "@/lib/utils/utils";
 
 export function SearchInput({
-  className = "",
-  placeholder = "Enter Tx Hash",
+  className,
+  placeholder = "Order ID or wallet address…",
   onSubmit,
 }: {
   className?: string;
   placeholder?: string;
   onSubmit?: (value: string) => void;
 }) {
-  const [value, setVale] = useState("");
+  const [value, setValue] = useState("");
   const { mutate: search, isPending } = useAppSearch();
-
-
-  const onSearch = useCallback(() => {
-    if (!value) return;
-;
-    onSubmit ? onSubmit(value) : search(value);
-  }, [value, search, onSubmit]);
-
-  const onKeyDown = useCallback(
-    (e: any) => {
-      if (e.key === "Enter") {
-        onSearch();
-      }
-    },
-    [onSearch]
-  );
-
+  const submit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const identifier = value.trim();
+    if (!identifier || isPending) return;
+    if (onSubmit) onSubmit(identifier);
+    else search(identifier);
+  };
   return (
-    <>
-      <div
-        className={`bg-accent rounded-lg p-1 w-full flex flex-row gap-2 items-center h-[45px] text-[16px] ${className}`}
+    <form
+      data-slot="order-search"
+      role="search"
+      onSubmit={submit}
+      aria-busy={isPending}
+      className={cn(
+        "bg-card border border-control-border rounded-xl p-1.5 w-full flex gap-1 sm:gap-2 items-center h-14 sm:h-16 shadow-panel focus-within:border-primary transition-colors",
+        className,
+      )}
+    >
+      <Search aria-hidden className="ml-2 sm:ml-3 size-5 shrink-0 text-muted-foreground" />
+      <Input
+        name="identifier"
+        aria-label="Order ID or wallet address"
+        autoComplete="off"
+        spellCheck={false}
+        placeholder={placeholder}
+        value={value}
+        onChange={(event) => setValue(event.target.value)}
+        className="min-w-0 h-full rounded-none border-0 px-2 text-base bg-transparent"
+      />
+      <button
+        type="submit"
+        disabled={!value.trim() || isPending}
+        aria-label={isPending ? "Searching…" : "Search"}
+        className="bg-primary bg-action rounded-lg hover:brightness-[0.97] flex gap-2 items-center justify-center disabled:bg-none disabled:bg-muted disabled:text-muted-foreground disabled:cursor-not-allowed h-11 min-w-11 sm:px-4 shrink-0 text-sm font-medium text-action-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
       >
-        <Input
-          placeholder={placeholder}
-          value={value}
-          onKeyDown={onKeyDown}
-          onChange={(e: any) => setVale(e.target.value)}
-          className="outline-none border-none focus-visible:ring-0 focus-visible:ring-offset-0 focus:placeholder:text-transparent font-mono placeholder:text-muted-foreground md:text-[16px] bg-transparent"
-        />
-        <button
-          disabled={!value}
-          onClick={onSearch}
-          className="outline-none border-none bg-primary/80 rounded-lg hover:bg-primary transition-all duration-300 flex items-center justify-center cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed w-[40px] h-[33px]"
-        >
-          {isPending ? <Spinner size={16} /> : <ArrowUp size={16} className="text-primary-foreground" />}
-        </button>
-      </div>
-    </>
+        {isPending ? (
+          <Spinner size={16} />
+        ) : (
+          <>
+            <span className="hidden sm:inline">Search</span>
+            <ArrowRight aria-hidden size={18} />
+          </>
+        )}
+      </button>
+    </form>
   );
 }

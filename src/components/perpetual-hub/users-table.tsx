@@ -83,7 +83,7 @@ function SignedMoneyCell({ value }: { value: number }) {
     <span
       className={cn(
         "font-mono",
-        value > 0 && "text-emerald-500",
+        value > 0 && "text-emerald-700 dark:text-emerald-400",
         value < 0 && "text-destructive",
         value === 0 && "text-muted-foreground",
       )}
@@ -144,7 +144,7 @@ function StatusCell({ item }: { item: PerpetualHubUserBalance }) {
   return (
     <Badge
       variant="outline"
-      className="border-emerald-500/40 bg-emerald-500/10 text-[11px] uppercase text-emerald-500"
+      className="border-emerald-500/40 bg-emerald-500/10 text-[11px] uppercase text-emerald-700 dark:text-emerald-400"
     >
       Active
     </Badge>
@@ -152,14 +152,18 @@ function StatusCell({ item }: { item: PerpetualHubUserBalance }) {
 }
 
 const TABLE_COLUMNS = [
-  { Component: UserCell, text: "User" },
-  { Component: PartnerCell, text: "Partner" },
-  { Component: ChainCell, text: "Chain" },
+  { Component: UserCell, text: "Account" },
+  { Component: PartnerCell, text: "Trading app" },
+  { Component: ChainCell, text: "Network" },
   { Component: WalletCell, text: "Wallet", className: "text-right" },
   { Component: AvailableCell, text: "Available", className: "text-right" },
   { Component: MarginCell, text: "Margin", className: "text-right" },
-  { Component: MarginUsedCell, text: "Margin Used", className: "text-right" },
-  { Component: PnlCell, text: "Unrealized PnL", className: "text-right" },
+  { Component: MarginUsedCell, text: "Margin used", className: "text-right" },
+  {
+    Component: PnlCell,
+    text: "Unrealized profit / loss",
+    className: "text-right",
+  },
   { Component: PositionsCell, text: "Positions", className: "text-right" },
   { Component: OrdersCell, text: "Orders", className: "text-right" },
   { Component: StatusCell, text: "Status" },
@@ -206,6 +210,10 @@ export function PerpetualHubUsersTable() {
   return (
     <VirtualTable<PerpetualHubUserBalance>
       isLoading={usersQuery.isLoading}
+      isError={usersQuery.isError}
+      onRetry={() => usersQuery.refetch()}
+      hasNextPage={usersQuery.hasNextPage}
+      warnings={usersQuery.data?.pages[0]?.warnings ?? []}
       isFetchingNextPage={usersQuery.isFetchingNextPage}
       fetchNextPage={handleFetchNextPage}
       tableItems={rows}
@@ -213,7 +221,7 @@ export function PerpetualHubUsersTable() {
       desktopRows={TABLE_COLUMNS}
       onSelect={handleSelect}
       onMobileRowClick={handleSelect}
-      title="Users"
+      title="Accounts"
       headerAction={<PerpetualUsersFilter />}
     />
   );

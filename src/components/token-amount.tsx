@@ -1,15 +1,9 @@
-import { useCopy } from "@/lib/hooks/use-copy";
 import { useToUiAmount } from "@/lib/hooks/use-to-ui-amount";
 import { useToken } from "@/lib/hooks/use-token";
-import { abbreviate } from "@/lib/utils/utils";
-import { useMemo } from "react";
 import { Skeleton } from "./skeleton";
 import { cn } from "@/lib/utils";
-import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
-import { Copy } from "lucide-react";
 import { TokenDisplay } from "./token-display";
 import type { Token } from "@/lib/types";
-import { useToWeiAmount } from "@/lib/hooks/use-to-wei-amount";
 import { Amount } from "./ui/amount";
 
 export const TokenAmountFormatted = ({
@@ -25,9 +19,6 @@ export const TokenAmountFormatted = ({
   className?: string;
   usd?: string | number;
 }) => {
-  const copy = useCopy();
-  const amountAbbrev = useMemo(() => abbreviate(amount, 3), [amount]);
-
   return (
     <div className={cn("flex flex-row items-center gap-2", className)}>
       <Amount amount={amount} />
@@ -35,7 +26,11 @@ export const TokenAmountFormatted = ({
       <TokenDisplay address={token?.address} chainId={chainId} />
 
       {usd && (
-        <Amount amount={usd.toString()} className="text-xs text-muted-foreground font-mono px-1.5 py-0.5 bg-muted/50 rounded" />
+        <Amount
+          amount={usd.toString()}
+          prefix="$"
+          className="text-xs text-muted-foreground font-mono px-1.5 py-0.5 bg-muted/50 rounded"
+        />
       )}
     </div>
   );
@@ -54,13 +49,25 @@ export const TokenAmount = ({
   className?: string;
   usd?: string | number;
 }) => {
-  const token = useToken(address, chainId).data;
+  const tokenQuery = useToken(address, chainId);
+  const token = tokenQuery.data;
   const amountFormatted = useToUiAmount(token?.decimals, amountRaw);
 
-
-
-  if (!token) {
+  if (!amountRaw)
+    return (
+      <span className="text-xs text-muted-foreground">Amount not reported</span>
+    );
+  if (tokenQuery.isLoading)
     return <Skeleton className="w-[80px] h-[18px] rounded" />;
+  if (!token || token.decimals === undefined) {
+    return (
+      <span
+        className="text-xs text-muted-foreground"
+        title={amountRaw ? `Raw token units: ${amountRaw}` : undefined}
+      >
+        Token amount unavailable
+      </span>
+    );
   }
 
   return (
@@ -69,7 +76,11 @@ export const TokenAmount = ({
       <TokenDisplay address={address} chainId={chainId} />
 
       {usd && (
-        <Amount amount={usd.toString()} className="text-xs text-muted-foreground font-mono px-1.5 py-0.5 bg-muted/50 rounded" />
+        <Amount
+          amount={usd.toString()}
+          prefix="$"
+          className="text-xs text-muted-foreground font-mono px-1.5 py-0.5 bg-muted/50 rounded"
+        />
       )}
     </div>
   );

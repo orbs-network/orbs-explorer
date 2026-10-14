@@ -1,18 +1,24 @@
-import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
+"use client";
+
+import {
+  useInfiniteQuery,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 import { REACT_QUERY_KEYS } from "../../consts";
 import { useQueryFilterParams } from "../../hooks/use-query-filter-params";
-import { getSpotOrder, getSpotOrders } from "../api";
+import { getSpotOrder, getSpotOrdersPage } from "../api";
 import { useMemo } from "react";
-import { uniqBy } from "lodash";
-import { useSpotPartner } from "./use-spot-partner";
+
 import { useTwapSinkApiUrl } from "../../hooks/use-twap-sink-url";
-import { Status } from "../types";
-import { zeroAddress } from "viem";
+import { useSearchParams } from "next/navigation";
+import { preloadTokenMetadata } from "../../token-metadata";
+import { getTwapTokenReferences } from "../token-metadata";
 
 export function useSpotOrdersPaginated() {
+  const queryClient = useQueryClient();
   const { query: queryParams } = useQueryFilterParams();
   const partnerId = queryParams.partner_id?.[0];
-  const partner = useSpotPartner(partnerId);
   const sinkApiUrl = useTwapSinkApiUrl();
 
   const query = useInfiniteQuery({
@@ -21,17 +27,12 @@ export function useSpotOrdersPaginated() {
       queryParams.hash,
       queryParams.user,
       queryParams.chain_id?.map(Number),
-      partner?.config?.adapter,
-      sinkApiUrl,
       partnerId,
+      sinkApiUrl,
       queryParams.order_status,
     ],
     queryFn: async ({ signal, pageParam = 0 }) => {
-      const exchange = !partnerId
-        ? ""
-        : partner?.config?.adapter || zeroAddress;
-
-      const orders = await getSpotOrders({
+      const result = await getSpotOrdersPage({
         signal,
         page: pageParam,
         limit: 400,
@@ -39,37 +40,53 @@ export function useSpotOrdersPaginated() {
           account: queryParams.user,
           chainIds: queryParams.chain_id?.map(Number),
           hash: queryParams.hash,
-          exchange,
+          exchange: partnerId,
         },
         sinkApiUrl,
       });
-      return orders;
+      await preloadTokenMetadata(
+        queryClient,
+        getTwapTokenReferences(result.orders),
+        signal,
+      );
+      return result;
     },
     initialPageParam: 0,
     getNextPageParam: (lastPage, pages) => {
-      return lastPage.length > 0 ? pages.length : undefined;
+      return lastPage.hasMore ? pages.length : undefined;
     },
     getPreviousPageParam: () => undefined,
     refetchInterval: 60_000,
   });
 
   return useMemo(() => {
-    const allOrders = uniqBy(query.data?.pages.flat() || [], "hash");
+    const allOrders = [
+      ...new Map(
+        (query.data?.pages.flatMap((page) => page.orders) ?? []).map(
+          (order) => [
+            `${order.order.witness.chainId ?? order.order.witness.chainid}:${order.hash.toLowerCase()}`,
+            order,
+          ],
+        ),
+      ).values(),
+    ].sort((a, b) => Date.parse(b.timestamp) - Date.parse(a.timestamp));
     const statuses = queryParams.order_status;
     const orders = statuses?.length
       ? allOrders.filter((o) =>
-          statuses.includes(o.metadata?.displayOnlyStatus ?? "")
+          statuses.includes(o.metadata?.displayOnlyStatus ?? ""),
         )
       : allOrders;
-    return { ...query, orders };
+    return { ...query, orders, warnings: query.data?.pages[0]?.warnings ?? [] };
   }, [query, queryParams.order_status]);
 }
 
 export function useSpotOrderQuery(hash?: string) {
+  const queryClient = useQueryClient();
   const sinkApiUrl = useTwapSinkApiUrl();
+  const source = useSearchParams().get("order_source") ?? undefined;
   const queryKey = useMemo(
-    () => [REACT_QUERY_KEYS.spotOrder, hash, sinkApiUrl],
-    [hash, sinkApiUrl]
+    () => [REACT_QUERY_KEYS.spotOrder, hash, sinkApiUrl, source],
+    [hash, sinkApiUrl, source],
   );
   return useQuery({
     queryKey,
@@ -77,14 +94,23 @@ export function useSpotOrderQuery(hash?: string) {
       const res = await getSpotOrder({
         signal,
         hash: hash as string,
+        source,
         sinkApiUrl,
       });
-      return res;
+      if (res)
+        await preloadTokenMetadata(
+          queryClient,
+          getTwapTokenReferences([res]),
+          signal,
+        );
+      return res ?? null;
     },
-    enabled: !!hash && !!sinkApiUrl,
-    staleTime: Infinity,
+    enabled: /^0x[a-fA-F0-9]{64}$/.test(hash ?? ""),
+    staleTime: 10_000,
     refetchInterval: (order) => {
-      return order?.state.data?.metadata.status === Status.PENDING
+      return ["pending", "eligible"].includes(
+        order.state.data?.metadata.status ?? "",
+      )
         ? 5_000
         : false;
     },

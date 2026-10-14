@@ -1,6 +1,7 @@
 import { URL_QUERY_KEYS } from "@/lib/consts";
 
 export const PERPETUAL_HUB_SCOPED_QUERY_KEYS = [
+  URL_QUERY_KEYS.PARTNER_ID,
   URL_QUERY_KEYS.CHAIN_ID,
   URL_QUERY_KEYS.CONTRACT,
 ] as const;

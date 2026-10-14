@@ -1,5 +1,7 @@
 "use client";
 
+import { ActivitySummary, ActivityTime } from "@/components/activity-summary";
+import { getSettlementStory } from "@/lib/activity/settlement-story";
 import Link from "next/link";
 import { useExplorerBatch } from "@/lib/explorer/hooks";
 import { ROUTES } from "@/lib/routes";
@@ -23,6 +25,17 @@ import type {
 export function ExplorerBatch({ id }: { id: string }) {
   const q = useExplorerBatch(id);
 
+  if (!/^\d+$/.test(id)) {
+    return (
+      <p
+        role="alert"
+        className="rounded-md border border-destructive/40 bg-destructive/10 p-4 text-sm"
+      >
+        Enter a valid batch number.
+      </p>
+    );
+  }
+
   if (q.isPending) {
     return <BatchSkeleton id={id} />;
   }
@@ -44,9 +57,35 @@ export function ExplorerBatch({ id }: { id: string }) {
   return (
     <div className="flex flex-col gap-4 sm:gap-5">
       <BatchHeader rollup={rollup} opCount={operations.length} />
+      <ActivitySummary
+        {...getSettlementStory(rollup)}
+        onRefresh={() => q.refetch()}
+        refreshing={q.isFetching}
+        facts={[
+          {
+            label: "Submitted",
+            value: <ActivityTime value={rollup.submittedAt} />,
+          },
+          {
+            label: "Confirmation reported",
+            value: <ActivityTime value={rollup.confirmedAt} />,
+          },
+          {
+            label: "Status fetched",
+            value: <ActivityTime value={q.dataUpdatedAt} />,
+          },
+        ]}
+      />
       <div className="grid gap-4 lg:grid-cols-2">
         <SettlementCard rollup={rollup} />
-        <RootsCard rollup={rollup} />
+        <details className="rounded-md border border-border bg-card p-3">
+          <summary className="cursor-pointer text-sm font-medium">
+            Technical verification IDs
+          </summary>
+          <div className="mt-3">
+            <RootsCard rollup={rollup} />
+          </div>
+        </details>
       </div>
       <OperationsTable operations={operations} />
     </div>
@@ -76,7 +115,8 @@ function BatchHeader({
         </Mono>
         <span aria-hidden>·</span>
         <Mono>
-          seq {formatInteger(rollup.oldSequence)}–{formatInteger(rollup.newSequence)}
+          seq {formatInteger(rollup.oldSequence)}–
+          {formatInteger(rollup.newSequence)}
         </Mono>
         {rollup.submittedAt ? (
           <>
@@ -99,9 +139,9 @@ function BatchHeader({
 
 function SettlementCard({ rollup }: { rollup: PerpetualHubRollup }) {
   return (
-    <SectionCard title="L1 settlement">
+    <SectionCard title="Blockchain confirmation">
       {rollup.txHash ? (
-        <DataRow label="L1 anchor tx">
+        <DataRow label="Blockchain transaction">
           <Hash
             value={rollup.txHash}
             href={arbiscanTxUrl(rollup.txHash)}
@@ -109,14 +149,14 @@ function SettlementCard({ rollup }: { rollup: PerpetualHubRollup }) {
           />
         </DataRow>
       ) : (
-        <DataRow label="L1 anchor tx">
+        <DataRow label="Blockchain transaction">
           <span className="text-xs text-muted-foreground">
             awaiting confirmation
           </span>
         </DataRow>
       )}
       {rollup.blockNumber ? (
-        <DataRow label="L1 block">
+        <DataRow label="Blockchain block">
           <Hash
             value={String(rollup.blockNumber)}
             href={arbiscanBlockUrl(rollup.blockNumber)}
@@ -137,7 +177,7 @@ function SettlementCard({ rollup }: { rollup: PerpetualHubRollup }) {
           </Mono>
         </DataRow>
       ) : null}
-      <DataRow label="Settlement chain">
+      <DataRow label="Blockchain network">
         <Mono className="text-muted-foreground">arbitrum one</Mono>
       </DataRow>
     </SectionCard>
@@ -149,7 +189,8 @@ function RootsCard({ rollup }: { rollup: PerpetualHubRollup }) {
     <SectionCard title="State transition">
       <DataRow label="Sequence range">
         <Mono className="text-foreground">
-          {formatInteger(rollup.oldSequence)} → {formatInteger(rollup.newSequence)}
+          {formatInteger(rollup.oldSequence)} →{" "}
+          {formatInteger(rollup.newSequence)}
         </Mono>
       </DataRow>
       <DataRow label="Old state root">
@@ -185,7 +226,7 @@ function OperationsTable({
   }
   // Sort ascending by sequence so the batch reads chronologically.
   const sorted = [...operations].sort(
-    (a, b) => (a.teeSequence ?? 0) - (b.teeSequence ?? 0)
+    (a, b) => (a.teeSequence ?? 0) - (b.teeSequence ?? 0),
   );
   return (
     <SectionCard title={`Operations (${operations.length})`}>
@@ -240,7 +281,10 @@ function OperationRow({ op }: { op: PerpetualHubOperation }) {
   return (
     <li>
       {href ? (
-        <Link href={href} className="group block transition-colors hover:bg-muted/40">
+        <Link
+          href={href}
+          className="group block transition-colors hover:bg-muted/40"
+        >
           {inner}
         </Link>
       ) : (

@@ -1,5 +1,7 @@
 "use client";
 
+import { ActivitySummary, ActivityTime } from "@/components/activity-summary";
+import { getSettlementStory } from "@/lib/activity/settlement-story";
 import Link from "next/link";
 import moment from "moment";
 import { useSearchParams } from "next/navigation";
@@ -81,7 +83,15 @@ function MetricCard({
 
 export function PerpetualHubRollupView({ id }: { id: string }) {
   const searchParams = useSearchParams();
-  const { data, isLoading, isError, error } = usePerpetualHubRollup(id);
+  const {
+    data,
+    isLoading,
+    isError,
+    error,
+    refetch,
+    isFetching,
+    dataUpdatedAt,
+  } = usePerpetualHubRollup(id);
   const scopedHref = (path: string) =>
     appendPerpetualHubScope(path, searchParams);
 
@@ -101,6 +111,14 @@ export function PerpetualHubRollupView({ id }: { id: string }) {
         <p className="mt-2 text-sm opacity-90">
           {error instanceof Error ? error.message : "Unknown error"}
         </p>
+        <Button
+          variant="outline"
+          size="sm"
+          className="mt-3"
+          onClick={() => refetch()}
+        >
+          Retry
+        </Button>
       </div>
     );
   }
@@ -108,19 +126,23 @@ export function PerpetualHubRollupView({ id }: { id: string }) {
   const { rollup, operations } = data;
 
   return (
-    <div className="mx-auto flex max-w-[1500px] flex-col gap-6 py-4 pb-16">
+    <div className="mx-auto flex max-w-[1440px] flex-col px-4 sm:px-6 gap-6 py-4 pb-16">
       <div className="flex flex-col gap-3 border-b pb-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <div className="flex flex-wrap items-center gap-2">
             <h1 className="text-2xl font-semibold tracking-tight">
-              Rollup #{formatNumber(rollup.id)}
+              Settlement batch #{formatNumber(rollup.id)}
             </h1>
             <Badge variant="outline">{rollup.status}</Badge>
           </div>
           <div className="mt-1 font-mono text-sm text-muted-foreground">
             {rollup.txHash ? (
               <a
-                href={arbiscanTxUrl(rollup.txHash)}
+                href={
+                  rollup.chainId === 137
+                    ? `https://polygonscan.com/tx/${rollup.txHash}`
+                    : arbiscanTxUrl(rollup.txHash)
+                }
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-1 break-all text-primary hover:underline"
@@ -141,9 +163,28 @@ export function PerpetualHubRollupView({ id }: { id: string }) {
         </Button>
       </div>
 
+      <ActivitySummary
+        {...getSettlementStory(rollup)}
+        onRefresh={() => refetch()}
+        refreshing={isFetching}
+        facts={[
+          {
+            label: "Submitted",
+            value: <ActivityTime value={rollup.submittedAt} />,
+          },
+          {
+            label: "Confirmation reported",
+            value: <ActivityTime value={rollup.confirmedAt} />,
+          },
+          {
+            label: "Last updated",
+            value: <ActivityTime value={dataUpdatedAt} />,
+          },
+        ]}
+      />
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <MetricCard
-          label="Old Seq"
+          label="Previous change"
           value={
             <Link
               href={scopedHref(ROUTES.PERPETUAL_HUB.STATE(rollup.oldSequence))}
@@ -155,7 +196,7 @@ export function PerpetualHubRollupView({ id }: { id: string }) {
           icon={Database}
         />
         <MetricCard
-          label="New Seq"
+          label="Latest change"
           value={
             <Link
               href={scopedHref(ROUTES.PERPETUAL_HUB.STATE(rollup.newSequence))}
@@ -167,7 +208,7 @@ export function PerpetualHubRollupView({ id }: { id: string }) {
           icon={Database}
         />
         <MetricCard
-          label="Operations"
+          label="Account changes"
           value={formatNumber(rollup.operationsCount)}
           icon={Activity}
         />
@@ -179,8 +220,11 @@ export function PerpetualHubRollupView({ id }: { id: string }) {
       </div>
 
       <div className="grid gap-3 lg:grid-cols-2">
-        <Card className="rounded-lg py-4">
-          <CardContent className="space-y-3 px-4 text-sm">
+        <details className="rounded-lg border border-border bg-card p-4">
+          <summary className="cursor-pointer text-sm font-medium">
+            Technical verification IDs
+          </summary>
+          <div className="mt-3 space-y-3 text-sm">
             <div>
               <p className="text-muted-foreground">Old root</p>
               <p className="mt-1 break-all font-mono">
@@ -193,8 +237,8 @@ export function PerpetualHubRollupView({ id }: { id: string }) {
                 {rollup.newStateRoot || "-"}
               </p>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </details>
         <Card className="rounded-lg py-4">
           <CardContent className="grid gap-3 px-4 text-sm sm:grid-cols-2">
             <div>
@@ -214,9 +258,11 @@ export function PerpetualHubRollupView({ id }: { id: string }) {
           <table className="w-full text-sm">
             <thead className="border-b bg-muted/30 text-xs text-muted-foreground">
               <tr>
-                <th className="px-4 py-3 text-right font-medium">SeqNo</th>
+                <th className="px-4 py-3 text-right font-medium">
+                  Change number
+                </th>
                 <th className="px-4 py-3 text-left font-medium">Type</th>
-                <th className="px-4 py-3 text-left font-medium">User</th>
+                <th className="px-4 py-3 text-left font-medium">Account</th>
                 <th className="px-4 py-3 text-left font-medium">Symbol</th>
                 <th className="px-4 py-3 text-left font-medium">Status</th>
                 <th className="px-4 py-3 text-left font-medium">Root</th>

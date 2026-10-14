@@ -6,141 +6,114 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import type { ListOrder } from "@/lib/twap";
-import { ExternalLink, Search, ArrowRight, ChevronRight } from "lucide-react";
+import type { ListOrder } from "@/lib/twap/types";
+import { getTwapOrderChainId } from "@/lib/twap/utils";
+import {
+  getOrderValueUsd,
+  OVERVIEW_STATUSES,
+  type OverviewOrderStatus,
+} from "@/lib/twap/utils/orders-overview";
+import { ArrowRight, Search } from "lucide-react";
 import Link from "next/link";
 import { ROUTES } from "@/lib/routes";
 import { Virtuoso } from "react-virtuoso";
-import { getTwapOrderChainId } from "@/lib/twap";
-import { Amount } from "@/components/ui/amount";
-import BN from "bignumber.js";
-import moment from "moment";
-import { TokenDisplay } from "@/components/token-display";
+import { OrderTokenLabel } from "./order-token-label";
+import { formatOrderUsd } from "./overview-display";
+import { shortenAddress } from "@/lib/utils/utils";
 
-function formatDate(iso: string | number): string {
-  const d = moment(iso);
-  return d.format("DD MMM YY");
+function formatDate(value: string | number): string {
+  const date = new Date(value);
+  return Number.isFinite(date.getTime()) && Number(date) > 0
+    ? new Intl.DateTimeFormat(undefined, { dateStyle: "medium" }).format(date)
+    : "Not provided";
 }
-
 function filterOrders(orders: ListOrder[], query: string): ListOrder[] {
-  if (!query.trim()) return orders;
   const q = query.trim().toLowerCase();
-  return orders.filter((order) => {
-    const hash = order.hash.toLowerCase();
-    const desc = (
-      (order.metadata?.displayOnlyStatusDescription ||
-        order.metadata?.description ||
-        "") as string
-    ).toLowerCase();
-    const usdStr = (order.totalUSDAmount || "").toLowerCase();
-    const dateStr = formatDate(order.timestamp).toLowerCase();
-    const orderType = (order.metadata?.orderType ?? "").toLowerCase();
-    return (
-      hash.includes(q) ||
-      desc.includes(q) ||
-      usdStr.includes(q) ||
-      dateStr.includes(q) ||
-      orderType.includes(q)
-    );
-  });
-}
-
-/** Sort by created at (timestamp) descending — newest first. */
-function sortByCreatedAt(orders: ListOrder[]): ListOrder[] {
-  return [...orders].sort((a, b) => {
-    const ta = new Date(a.timestamp).getTime();
-    const tb = new Date(b.timestamp).getTime();
-    return tb - ta;
-  });
-}
-
-export type StatusOrdersModalVariant = "filled" | "partial" | "pending" | "error";
-
-const variantBorderColors: Record<StatusOrdersModalVariant, string> = {
-  filled: "border-l-emerald-500/60",
-  partial: "border-l-amber-500/60",
-  pending: "border-l-sky-500/50",
-  error: "border-l-destructive/60",
-};
-
-function OrderRowTokenPair({ order }: { order: ListOrder }) {
-  const chainId = getTwapOrderChainId(order);
-
-  return (
-    <span className="inline-flex items-center gap-1.5 text-sm">
-      <TokenDisplay address={order.inputToken} chainId={chainId} />
-      <ArrowRight className="h-3.5 w-3.5 shrink-0 text-primary/70" />
-      <TokenDisplay address={order.outputToken} chainId={chainId} />
-    </span>
+  if (!q) return orders;
+  return orders.filter((order) =>
+    [
+      order.hash,
+      order.inputToken,
+      order.outputToken,
+      order.metadata.srcToken?.symbol,
+      order.metadata.dstToken?.symbol,
+      order.metadata.displayOnlyStatusDescription,
+      order.metadata.description,
+      order.totalUSDAmount,
+      formatDate(order.timestamp),
+      order.metadata.orderType,
+    ].some((value) => value?.toLowerCase().includes(q)),
   );
 }
+export type StatusOrdersModalVariant = OverviewOrderStatus;
+const borderColors: Record<OverviewOrderStatus, string> = {
+  completed: "border-l-emerald-500/60",
+  partial: "border-l-amber-500/60",
+  active: "border-l-sky-500/60",
+  cancelled: "border-l-muted-foreground/40",
+  expired: "border-l-muted-foreground/40",
+  failed: "border-l-destructive/60",
+  unknown: "border-l-muted-foreground/40",
+};
 
 function OrderRow({
   order,
   variant,
 }: {
   order: ListOrder;
-  variant: StatusOrdersModalVariant;
+  variant: OverviewOrderStatus;
 }) {
-  const usd = parseFloat(order.totalUSDAmount || "0");
-  const desc =
-    order.metadata?.displayOnlyStatusDescription ||
-    order.metadata?.description ||
-    "";
-  const hasDesc = variant === "error" && desc.length > 0;
-  const orderType = order.metadata?.orderType ?? "—";
-  const chunkSummary = order.metadata?.chunkSummary;
-  const chunksLabel =
-    chunkSummary != null && order.metadata?.expectedChunks != null
-      ? `${chunkSummary.success} / ${order.metadata.expectedChunks}`
-      : null;
-
+  const chainId = getTwapOrderChainId(order);
+  const summary = order.metadata.chunkSummary;
+  const deadline = Number(order.order.witness.deadline) * 1000;
   return (
     <Link
-      href={ROUTES.TWAP.ORDER(order.hash)}
-      className={`block rounded-lg border border-border border-l-4 bg-muted/30 p-3.5 text-sm cursor-pointer transition-colors hover:bg-muted/50 hover:border-border ${variantBorderColors[variant]}`}
+      href={`${ROUTES.TWAP.ORDER(order.hash)}?order_source=${order.source ?? "v1"}`}
+      className={`block min-w-0 rounded-lg border border-border border-l-4 bg-muted/20 p-3 text-sm transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${borderColors[variant]}`}
     >
-      {/* Row 1: Token pair (primary) + USD */}
-      <div className="flex items-center justify-between gap-3 mb-2">
-        <OrderRowTokenPair order={order} />
-        <Amount
-          amount={String(usd)}
-          prefix="$"
-          className={`font-semibold tabular-nums shrink-0 ${
-            usd > 0 ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground"
-          }`}
-        />
-      </div>
-      {/* Row 2: Type + chunks only */}
-      <div className="flex flex-wrap items-center gap-1 text-xs text-muted-foreground mb-1.5">
-        <span className="px-2 py-0.5 rounded-md bg-primary/10 text-primary font-medium border border-primary/20">
-          {orderType}
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <span className="flex min-w-0 items-center gap-1.5 font-medium">
+          <OrderTokenLabel
+            address={order.inputToken}
+            chainId={chainId}
+            token={order.metadata.srcToken}
+          />
+          <ArrowRight
+            aria-hidden
+            className="size-3.5 shrink-0 text-muted-foreground"
+          />
+          <OrderTokenLabel
+            address={order.outputToken}
+            chainId={chainId}
+            token={order.metadata.dstToken}
+          />
         </span>
-        {chunksLabel != null && (
-          <>
-            <span className="text-border">·</span>
-            <span className="px-2 py-0.5 rounded bg-muted font-mono text-foreground/90">
-              {chunksLabel}
-            </span>
-          </>
-        )}
-      </div>
-      {/* Row 3: Hash + date badge */}
-      <span className="px-2 py-0.5 rounded-md bg-muted/60 border border-border text-muted-foreground text-xs font-medium tabular-nums inline-flex items-center gap-1">
-          {formatDate(order.timestamp)} 
-          <ChevronRight className="w-3 h-3 text-muted-foreground shrink-0" />
-           {formatDate(BN(order.order.witness.deadline).multipliedBy(1000).toNumber())}
+        <span className="shrink-0 tabular-nums">
+          {formatOrderUsd(getOrderValueUsd(order))}{" "}
+          <span className="text-xs text-muted-foreground">placed</span>
         </span>
-      {/* Error description — full message, no truncation */}
-      {hasDesc && (
-        <div className="mt-2 pt-2 border-t border-destructive/20 bg-destructive/5 rounded-b -mx-3.5 -mb-3.5 px-3.5 pb-3.5">
-          <p className="text-muted-foreground text-sm whitespace-pre-wrap break-words">
-            {desc}
-          </p>
-        </div>
-      )}
+      </div>
+      <p className="mt-2 text-xs text-muted-foreground">
+        {order.metadata.orderType || "Order"}
+        {summary && order.metadata.expectedChunks > 0
+          ? ` · ${summary.success} of ${order.metadata.expectedChunks} trades completed`
+          : ""}
+      </p>
+      <p className="mt-1 text-xs text-muted-foreground">
+        Placed {formatDate(order.timestamp)} · Expires {formatDate(deadline)}
+      </p>
+      <div className="mt-2 flex items-center justify-between gap-2 text-xs">
+        <span className="font-mono text-muted-foreground">
+          {shortenAddress(order.hash)}
+        </span>
+        <span className="inline-flex items-center gap-1 font-medium text-link">
+          View order
+          <ArrowRight aria-hidden className="size-3" />
+        </span>
+      </div>
     </Link>
   );
 }
@@ -152,88 +125,88 @@ export function StatusOrdersModal({
   orders,
   title,
   variant,
-  emptyMessage = "No orders in this period.",
+  emptyMessage = "No orders in this view.",
+  onCloseAutoFocus,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   partnerName: string;
   orders: ListOrder[];
   title: string;
-  variant: StatusOrdersModalVariant;
+  variant: OverviewOrderStatus;
   emptyMessage?: string;
+  onCloseAutoFocus?: (event: Event) => void;
 }) {
-  const [filterQuery, setFilterQuery] = useState("");
-
-  const sorted = useMemo(() => sortByCreatedAt(orders), [orders]);
-
-  const filtered = useMemo(
-    () => filterOrders(sorted, filterQuery),
-    [sorted, filterQuery]
-  );
-
-  const totalUsd = useMemo(
+  const [query, setQuery] = useState("");
+  const sorted = useMemo(
     () =>
-      filtered.reduce((sum, o) => sum + parseFloat(o.totalUSDAmount || "0"), 0),
-    [filtered]
+      [...orders].sort(
+        (a, b) => Date.parse(b.timestamp) - Date.parse(a.timestamp),
+      ),
+    [orders],
   );
-
+  const filtered = useMemo(() => filterOrders(sorted, query), [sorted, query]);
+  const totalUsd = filtered.reduce(
+    (sum, order) => sum + getOrderValueUsd(order),
+    0,
+  );
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[calc(100vw-1.5rem)] max-w-2xl h-[85vh] max-h-[calc(100dvh-2rem)] sm:max-h-[85vh] flex flex-col gap-0 overflow-hidden">
-        <DialogHeader className="shrink-0">
-          <DialogTitle>
-            {title} — {partnerName}
-          </DialogTitle>
+      <DialogContent
+        onCloseAutoFocus={onCloseAutoFocus}
+        className="flex h-[85dvh] w-[calc(100vw-1.5rem)] flex-col gap-0 overflow-hidden sm:max-w-2xl"
+      >
+        <DialogHeader className="shrink-0 pr-6 text-left">
+          <DialogTitle>{title} orders</DialogTitle>
+          <DialogDescription>
+            {partnerName}. {OVERVIEW_STATUSES[variant].description}
+          </DialogDescription>
         </DialogHeader>
-
-        <div className="relative mt-2 shrink-0">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+        <div className="relative mt-4 shrink-0">
+          <Search
+            aria-hidden
+            className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
+          />
           <Input
             type="search"
-            placeholder="Filter by hash, description, amount, date…"
-            value={filterQuery}
-            onChange={(e) => setFilterQuery(e.target.value)}
+            aria-label={`Search ${title.toLowerCase()} orders`}
+            autoComplete="off"
+            spellCheck={false}
+            placeholder="Search order ID, token address, type, or date…"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
             className="pl-9"
-            aria-label={`Filter ${title.toLowerCase()} orders`}
           />
         </div>
-
-        <p className="text-muted-foreground text-xs mt-2 shrink-0 flex items-center gap-2">
-          <span>
-            {filtered.length === sorted.length
-              ? `${sorted.length} order${sorted.length === 1 ? "" : "s"}`
-              : `${filtered.length} of ${sorted.length} order${filtered.length === 1 ? "" : "s"}`}
-          </span>
-          {filtered.length > 0 && (
-            <>
-              <span className="text-border">·</span>
-              <Amount
-                amount={String(totalUsd)}
-                prefix="Total: $"
-                className="text-foreground font-medium"
-              />
-            </>
-          )}
+        <p
+          role="status"
+          className="mt-2 shrink-0 text-xs text-muted-foreground"
+        >
+          {filtered.length.toLocaleString()} of {sorted.length.toLocaleString()}{" "}
+          orders · {formatOrderUsd(totalUsd)} placed value · newest first
         </p>
-
-        <div className="flex-1 min-h-0 flex flex-col mt-3 -mx-1 px-1 overflow-hidden">
-          {filtered.length === 0 ? (
-            <p className="text-muted-foreground text-sm py-6 text-center">
-              {sorted.length === 0 ? emptyMessage : "No orders match the filter."}
-            </p>
+        <div className="mt-3 flex min-h-0 flex-1 flex-col">
+          {filtered.length ? (
+            <Virtuoso
+              style={{ height: "100%" }}
+              className="overscroll-contain"
+              data={filtered}
+              computeItemKey={(_, order) =>
+                `${getTwapOrderChainId(order)}:${order.hash}`
+              }
+              overscan={100}
+              itemContent={(_, order) => (
+                <div className="pb-2 pr-1">
+                  <OrderRow order={order} variant={variant} />
+                </div>
+              )}
+            />
           ) : (
-            <div className="flex-1 min-h-0 w-full overflow-hidden" style={{ height: 320 }}>
-              <Virtuoso
-                style={{ height: "100%" }}
-                data={filtered}
-                overscan={20}
-                itemContent={(index, order) => (
-                  <div className="pb-2">
-                    <OrderRow order={order} variant={variant} />
-                  </div>
-                )}
-              />
-            </div>
+            <p className="py-8 text-center text-sm text-muted-foreground">
+              {sorted.length
+                ? "No orders match this search. Try another order ID, token address, or date."
+                : emptyMessage}
+            </p>
           )}
         </div>
       </DialogContent>

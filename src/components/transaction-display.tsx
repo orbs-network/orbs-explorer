@@ -54,7 +54,13 @@ export const Row = ({
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <InfoIcon className="w-3.5 h-3.5 text-muted-foreground/50 hover:text-muted-foreground cursor-help transition-colors" />
+                    <button
+                      type="button"
+                      aria-label={`About ${label}`}
+                      className="grid size-6 place-items-center rounded text-muted-foreground hover:bg-muted hover:text-foreground"
+                    >
+                      <InfoIcon aria-hidden className="size-3.5" />
+                    </button>
                   </TooltipTrigger>
                   <TooltipContent>{tooltip}</TooltipContent>
                 </Tooltip>
@@ -62,7 +68,7 @@ export const Row = ({
             )}
           </div>
           {description && (
-            <span className="text-[12px] text-muted-foreground/70 font-normal lowercase">
+            <span className="text-[12px] text-muted-foreground font-normal lowercase">
               {description}
             </span>
           )}
@@ -74,7 +80,11 @@ export const Row = ({
           className,
         )}
       >
-        {missingValue ? <span className="text-muted-foreground/50">-</span> : children}
+        {missingValue ? (
+          <span className="text-muted-foreground/50">-</span>
+        ) : (
+          children
+        )}
       </div>
     </div>
   );
@@ -92,9 +102,13 @@ const TransactionDisplay = ({
   return (
     <Card className="border-border bg-card/50 backdrop-blur-sm overflow-hidden">
       {header && (
-        <CardHeader className="border-b border-border shrink-0">{header}</CardHeader>
+        <CardHeader className="border-b border-border shrink-0">
+          {header}
+        </CardHeader>
       )}
-      <CardContent className="flex flex-col gap-4 pt-4 sm:pt-6 min-w-0">{children}</CardContent>
+      <CardContent className="flex flex-col gap-4 pt-4 sm:pt-6 min-w-0">
+        {children}
+      </CardContent>
     </Card>
   );
 };
@@ -117,9 +131,20 @@ const Grid = ({ children }: { children: ReactNode }) => {
   );
 };
 
-const Container = ({ children }: { children: ReactNode }) => {
+const Container = ({
+  children,
+  className,
+}: {
+  children: ReactNode;
+  className?: string;
+}) => {
   return (
-    <div className="flex flex-col gap-4 max-w-screen-lg mx-auto px-3 py-4 sm:px-4 sm:py-6 w-full min-w-0">
+    <div
+      className={cn(
+        "flex flex-col gap-4 max-w-screen-lg mx-auto px-3 py-4 sm:px-4 sm:py-6 w-full min-w-0",
+        className,
+      )}
+    >
       {children}
     </div>
   );
@@ -225,7 +250,7 @@ const Hero = ({
   return (
     <div
       className={cn(
-        "bg-gradient-to-r from-primary/10 via-primary/5 to-transparent border border-border rounded-xl p-6 mb-2",
+        "bg-card border border-border rounded-xl p-6 mb-2",
         className,
       )}
     >

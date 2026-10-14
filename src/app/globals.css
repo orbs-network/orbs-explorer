@@ -7,8 +7,8 @@
   --color-background: var(--background);
   --color-background-secondary: var(--background-secondary);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: var(--font-orbs-sans);
+  --font-mono: var(--font-orbs-mono);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -33,96 +33,29 @@
   --color-secondary-foreground: var(--secondary-foreground);
   --color-secondary: var(--secondary);
   --color-primary-foreground: var(--primary-foreground);
+  --color-link: var(--link);
+  --color-control-border: var(--control-border);
+  --color-control-background: var(--control-background);
+  --color-control-hover: var(--control-hover);
+  --color-navigation: var(--navigation);
+  --color-action-foreground: var(--action-foreground);
+  --background-image-action: var(--action-gradient);
+  --shadow-panel: var(--panel-shadow);
+  --color-destructive-foreground: var(--destructive-foreground);
   --color-primary: var(--primary);
   --color-popover-foreground: var(--popover-foreground);
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
-  --radius-sm: calc(var(--radius) - 4px);
+  --radius-sm: calc(var(--radius) - 6px);
   --radius-md: calc(var(--radius) - 2px);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
+  --radius-lg: calc(var(--radius) + 4px);
+  --radius-xl: calc(var(--radius) + 8px);
+  --radius-2xl: calc(var(--radius) + 12px);
 }
 
 :root {
-  --radius: 0.625rem;
-  /* Light mode */
-  --background: hsl(0 0% 100%);
-  --background-secondary: hsl(0 0% 98%);
-  --foreground: hsl(222 47% 11%);
-  --card: hsl(0 0% 100%);
-  --card-foreground: hsl(222 47% 11%);
-  --popover: hsl(0 0% 100%);
-  --popover-foreground: hsl(222 47% 11%);
-  --primary: rgb(219, 39, 166);
-  --primary-foreground: rgb(255, 255, 255);
-  --secondary: hsl(210 40% 96%);
-  --secondary-foreground: hsl(222 47% 11%);
-  --muted: hsl(210 40% 96%);
-  --muted-foreground: hsl(215 16% 47%);
-  --accent: hsl(210 40% 96%);
-  --accent-foreground: hsl(222 47% 11%);
-  --destructive: hsl(0 84% 60%);
-  --border: hsl(214 32% 91%);
-  --input: hsl(214 32% 91%);
-  --ring: hsl(222 47% 11%);
-  --chart-1: oklch(0.646 0.222 41.116);
-  --chart-2: oklch(0.6 0.118 184.704);
-  --chart-3: oklch(0.398 0.07 227.392);
-  --chart-4: oklch(0.828 0.189 84.429);
-  --chart-5: oklch(0.769 0.188 70.08);
-  --sidebar: hsl(0 0% 98%);
-  --sidebar-foreground: hsl(222 47% 11%);
-  --sidebar-primary: hsl(222 47% 11%);
-  --sidebar-primary-foreground: hsl(0 0% 100%);
-  --sidebar-accent: hsl(210 40% 96%);
-  --sidebar-accent-foreground: hsl(222 47% 11%);
-  --sidebar-border: hsl(214 32% 91%);
-  --sidebar-ring: hsl(222 47% 11%);
-}
-
-.dark {
-  --background: hsl(222 47% 6%);
-  --background-secondary: hsl(222 47% 8%);
-  --foreground: hsl(210 40% 98%);
-  --card: hsl(222 47% 8%);
-  --card-foreground: hsl(210 40% 98%);
-  --popover: hsl(222 47% 8%);
-  --popover-foreground: hsl(210 40% 98%);
-  --primary: rgb(255, 55, 199);
-  --primary-foreground: rgb(255, 255, 255);
-  --secondary: hsl(217 33% 17%);
-  --secondary-foreground: hsl(210 40% 98%);
-  --muted: hsl(217 33% 17%);
-  --muted-foreground: hsl(215 20% 65%);
-  --accent: hsl(217 33% 17%);
-  --accent-foreground: hsl(210 40% 98%);
-  --destructive: hsl(0 62% 50%);
-  --border: hsl(217 33% 17%);
-  --input: hsl(217 33% 17%);
-  --ring: hsl(212 100% 67%);
-  --chart-1: oklch(0.488 0.243 264.376);
-  --chart-2: oklch(0.696 0.17 162.48);
-  --chart-3: oklch(0.769 0.188 70.08);
-  --chart-4: oklch(0.627 0.265 303.9);
-  --chart-5: oklch(0.645 0.246 16.439);
-  --sidebar: hsl(222 47% 8%);
-  --sidebar-foreground: hsl(210 40% 98%);
-  --sidebar-primary: hsl(212 100% 67%);
-  --sidebar-primary-foreground: hsl(210 40% 98%);
-  --sidebar-accent: hsl(217 33% 17%);
-  --sidebar-accent-foreground: hsl(210 40% 98%);
-  --sidebar-border: hsl(217 33% 17%);
-  --sidebar-ring: hsl(212 100% 67%);
-}
-
-/* ============================================================
-   Explorer (data-theme="explorer") — Orbs Design System skin.
-   Persistent dark, Orbs lilac accent, Montserrat + JetBrains Mono,
-   sharp 1px hairlines, signature surfaces.
-   ============================================================ */
-[data-theme="explorer"] {
-  /* Orbs brand palette (raw) */
+  /* Shared with the published Orbs website design system. */
   --orbs-light: #f6f6f6;
   --orbs-dark: #121214;
   --orbs-indigo: #3346f2;
@@ -131,66 +64,128 @@
   --orbs-lilac: #a17ae9;
   --orbs-periwinkle: #7a89e9;
   --orbs-coral: #ffadae;
+  --radius: 1rem;
 
-  /* Radii — Orbs uses sharp edges */
-  --radius: 0px;
+  --background: #fbfaff;
+  --background-secondary: #f5f3ff;
+  --foreground: var(--orbs-dark);
+  --card: #ffffff;
+  --card-foreground: var(--orbs-dark);
+  --popover: #ffffff;
+  --popover-foreground: var(--orbs-dark);
+  --primary: var(--orbs-indigo);
+  --primary-foreground: #ffffff;
+  --link: var(--orbs-indigo);
+  --secondary: #f5f3ff;
+  --secondary-foreground: var(--orbs-dark);
+  --muted: #eee8f6;
+  --muted-foreground: #59595a;
+  --accent: #eee6ff;
+  --accent-foreground: var(--orbs-dark);
+  --destructive: #664344;
+  --destructive-foreground: #ffffff;
+  --border: #e6dff5;
+  --input: #9782b5;
+  --control-border: #9782b5;
+  --control-background: #f9f8ff;
+  --control-hover: #eee6ff;
+  --navigation: #f8f7ff;
+  --action-gradient: linear-gradient(
+    105deg,
+    #3346f2 0%,
+    #6841df 55%,
+    #8165c7 100%
+  );
+  --action-foreground: #ffffff;
+  --panel-shadow: 0 12px 40px rgb(70 40 110 / 5%);
+  --ambient-lilac: rgb(161 122 233 / 7%);
+  --ambient-blue: rgb(122 137 233 / 5%);
+  --ring: var(--orbs-indigo);
+  --grid-dot: #c5c5c5;
+  --chart-1: var(--orbs-indigo);
+  --chart-2: #017d86;
+  --chart-3: #8165c7;
+  --chart-4: #a153a6;
+  --chart-5: #664344;
+  --sidebar: #ffffff;
+  --sidebar-foreground: var(--foreground);
+  --sidebar-primary: var(--primary);
+  --sidebar-primary-foreground: var(--primary-foreground);
+  --sidebar-accent: var(--accent);
+  --sidebar-accent-foreground: var(--accent-foreground);
+  --sidebar-border: var(--border);
+  --sidebar-ring: var(--ring);
+}
 
-  /* Surfaces */
-  --background: var(--orbs-dark);                  /* #121214 */
-  --background-secondary: #16161a;
-  --foreground: var(--orbs-light);                 /* #f6f6f6 */
-  --card: #161618;
+.dark,
+[data-theme="explorer"] {
+  --background: var(--orbs-dark);
+  --background-secondary: #272136;
+  --foreground: var(--orbs-light);
+  --card: #1d192b;
   --card-foreground: var(--orbs-light);
-  --popover: #1a1a1d;
+  --popover: #1d192b;
   --popover-foreground: var(--orbs-light);
-
-  /* Accent — lilac. Swap to --orbs-cyan / --orbs-indigo / --orbs-pink to retheme. */
   --primary: var(--orbs-lilac);
   --primary-foreground: var(--orbs-dark);
-
-  /* Secondary / muted / accent surfaces — neutral grays per Orbs */
-  --secondary: #1c1c1f;
-  --secondary-foreground: #c5c5c5;
-  --muted: #1a1a1d;
-  --muted-foreground: #8a8a8c;
-  --accent: #1c1c1f;
+  --link: #c6a7ff;
+  --secondary: #272136;
+  --secondary-foreground: var(--orbs-light);
+  --muted: #413651;
+  --muted-foreground: #b7acca;
+  --accent: #35264f;
   --accent-foreground: var(--orbs-light);
-
-  /* Status — desaturated to match Orbs */
-  --destructive: #d96a6a;
+  --destructive: #cc8788;
+  --destructive-foreground: var(--orbs-dark);
+  --border: #413651;
+  --input: #867299;
+  --control-border: #867299;
+  --control-background: #272136;
+  --control-hover: #35264f;
+  --navigation: #171321;
+  --action-gradient: linear-gradient(
+    105deg,
+    #b4a4ff 0%,
+    #dea1e4 62%,
+    #a3b8f3 100%
+  );
+  --action-foreground: #19152e;
+  --panel-shadow: 0 12px 40px rgb(0 0 0 / 18%);
+  --ambient-lilac: rgb(161 122 233 / 8%);
+  --ambient-blue: rgb(122 137 233 / 5%);
+  --ring: var(--orbs-lilac);
+  --grid-dot: #414142;
   --explorer-success: #4fbe8a;
   --explorer-warning: #e0b86a;
-  --explorer-pending: #8a8a8c;
-
-  /* Hairlines & inputs */
-  --border: #2a2a2e;
-  --input: #2a2a2e;
-  --ring: var(--orbs-lilac);
-
-  /* Font routing — re-map the existing token names so we don't have
-     to touch every Tailwind font-sans / font-mono usage. */
-  --font-geist-sans: var(--font-orbs-sans), ui-sans-serif, system-ui, sans-serif;
-  --font-geist-mono: var(--font-orbs-mono), ui-monospace, "SF Mono", Menlo, monospace;
+  --explorer-pending: #c5c5c5;
+  --chart-1: var(--orbs-periwinkle);
+  --chart-2: var(--orbs-cyan);
+  --chart-3: var(--orbs-lilac);
+  --chart-4: var(--orbs-pink);
+  --chart-5: var(--orbs-coral);
+  --sidebar: #1d192b;
+  --sidebar-foreground: var(--foreground);
+  --sidebar-primary: var(--primary);
+  --sidebar-primary-foreground: var(--primary-foreground);
+  --sidebar-accent: var(--accent);
+  --sidebar-accent-foreground: var(--accent-foreground);
+  --sidebar-border: var(--border);
+  --sidebar-ring: var(--ring);
 }
 
-/* Body type tightening to match Orbs editorial register */
-[data-theme="explorer"] {
+/* Marketing headings and navigation follow Montserrat's lighter Orbs register;
+   compact data headings keep their component-specific weights. */
+h1,
+h2,
+h3 {
   letter-spacing: -0.01em;
 }
-[data-theme="explorer"] h1,
-[data-theme="explorer"] h2,
-[data-theme="explorer"] h3 {
-  letter-spacing: -0.03em;
-  font-weight: 600;
-}
-
-/* Orbs eyebrow label utility — usable as className="orbs-eyebrow" */
-[data-theme="explorer"] .orbs-eyebrow {
-  font-family: var(--font-geist-mono);
-  font-size: 10px;
+.orbs-eyebrow {
+  font-family: var(--font-orbs-sans), ui-sans-serif, system-ui, sans-serif;
+  font-size: 11px;
+  font-weight: 500;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: var(--muted-foreground);
 }
 
 /* Custom scrollbars */
@@ -249,11 +244,61 @@
   }
 }
 [data-sonner-toast] {
-  font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  font-family: var(--font-orbs-sans), ui-sans-serif, system-ui, sans-serif;
 }
 [data-sonner-toast][data-type="success"] [data-icon] {
-  color: hsl(var(--primary));
+  color: var(--primary);
 }
 [data-sonner-toast][data-type="error"] [data-icon] {
-  color: hsl(var(--destructive));
+  color: var(--destructive);
+}
+
+/* Shared interaction and accessibility foundations. */
+:root {
+  color-scheme: light;
+}
+.dark,
+[data-theme="explorer"] {
+  color-scheme: dark;
+}
+body {
+  font-family: var(--font-orbs-sans), ui-sans-serif, system-ui, sans-serif;
+}
+[data-theme="explorer"] {
+  font-family: var(--font-orbs-sans), ui-sans-serif, system-ui, sans-serif;
+}
+:where(a, button, input, select, [tabindex]):focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 3px;
+}
+/* The search container supplies the focus border for its embedded input. */
+[data-slot="order-search"] input:focus {
+  outline: none;
+  box-shadow: none;
+}
+button,
+a {
+  touch-action: manipulation;
+}
+h1,
+h2,
+h3 {
+  text-wrap: balance;
+}
+[data-slot="table-cell"] {
+  font-variant-numeric: tabular-nums;
+}
+[data-slot="dialog-content"],
+[data-vaul-drawer] {
+  overscroll-behavior: contain;
+}
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

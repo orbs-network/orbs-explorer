@@ -1,3 +1,4 @@
+import { availableResults } from "@/lib/perpetual-hub/available-results";
 import { NextResponse } from "next/server";
 import {
   type PerpetualHubDeployment,
@@ -96,7 +97,9 @@ async function fetchDeploymentHedger(deployment: PerpetualHubDeployment) {
     `${trimTrailingSlash(deployment.backendUrl)}/api/v1/hedger/binance-status`,
   );
 
-  const positions = response.data?.positions ?? [];
+  if (response.error || !response.data)
+    throw new Error("Hedger data unavailable");
+  const positions = response.data.positions ?? [];
   return positions.map((position, index): PerpetualHubHedgerPosition => {
     const side =
       position.positionSide ?? normalizedSide(position).toUpperCase();
@@ -148,11 +151,22 @@ export async function GET(request: Request) {
     } satisfies PerpetualHubHedgerPositionList);
   }
 
-  const positions = (
-    await Promise.all(
+  let available: { data: PerpetualHubHedgerPosition[][]; warnings: string[] };
+  try {
+    available = await availableResults(
       deployments.map((deployment) => fetchDeploymentHedger(deployment)),
-    )
-  )
+      deployments.map(
+        (deployment) =>
+          `${deployment.partnerName} hedger on ${deployment.chainName}`,
+      ),
+    );
+  } catch {
+    return NextResponse.json(
+      { error: "Hedger data is unavailable. Please try again." },
+      { status: 502 },
+    );
+  }
+  const positions = available.data
     .flat()
     .filter((position) => positionMatches(position, filters))
     .sort(
@@ -160,6 +174,7 @@ export async function GET(request: Request) {
     );
 
   return NextResponse.json({
+    warnings: available.warnings,
     positions: positions.slice(offset, offset + limit),
     total: positions.length,
     limit,

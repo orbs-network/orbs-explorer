@@ -1,5 +1,9 @@
 "use client";
 
+import { ActivitySummary, ActivityTime } from "@/components/activity-summary";
+import { getPerpetualStory } from "@/lib/activity/perpetual-story";
+import { usePerpetualHubRollup } from "@/lib/perpetual-hub/hooks";
+import { formatPerpetualHubStatus } from "@/lib/perpetual-hub/format";
 import Link from "next/link";
 import moment from "moment";
 import type { ComponentType, ReactNode } from "react";
@@ -90,15 +94,16 @@ function StatusBadge({ status }: { status: string }) {
       variant="outline"
       className={cn(
         "text-[11px] uppercase",
-        isSuccess && "border-emerald-500/40 bg-emerald-500/10 text-emerald-500",
+        isSuccess &&
+          "border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400",
         isRejected &&
           "border-destructive/40 bg-destructive/10 text-destructive",
         !isSuccess &&
           !isRejected &&
-          "border-amber-500/40 bg-amber-500/10 text-amber-500",
+          "border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-400",
       )}
     >
-      {status}
+      {formatPerpetualHubStatus(status)}
     </Badge>
   );
 }
@@ -123,7 +128,7 @@ function MetricCard({
             <p
               className={cn(
                 "mt-1 break-all text-2xl font-semibold tabular-nums",
-                tone === "positive" && "text-emerald-500",
+                tone === "positive" && "text-emerald-700 dark:text-emerald-400",
                 tone === "negative" && "text-destructive",
               )}
             >
@@ -156,7 +161,16 @@ function DetailRow({
 
 export function PerpetualHubEventView({ id }: { id: string }) {
   const searchParams = useSearchParams();
-  const { data, isLoading, isError, error } = usePerpetualHubEvent(id);
+  const {
+    data,
+    isLoading,
+    isError,
+    error,
+    refetch,
+    isFetching,
+    dataUpdatedAt,
+  } = usePerpetualHubEvent(id);
+  const settlement = usePerpetualHubRollup(data?.event.rollupId ?? "");
 
   const scopedHref = (path: string) =>
     appendPerpetualHubScope(path, searchParams);
@@ -186,6 +200,14 @@ export function PerpetualHubEventView({ id }: { id: string }) {
         <p className="mt-2 text-sm opacity-90">
           {error instanceof Error ? error.message : "Unknown error"}
         </p>
+        <Button
+          variant="outline"
+          size="sm"
+          className="mt-3"
+          onClick={() => refetch()}
+        >
+          Retry
+        </Button>
       </div>
     );
   }
@@ -203,7 +225,7 @@ export function PerpetualHubEventView({ id }: { id: string }) {
   const requestId = rawEvent.requestId ?? rawEvent.requestID;
 
   return (
-    <div className="mx-auto flex max-w-[1500px] flex-col gap-6 py-4 pb-16">
+    <div className="mx-auto flex max-w-[1440px] flex-col px-4 sm:px-6 gap-6 py-4 pb-16">
       <div className="flex flex-col gap-3 border-b pb-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
@@ -227,9 +249,64 @@ export function PerpetualHubEventView({ id }: { id: string }) {
         </Button>
       </div>
 
+      <ActivitySummary
+        {...getPerpetualStory(event, settlement.data?.rollup)}
+        onRefresh={() => {
+          void refetch();
+          if (event.rollupId !== undefined) void settlement.refetch();
+        }}
+        refreshing={isFetching || settlement.isFetching}
+        facts={[
+          {
+            label: "Recorded at",
+            value: <ActivityTime value={event.timestamp} />,
+          },
+          {
+            label: "Account change",
+            value:
+              event.teeSequence !== undefined
+                ? `#${event.teeSequence}`
+                : "No applied sequence reported",
+          },
+          {
+            label: "Last updated",
+            value: <ActivityTime value={dataUpdatedAt} />,
+          },
+        ]}
+        actions={
+          <>
+            {isUserAddress(event.userAddress) && (
+              <Button asChild variant="outline" size="sm">
+                <Link
+                  href={scopedHref(
+                    ROUTES.PERPETUAL_HUB.USER(event.userAddress),
+                  )}
+                >
+                  View current account
+                </Link>
+              </Button>
+            )}
+            {event.rollupId !== undefined && (
+              <Button asChild variant="outline" size="sm">
+                <Link
+                  href={scopedHref(ROUTES.PERPETUAL_HUB.ROLLUP(event.rollupId))}
+                >
+                  View settlement batch
+                </Link>
+              </Button>
+            )}
+          </>
+        }
+      />
+      {settlement.isError && (
+        <p role="status" className="text-sm text-muted-foreground">
+          Batch confirmation could not be loaded. The action result above
+          remains available.
+        </p>
+      )}
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <MetricCard
-          label="Notional"
+          label="Trade value"
           value={notional ? formatUsdCompact(notional) : "-"}
           icon={CircleDollarSign}
         />
@@ -244,7 +321,7 @@ export function PerpetualHubEventView({ id }: { id: string }) {
           icon={CircleDollarSign}
         />
         <MetricCard
-          label="Realized PnL"
+          label="Realized profit / loss"
           value={formatSignedUsd(pnl)}
           icon={CircleDollarSign}
           tone={
@@ -260,7 +337,7 @@ export function PerpetualHubEventView({ id }: { id: string }) {
       <div className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
         <Card className="rounded-lg py-0">
           <CardHeader className="border-b py-4">
-            <CardTitle className="text-sm">Event Details</CardTitle>
+            <CardTitle className="text-sm">What changed</CardTitle>
           </CardHeader>
           <CardContent className="px-4 text-sm">
             <dl>
@@ -299,11 +376,11 @@ export function PerpetualHubEventView({ id }: { id: string }) {
 
         <Card className="rounded-lg py-0">
           <CardHeader className="border-b py-4">
-            <CardTitle className="text-sm">Hub Context</CardTitle>
+            <CardTitle className="text-sm">Account and confirmation</CardTitle>
           </CardHeader>
           <CardContent className="px-4 text-sm">
             <dl>
-              <DetailRow label="User Wallet">
+              <DetailRow label="Wallet address">
                 {isUserAddress(event.userAddress) ? (
                   <Link
                     href={scopedHref(
@@ -317,7 +394,7 @@ export function PerpetualHubEventView({ id }: { id: string }) {
                   <span className="font-mono">{event.userAddress || "-"}</span>
                 )}
               </DetailRow>
-              <DetailRow label="Sequence">
+              <DetailRow label="Change number">
                 {event.teeSequence !== undefined ? (
                   <Link
                     href={scopedHref(
@@ -332,12 +409,8 @@ export function PerpetualHubEventView({ id }: { id: string }) {
                   "-"
                 )}
               </DetailRow>
-              <DetailRow label="State Root">
-                <span className="break-all font-mono">
-                  {event.stateRoot || "-"}
-                </span>
-              </DetailRow>
-              <DetailRow label="Rollup">
+
+              <DetailRow label="Settlement batch">
                 {event.rollupId !== undefined ? (
                   <Link
                     href={scopedHref(
@@ -351,7 +424,7 @@ export function PerpetualHubEventView({ id }: { id: string }) {
                   "-"
                 )}
               </DetailRow>
-              <DetailRow label="Rollup Tx">
+              <DetailRow label="Blockchain transaction">
                 {event.rollupTxHash ? (
                   <a
                     href={chainTxUrl(event.chainId, event.rollupTxHash)}
@@ -366,8 +439,10 @@ export function PerpetualHubEventView({ id }: { id: string }) {
                   "-"
                 )}
               </DetailRow>
-              <DetailRow label="Partner">{event.partnerName || "-"}</DetailRow>
-              <DetailRow label="Chain">{event.chainName || "-"}</DetailRow>
+              <DetailRow label="Trading app">
+                {event.partnerName || "-"}
+              </DetailRow>
+              <DetailRow label="Network">{event.chainName || "-"}</DetailRow>
               <DetailRow label="Contract">
                 <span className="break-all font-mono">
                   {event.contractAddress || "-"}
@@ -378,19 +453,22 @@ export function PerpetualHubEventView({ id }: { id: string }) {
         </Card>
       </div>
 
-      <Card className="rounded-lg py-0">
-        <CardHeader className="border-b py-4">
-          <CardTitle className="flex items-center gap-2 text-sm">
-            <Hash className="h-4 w-4 text-muted-foreground" />
-            Raw Event Payload
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="px-0">
-          <pre className="max-h-[520px] overflow-auto bg-muted/30 p-4 text-xs leading-5">
-            {JSON.stringify(event, null, 2)}
-          </pre>
-        </CardContent>
-      </Card>
+      <details className="rounded-lg border border-border bg-card p-4">
+        <summary className="cursor-pointer text-sm font-medium">
+          Technical event payload
+        </summary>
+        <p className="mt-3 break-all text-xs text-muted-foreground">
+          State verification ID: {event.stateRoot || "Not reported"}
+        </p>
+        <pre
+          tabIndex={0}
+          role="region"
+          aria-label="Raw event data"
+          className="mt-3 max-h-[520px] overflow-auto rounded-md bg-muted/30 p-4 text-xs leading-5"
+        >
+          {JSON.stringify(event, null, 2)}
+        </pre>
+      </details>
     </div>
   );
 }

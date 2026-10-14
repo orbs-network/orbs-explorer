@@ -10,14 +10,17 @@ import { getPartner } from "@/lib/lib";
 type OrderWithWitnessChainId = {
   order?: {
     witness?: {
-      chainId?: number;
-      chainid?: number;
+      chainId?: number | string;
+      chainid?: number | string;
     };
   };
 };
 
 export const getTwapOrderChainId = (order?: OrderWithWitnessChainId) => {
-  return order?.order?.witness?.chainId ?? order?.order?.witness?.chainid;
+  const value =
+    order?.order?.witness?.chainId ?? order?.order?.witness?.chainid;
+  const chainId = Number(value);
+  return Number.isInteger(chainId) && chainId > 0 ? chainId : undefined;
 };
 
 export const resolveOrderIdentifier = (identifier: string) => {
@@ -59,17 +62,20 @@ export const millisToDuration = (value?: number) => {
 };
 
 const getSpotOrderIsTakeProfit = (order?: Order) => {
-  return BN(order?.order.witness.output.stop || "0").gte(maxUint256);
+  return (
+    BN(order?.order.witness.output.stop || "0").gte(maxUint256) ||
+    BN(order?.order.witness.output.triggerUpper || "0").gt(0)
+  );
 };
 
 export const getSpotOrderType = (order?: Order) => {
   const isLimitPrice = BN(order?.order.witness.output.limit || "0").gt(1);
   const isTakeProfit = getSpotOrderIsTakeProfit(order);
   const isStopLoss =
-    BN(order?.order.witness.output.stop || "0").lt(maxUint256) &&
-    BN(order?.order.witness.output.stop || "0").gt(0);
-  const chunks = order?.metadata.chunks;
-  const isTWAP = (chunks?.length || 0) > 1;
+    BN(order?.order.witness.output.triggerLower || "0").gt(0) ||
+    (BN(order?.order.witness.output.stop || "0").lt(maxUint256) &&
+      BN(order?.order.witness.output.stop || "0").gt(0));
+  const isTWAP = (order?.metadata.expectedChunks || 1) > 1;
   if (isTakeProfit) return SpotOrderType.TAKE_PROFIT;
   if (isLimitPrice) {
     if (isStopLoss) return SpotOrderType.STOP_LOSS_LIMIT;
@@ -81,15 +87,19 @@ export const getSpotOrderType = (order?: Order) => {
 };
 
 export const getSpotOrderTriggerPricePerChunk = (order?: Order) => {
-  if (getSpotOrderIsTakeProfit(order)) {
-    return order?.order.witness.output.limit || "0";
-  }
-  return order?.order.witness.output.stop || "0";
+  const output = order?.order.witness.output;
+  if (BN(output?.triggerUpper || 0).gt(0)) return output?.triggerUpper || "0";
+  if (BN(output?.triggerLower || 0).gt(0)) return output?.triggerLower || "0";
+  if (getSpotOrderIsTakeProfit(order)) return output?.limit || "0";
+  return output?.stop || "0";
 };
 
 export const getSpotOrderLimitPrice = (order?: Order) => {
-  const isTakeProfit = getSpotOrderIsTakeProfit(order);
-  if (isTakeProfit) return "0";
+  const isLegacyTakeProfit = BN(order?.order.witness.output.stop || "0").gte(
+    maxUint256,
+  );
+  if (isLegacyTakeProfit || !BN(order?.order.witness.output.limit || 0).gt(1))
+    return "0";
   return order?.order.witness.output.limit || "0";
 };
 
@@ -109,35 +119,115 @@ const KNOWN_CHUNK_ERRORS: {
     name: "InvalidCosignature",
     description: "Invalid cosignature",
   },
-  { signature: "InvalidCosignatureInputToken()", name: "InvalidCosignatureInputToken", description: "Cosignature input token mismatch" },
-  { signature: "InvalidCosignatureOutputToken()", name: "InvalidCosignatureOutputToken", description: "Cosignature output token mismatch" },
-  { signature: "InvalidCosignatureZeroInputValue()", name: "InvalidCosignatureZeroInputValue", description: "Cosignature has zero input value" },
-  { signature: "InvalidCosignatureZeroOutputValue()", name: "InvalidCosignatureZeroOutputValue", description: "Cosignature has zero output value" },
-  { signature: "InvalidCosignatureReactor()", name: "InvalidCosignatureReactor", description: "Cosignature reactor mismatch" },
-  { signature: "InvalidCosignatureChainid()", name: "InvalidCosignatureChainid", description: "Cosignature chain ID mismatch" },
-  { signature: "InvalidCosignatureCosigner()", name: "InvalidCosignatureCosigner", description: "Invalid cosigner address" },
-  { signature: "StaleCosignature()", name: "StaleCosignature", description: "Cosignature is stale (expired)" },
-  { signature: "FutureCosignatureTimestamp()", name: "FutureCosignatureTimestamp", description: "Cosignature timestamp is in the future" },
-  { signature: "InvalidFreshness()", name: "InvalidFreshness", description: "Invalid freshness value" },
-  { signature: "InvalidFreshnessVsEpoch()", name: "InvalidFreshnessVsEpoch", description: "Freshness exceeds epoch duration" },
-  { signature: "InvalidSignature()", name: "InvalidSignature", description: "Invalid signature" },
+  {
+    signature: "InvalidCosignatureInputToken()",
+    name: "InvalidCosignatureInputToken",
+    description: "Cosignature input token mismatch",
+  },
+  {
+    signature: "InvalidCosignatureOutputToken()",
+    name: "InvalidCosignatureOutputToken",
+    description: "Cosignature output token mismatch",
+  },
+  {
+    signature: "InvalidCosignatureZeroInputValue()",
+    name: "InvalidCosignatureZeroInputValue",
+    description: "Cosignature has zero input value",
+  },
+  {
+    signature: "InvalidCosignatureZeroOutputValue()",
+    name: "InvalidCosignatureZeroOutputValue",
+    description: "Cosignature has zero output value",
+  },
+  {
+    signature: "InvalidCosignatureReactor()",
+    name: "InvalidCosignatureReactor",
+    description: "Cosignature reactor mismatch",
+  },
+  {
+    signature: "InvalidCosignatureChainid()",
+    name: "InvalidCosignatureChainid",
+    description: "Cosignature chain ID mismatch",
+  },
+  {
+    signature: "InvalidCosignatureCosigner()",
+    name: "InvalidCosignatureCosigner",
+    description: "Invalid cosigner address",
+  },
+  {
+    signature: "StaleCosignature()",
+    name: "StaleCosignature",
+    description: "Cosignature is stale (expired)",
+  },
+  {
+    signature: "FutureCosignatureTimestamp()",
+    name: "FutureCosignatureTimestamp",
+    description: "Cosignature timestamp is in the future",
+  },
+  {
+    signature: "InvalidFreshness()",
+    name: "InvalidFreshness",
+    description: "Invalid freshness value",
+  },
+  {
+    signature: "InvalidFreshnessVsEpoch()",
+    name: "InvalidFreshnessVsEpoch",
+    description: "Freshness exceeds epoch duration",
+  },
+  {
+    signature: "InvalidSignature()",
+    name: "InvalidSignature",
+    description: "Invalid signature",
+  },
   { signature: "Expired()", name: "Expired", description: "Order has expired" },
-  { signature: "InsufficientAllowance()", name: "InsufficientAllowance", description: "Insufficient token allowance" },
-  { signature: "Canceled()", name: "Canceled", description: "Order was canceled" },
-  { signature: "InvalidSender()", name: "InvalidSender", description: "Invalid sender address" },
-  { signature: "InvalidOrder()", name: "InvalidOrder", description: "Invalid order" },
-  { signature: "CosignedExceedsStop()", name: "CosignedExceedsStop", description: "Cosigned amount exceeds stop price" },
+  {
+    signature: "InsufficientAllowance()",
+    name: "InsufficientAllowance",
+    description: "Insufficient token allowance",
+  },
+  {
+    signature: "Canceled()",
+    name: "Canceled",
+    description: "Order was canceled",
+  },
+  {
+    signature: "InvalidSender()",
+    name: "InvalidSender",
+    description: "Invalid sender address",
+  },
+  {
+    signature: "InvalidOrder()",
+    name: "InvalidOrder",
+    description: "Invalid order",
+  },
+  {
+    signature: "CosignedExceedsStop()",
+    name: "CosignedExceedsStop",
+    description: "Cosigned amount exceeds stop price",
+  },
 ];
 
 export type ParsedChunkDescription =
-  | { type: "trigger"; current: string; trigger: string; pct: string; symbol: string }
-  | { type: "limit_price"; got: string; expected: string; pct: string; symbol: string }
+  | {
+      type: "trigger";
+      current: string;
+      trigger: string;
+      pct: string;
+      symbol: string;
+    }
+  | {
+      type: "limit_price";
+      got: string;
+      expected: string;
+      pct: string;
+      symbol: string;
+    }
   | { type: "error"; text: string }
   | { type: "text"; text: string };
 
 export function parseChunkDescription(
   description: string | undefined,
-  outputTokenSymbol?: string
+  outputTokenSymbol?: string,
 ): ParsedChunkDescription {
   if (!description?.trim()) {
     return { type: "text", text: "No details available." };
@@ -147,19 +237,31 @@ export function parseChunkDescription(
   const sym = outputTokenSymbol?.trim() ?? "";
 
   const triggerMatch = d.match(
-    /Trigger price not met,\s*current output\s+([\d.]+)\s*>\s*trigger\s+([\d.]+)\s*-\s*([\d.]+)%/i
+    /Trigger price not met,\s*current output\s+([\d.]+)\s*[<>]\s*trigger(?:Lower|Upper)?\s+([\d.]+)\s*-\s*([\d.]+)%/i,
   );
   if (triggerMatch) {
     const [, current, trigger, pct] = triggerMatch;
-    return { type: "trigger", current: current!, trigger: trigger!, pct: pct!, symbol: sym };
+    return {
+      type: "trigger",
+      current: current!,
+      trigger: trigger!,
+      pct: pct!,
+      symbol: sym,
+    };
   }
 
   const priceMatch = d.match(
-    /Price can't meet condition:\s*expected\s+([\d.]+),\s*got\s+([\d.]+)\s*\([^)]+\)\s*-\s*([\d.]+)%/i
+    /Price can't meet condition:\s*expected\s+([\d.]+),\s*got\s+([\d.]+)\s*\([^)]+\)\s*-\s*([\d.]+)%/i,
   );
   if (priceMatch) {
     const [, expected, got, pct] = priceMatch;
-    return { type: "limit_price", got: got!, expected: expected!, pct: pct!, symbol: sym };
+    return {
+      type: "limit_price",
+      got: got!,
+      expected: expected!,
+      pct: pct!,
+      symbol: sym,
+    };
   }
 
   for (const err of KNOWN_CHUNK_ERRORS) {
@@ -167,7 +269,7 @@ export function parseChunkDescription(
       const hasPlaceholders = err.description.includes("%s");
       if (hasPlaceholders) {
         const paramsMatch = d.match(
-          new RegExp(`${escapeRegExp(err.name)}\\s*\\(([^)]+)\\)`)
+          new RegExp(`${escapeRegExp(err.name)}\\s*\\(([^)]+)\\)`),
         );
         const params = paramsMatch
           ? paramsMatch[1].split(",").map((s) => s.trim())
@@ -185,7 +287,10 @@ export function parseChunkDescription(
   }
 
   if (/price\s+condition\s+met/i.test(d)) {
-    return { type: "text", text: "Price condition was met; execution may still be in progress." };
+    return {
+      type: "text",
+      text: "Price condition was met; execution may still be in progress.",
+    };
   }
   if (/slippage/i.test(d)) {
     return {
@@ -194,13 +299,25 @@ export function parseChunkDescription(
     };
   }
   if (/insufficient\s+liquidity/i.test(d)) {
-    return { type: "text", text: "Not enough liquidity to fill this chunk at the requested price." };
+    return {
+      type: "text",
+      text: "Not enough liquidity to fill this chunk at the requested price.",
+    };
   }
-  if (/timeout|expired/i.test(d)) {
-    return { type: "text", text: "This chunk did not fill in time and is no longer active." };
-  }
+  if (/timeout/i.test(d))
+    return {
+      type: "text",
+      text: "The execution check timed out. This attempt does not establish a successful fill or cancellation; check the order’s overall status.",
+    };
+  if (/expired/i.test(d))
+    return {
+      type: "text",
+      text: "This execution attempt reports expiry. Check the order’s overall status and deadline for whether it remains active.",
+    };
 
-  const withoutRawNumbers = d.replace(/\s*\(\d+\s+vs\.\s+\d+\)\s*/g, " ").trim();
+  const withoutRawNumbers = d
+    .replace(/\s*\(\d+\s+vs\.\s+\d+\)\s*/g, " ")
+    .trim();
   return { type: "text", text: withoutRawNumbers || d };
 }
 
@@ -215,8 +332,8 @@ export const getOrderFilledAmounts = (order?: Order) => {
       dstFilledAmount: "",
       feeUsd: "",
     };
-  const filledChunks = order.metadata.chunks.filter(
-    (chunk) => chunk.status === ChunkStatus.SUCCESS
+  const filledChunks = (order.metadata.chunks ?? []).filter(
+    (chunk) => chunk.status === ChunkStatus.SUCCESS,
   );
   return {
     srcFilledAmount: filledChunks
@@ -228,7 +345,7 @@ export const getOrderFilledAmounts = (order?: Order) => {
     feeUsd: filledChunks
       .reduce(
         (acc, chunk) => acc.plus(chunk.displayOnlyFee?.replace("$", "") || 0),
-        new BN(0)
+        new BN(0),
       )
       .decimalPlaces(2)
       .toString(),
@@ -237,7 +354,7 @@ export const getOrderFilledAmounts = (order?: Order) => {
 
 export const getOrderExecutionRate = (
   srcFilledAmountFormatted: string,
-  dstFilledAmountFormatted: string
+  dstFilledAmountFormatted: string,
 ) => {
   if (
     !BN(srcFilledAmountFormatted || 0).gt(0) ||
@@ -248,8 +365,11 @@ export const getOrderExecutionRate = (
 };
 
 export const getMinAmountPerChunk = (order?: Order) => {
-  const isTakeProfit = getSpotOrderIsTakeProfit(order);
-  if (isTakeProfit) return "0";
+  const isLegacyTakeProfit = BN(order?.order.witness.output.stop || "0").gte(
+    maxUint256,
+  );
+  if (isLegacyTakeProfit || !BN(order?.order.witness.output.limit || 0).gt(1))
+    return "0";
   return order?.order.witness.output.limit || "0";
 };
 
@@ -257,15 +377,15 @@ export const parseOrderType = (type: SpotOrderType) => {
   if (type === SpotOrderType.TAKE_PROFIT) return "Take Profit";
   if (type === SpotOrderType.LIMIT) return "Limit";
   if (type === SpotOrderType.STOP_LOSS_LIMIT) return "Stop Loss (Limit)";
-  if (type === SpotOrderType.TWAP_LIMIT) return "TWAP (Limit)";
+  if (type === SpotOrderType.TWAP_LIMIT) return "Scheduled (Limit)";
   if (type === SpotOrderType.STOP_LOSS_MARKET) return "Stop Loss (Market)";
-  if (type === SpotOrderType.TWAP_MARKET) return "TWAP (Market)";
+  if (type === SpotOrderType.TWAP_MARKET) return "Scheduled (Market)";
   return type;
 };
 
 export const getOrderLimitPriceRate = (
   chunkAmountFormatted: string,
-  minOutAmountFormatted: string
+  minOutAmountFormatted: string,
 ) => {
   if (
     !BN(chunkAmountFormatted || 0).gt(0) ||
@@ -277,7 +397,7 @@ export const getOrderLimitPriceRate = (
 
 export const getOrderTriggerPriceRate = (
   chunkAmountFormatted: string,
-  triggerPriceFormatted: string
+  triggerPriceFormatted: string,
 ) => {
   if (
     BN(chunkAmountFormatted || 0).lte(0) ||
@@ -291,14 +411,15 @@ export const getOrderStatus = (order?: Order): Status => {
   if (!order) return Status.PENDING;
   if (order.metadata.description?.toLowerCase().includes("cancelled"))
     return Status.CANCELLED;
-  const s = order.metadata.status ?? "";
+  const s = (order.metadata.status ?? "").toLowerCase();
+  if (["cancelled", "canceled"].includes(s)) return Status.CANCELLED;
+  if (["expired", "error"].includes(s)) return Status.FAILED;
   if (s.includes("failed")) return Status.FAILED;
   if (s === Status.COMPLETED) return Status.COMPLETED;
   if (s === Status.PARTIALLY_COMPLETED) return Status.PARTIALLY_COMPLETED;
   if (s.includes("completed")) return Status.COMPLETED;
   return Status.PENDING;
 };
-
 
 const EMPTY_PARTNER = {
   chainId: 0,
@@ -309,7 +430,7 @@ const EMPTY_PARTNER = {
 export function getSpotPartnerConfig(
   config: SpotConfig,
   adapterOrPartnerId: string,
-  partnerChainId: number
+  partnerChainId: number,
 ) {
   if (!adapterOrPartnerId || !config) return EMPTY_PARTNER;
   const target = adapterOrPartnerId.toLowerCase();

@@ -87,6 +87,7 @@ export type PerpetualHubPositionListFilters = {
 };
 
 export type PerpetualHubPositionList = {
+  warnings?: string[];
   items: PerpetualHubPositionListItem[];
   positions: PerpetualHubPositionRecord[];
   orders: PerpetualHubOrderRecord[];
@@ -206,6 +207,7 @@ export type PerpetualHubUserListFilters = {
 };
 
 export type PerpetualHubUsers = {
+  warnings?: string[];
   onChainSeq: number;
   teeSeq: number | null;
   pendingOps: number | null;
@@ -256,6 +258,7 @@ export type PerpetualHubHedgerPositionListFilters = {
 };
 
 export type PerpetualHubHedgerPositionList = {
+  warnings?: string[];
   positions: PerpetualHubHedgerPosition[];
   total: number;
   limit: number;
@@ -287,6 +290,7 @@ export type PerpetualHubRiskListFilters = {
 };
 
 export type PerpetualHubRiskList = {
+  warnings?: string[];
   exposures: PerpetualHubRiskExposure[];
   total: number;
   limit: number;
@@ -420,6 +424,7 @@ export type PerpetualHubRollupListStats = {
 };
 
 export type PerpetualHubRollupList = {
+  warnings?: string[];
   rollups: PerpetualHubRollup[];
   total: number;
   limit: number;
@@ -452,6 +457,7 @@ export type PerpetualHubEventListFilters = {
 };
 
 export type PerpetualHubEventList = {
+  warnings?: string[];
   events: PerpetualHubOperation[];
   total: number;
   limit: number;

@@ -49,6 +49,9 @@ next-env.d.ts
 !/scripts/screenshot.mjs
 !/scripts/pr-screenshots.sh
 !/scripts/screenshot-upload.sh
+!/scripts/deploy-vercel.sh
 
 # pr screenshots (generated locally, attached to PRs manually)
 /.screenshots/
+# Browser audit output
+/.playwright-cli/

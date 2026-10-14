@@ -1,83 +1,54 @@
-import { useQuery } from "@tanstack/react-query";
-import { useMemo } from "react";
-import _ from "lodash";
-import { Token } from "../types";
-import * as chains from "viem/chains";
-import { getChain, isNativeAddress } from "../utils/utils";
-import { zeroAddress } from "viem";
-
-const getLogoUrl = (name: string) => {
-  try {
-    return `https://static.arkhamintelligence.com/tokens/${name
-      ?.toLowerCase()
-      .replace(/usd₮0/g, "usdt0") // usd₮0 → usdt0
-      .replace(/\(.*?\)/g, "") // remove (text)
-      .replace(/\susd$/, "") // remove trailing " usd"
-      .replace(/\s+/g, "-") // spaces → "-"
-      .replace(/-+/g, "-") // collapse multiple dashes
-      .replace(/^-|-$/g, "") // trim dashes
-      .replace(/^wrapped-bnb$/, "wbnb") // wrapped-bnb → wbnb
-      .replace(
-        /^usdc$/,
-        "usd-coin",
-      ) // usdc → usd-coin
-    }.png`;
-  } catch (error) {
-    return "";
-  }
-};
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import type { Token } from "../types";
+import {
+  fetchTokenBatch,
+  isValidTokenReference,
+  preloadTokenMetadata,
+  TOKEN_FAILURE_STALE_TIME,
+  tokenQueryKey,
+} from "../token-metadata";
 
 export const useToken = (
   address?: string,
   chainId?: number,
   disabled = false,
 ) => {
-  return useQuery({
-    queryKey: ["useToken", address, chainId],
-    queryFn: async ({ signal }) => {
-      if (isNativeAddress(address!)) {
-        const nativeToken = getChain(chainId)?.nativeCurrency;
-        return {
-          address: zeroAddress,
-          decimals: nativeToken?.decimals,
-          name: nativeToken?.name,
-          symbol: nativeToken?.symbol,
-        } as Token;
-      }
-
-      const response = await fetch("/api/tokens", {
-        method: "POST",
-        signal,
-        body: JSON.stringify({ addresses: [address], chainId }),
-      });
-      const data = await response.json();
-      const token = data[0];
-
-      return {
-        ...token,
-        logoUrl: getLogoUrl(token.name),
-      } as Token;
-    },
-    enabled: !!address && !!chainId && !disabled,
-    staleTime: Infinity,
+  const query = useQuery<Token | null>({
+    queryKey: tokenQueryKey(address, chainId),
+    queryFn: async ({ signal }) =>
+      (await fetchTokenBatch([address!], chainId!, signal))[0] ?? null,
+    enabled: isValidTokenReference({ address, chainId }) && !disabled,
+    staleTime: (query) =>
+      query.state.data === null ? TOKEN_FAILURE_STALE_TIME : Infinity,
   });
+  return { ...query, data: query.data ?? undefined };
 };
 
-export const useTokens = (_addresses?: string[], chainId?: number) => {
+export const useTokens = (addresses?: string[], chainId?: number) => {
+  const queryClient = useQueryClient();
+  const normalized = [
+    ...new Set(addresses?.map((address) => address.toLowerCase())),
+  ];
   return useQuery({
-    queryKey: ["useTokens", _addresses, chainId],
+    queryKey: ["useTokens", normalized, chainId],
     queryFn: async ({ signal }) => {
-      const addresses = _.uniq(_addresses);
-      const response = await fetch("/api/tokens", {
-        method: "POST",
+      await preloadTokenMetadata(
+        queryClient,
+        normalized.map((address) => ({ address, chainId })),
         signal,
-        body: JSON.stringify({ addresses, chainId }),
+      );
+      return normalized.flatMap((address) => {
+        const token = queryClient.getQueryData<Token | null>(
+          tokenQueryKey(address, chainId),
+        );
+        return token ? [token] : [];
       });
-      const data = await response.json();
-
-      return data as Token[];
     },
-    enabled: !!_addresses && !!chainId,
-    staleTime: Infinity,
+    enabled:
+      normalized.length > 0 &&
+      normalized.every((address) =>
+        isValidTokenReference({ address, chainId }),
+      ),
+    staleTime: TOKEN_FAILURE_STALE_TIME,
   });
 };

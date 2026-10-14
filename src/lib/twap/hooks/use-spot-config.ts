@@ -7,6 +7,6 @@ export function useSpotConfig() {
   return useQuery<SpotConfig>({
     queryKey: [REACT_QUERY_KEYS.spotConfig],
     queryFn: ({ signal }) => getSpotConfig(signal),
-    staleTime: Infinity,
+    staleTime: 60 * 60 * 1000,
   });
 }

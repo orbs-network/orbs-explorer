@@ -1,3 +1,4 @@
+import { ActivityTime } from "@/components/activity-summary";
 import { ExplorerLink } from "@/components/explorer-link";
 import { TokenAmount, TokenAmountFormatted } from "@/components/token-amount";
 import { TransactionDisplay } from "@/components/transaction-display";
@@ -6,21 +7,18 @@ import {
   Dialog,
   DialogContent,
   DialogHeader,
+  DialogDescription,
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { ParsedOrderChunk, Token, OrderChunk } from "@/lib/types";
-import { toMoment } from "@/lib/utils/utils";
-import {
-  parseChunkDescription,
-  type ParsedChunkDescription,
-} from "@/lib/twap";
+import { abbreviate, shortenAddress, toMoment } from "@/lib/utils/utils";
+import { parseChunkDescription, type ParsedChunkDescription } from "@/lib/twap";
 import {
   CheckCircle2,
   Clock,
   AlertCircle,
   Layers,
-  Loader2,
   ArrowRight,
   XCircle,
   FileText,
@@ -39,6 +37,7 @@ import { useFormatNumber } from "@/lib/hooks/use-number-format";
 import BN from "bignumber.js";
 import { useToUiAmount } from "@/lib/hooks/use-to-ui-amount";
 import { Amount } from "@/components/ui/amount";
+import { getOrderStory } from "@/lib/activity/order-story";
 
 const EMPTY = "—";
 
@@ -48,7 +47,7 @@ function useChunkDetails() {
   const chunk = useContext(ChunkDetailsContext);
   if (!chunk)
     throw new Error(
-      "Chunk details field must be used inside ChunkDetailsSection",
+      "Trade details field must be used inside ChunkDetailsSection",
     );
   return chunk;
 }
@@ -145,7 +144,7 @@ function TxHash() {
   const chunk = useChunkDetails();
   return (
     <DetailRow
-      label="Tx Hash"
+      label="Blockchain record"
       value={<ExplorerLink value={chunk.txHash} chainId={chunk.chainId || 0} />}
     />
   );
@@ -176,7 +175,7 @@ function InputAmount() {
   const chunk = useChunkDetails();
   return (
     <DetailRow
-      label="Input Amount"
+      label="Amount traded"
       value={
         <TokenAmount
           amountRaw={chunk.inAmount}
@@ -191,7 +190,7 @@ function OutputAmount() {
   const chunk = useChunkDetails();
   return (
     <DetailRow
-      label="Output Amount"
+      label="Amount received"
       value={
         <TokenAmount
           amountRaw={chunk.outAmount}
@@ -206,7 +205,7 @@ function MinOutputAmount() {
   const chunk = useChunkDetails();
   return (
     <DetailRow
-      label="Min Output Amount"
+      label="Minimum reported for this attempt"
       value={
         <TokenAmount
           amountRaw={chunk.minOut}
@@ -271,8 +270,8 @@ const FeeOnTransfer = () => {
   if (chunk.feeOnTransferError) {
     return (
       <div className="text-muted-foreground flex items-start gap-2 w-full text-xs bg-red-500/10 border border-red-500/20 px-3 py-2 rounded-lg">
-        <AlertCircle className="w-3.5 h-3.5 text-red-500 mt-0.5 shrink-0" />
-        <p className="text-red-500 break-all flex-1">
+        <AlertCircle className="w-3.5 h-3.5 text-red-700 dark:text-red-400 mt-0.5 shrink-0" />
+        <p className="text-red-700 dark:text-red-400 break-all flex-1">
           Transfer Fee Estimation Error: {chunk.feeOnTransferError}
         </p>
       </div>
@@ -373,15 +372,12 @@ function ChunkDetailsTimingSection() {
 }
 function ChunkDetailsFillSection() {
   return (
-    <DetailSectionBlock title="Fill" icon={Zap}>
+    <DetailSectionBlock title="Trade result" icon={Zap}>
       <InputAmount />
       <OutputAmount />
       <MinOutputAmount />
       <Block />
       <TxHash />
-      <Executor />
-      <Swapper />
-      <Exchange />
     </DetailSectionBlock>
   );
 }
@@ -409,16 +405,24 @@ function ChunkDetailsSection({ chunk }: { chunk: ParsedOrderChunk }) {
             <FileText className="h-4 w-4 text-primary" />
           </div>
           <span className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">
-            Chunk details
+            Trade details
           </span>
         </div>
         <div className="space-y-0 divide-y divide-border/40">
           <ChunkDetailsFillSection />
           <ChunkDetailsTimingSection />
-          <ChunkDetailsOracleSection />
-        </div>
-        <div className="mt-4 pt-4 border-t border-border/40">
-          <FeeOnTransfer />
+          <details className="pt-3">
+            <summary className="cursor-pointer text-xs font-medium">
+              Technical price and contract details
+            </summary>
+            <div className="mt-3 space-y-3">
+              <Executor />
+              <Swapper />
+              <Exchange />
+              <ChunkDetailsOracleSection />
+              <FeeOnTransfer />
+            </div>
+          </details>
         </div>
       </div>
     </ChunkDetailsContext.Provider>
@@ -471,85 +475,78 @@ export function OrderChunks() {
   const orderName = spotOrder.type.replaceAll("_", " ");
 
   return (
-    <TransactionDisplay.SectionItem label="Fills">
-      <Dialog>
-        <DialogTrigger asChild>
-          <Button variant="outline" size="sm" className="gap-2">
-            {failedChunks.length > 0 ? (
-              <XCircle className="w-4 h-4 text-muted-foreground" />
-            ) : (
-              <Layers className="w-4 h-4" />
+    <Dialog>
+      <DialogTrigger asChild>
+        <Button variant="outline" size="sm" className="gap-2">
+          {failedChunks.length > 0 ? (
+            <XCircle className="w-4 h-4 text-muted-foreground" />
+          ) : (
+            <Layers className="w-4 h-4" />
+          )}
+          <span>Full history</span>
+          {failedChunks.length === 0 &&
+            successChunks.length === expectedChunks &&
+            expectedChunks > 0 && (
+              <CheckCircle2 className="w-3.5 h-3.5 text-green-700 dark:text-green-400" />
             )}
-            <span className="font-mono">
-              {successChunks.length} / {expectedChunks}
-            </span>
-            {failedChunks.length === 0 &&
-              successChunks.length === expectedChunks &&
-              expectedChunks > 0 && (
-                <CheckCircle2 className="w-3.5 h-3.5 text-green-500" />
-              )}
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="w-[calc(100vw-1.5rem)] sm:max-w-[44rem] max-h-[calc(100dvh-2rem)] sm:max-h-[85vh] overflow-y-auto rounded-2xl border-border/80">
+        <DialogHeader className="space-y-1.5 pb-2">
+          <DialogTitle className="flex items-center gap-2.5 text-lg">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10">
+              <Layers className="h-5 w-5 text-primary" />
+            </div>
+            <span>Full trade history</span>
+          </DialogTitle>
+          <DialogDescription className="text-sm text-muted-foreground pl-11">
+            {successChunks.length} of {expectedChunks} trades completed
             {failedChunks.length > 0 && (
-              <span className="text-xs text-muted-foreground">cancelled</span>
-            )}
-          </Button>
-        </DialogTrigger>
-        <DialogContent className="w-[calc(100vw-1.5rem)] sm:max-w-[44rem] max-h-[calc(100dvh-2rem)] sm:max-h-[85vh] overflow-y-auto rounded-2xl border-border/80">
-          <DialogHeader className="space-y-1.5 pb-2">
-            <DialogTitle className="flex items-center gap-2.5 text-lg">
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10">
-                <Layers className="h-5 w-5 text-primary" />
-              </div>
-              <span className="capitalize">
-                {failedChunks.length > 0
-                  ? `${orderName} Order Fills (cancelled)`
-                  : `${orderName} Order Fills`}
+              <span className="text-destructive font-medium ml-1.5">
+                · {failedChunks.length} unsuccessful
               </span>
-            </DialogTitle>
-            <p className="text-sm text-muted-foreground pl-11">
-              {successChunks.length} of {expectedChunks} chunks filled
-              {failedChunks.length > 0 && (
-                <span className="text-destructive font-medium ml-1.5">
-                  · {failedChunks.length} failed
-                </span>
-              )}
-              {failedChunks.length === 0 && pendingChunks.length > 0 && (
-                <span className="text-amber-600 dark:text-amber-500 font-medium ml-1.5">
-                  · {pendingChunks.length} pending
-                </span>
-              )}
-            </p>
-          </DialogHeader>
-          <div className="flex flex-col gap-4">
-            {successChunks.map((chunk) => (
-              <ChunkCard
-                key={`success-${chunk.index}`}
-                chunk={chunk}
-                isDev={isDev}
-                rawChunk={rawChunks.find((c) => c.index === chunk.index)}
-              />
-            ))}
-            {pendingChunks.map((chunk) => (
-              <ChunkCardPendingOrFailed
-                key={`pending-${chunk.index}`}
-                chunk={chunk}
-                variant="pending"
-                isDev={isDev}
-                rawChunk={rawChunks.find((c) => c.index === chunk.index)}
-              />
-            ))}
-            {failedChunks.map((chunk) => (
-              <ChunkCardPendingOrFailed
-                key={`failed-${chunk.index}`}
-                chunk={chunk}
-                variant="failed"
-                isDev={isDev}
-                rawChunk={rawChunks.find((c) => c.index === chunk.index)}
-              />
-            ))}
-          </div>
-        </DialogContent>
-      </Dialog>
-    </TransactionDisplay.SectionItem>
+            )}
+            {failedChunks.length === 0 && pendingChunks.length > 0 && (
+              <span className="text-amber-700 dark:text-amber-400 font-medium ml-1.5">
+                · {pendingChunks.length} pending
+              </span>
+            )}
+          </DialogDescription>
+        </DialogHeader>
+        <div className="flex flex-col gap-4">
+          {successChunks.map((chunk) => (
+            <ChunkCard
+              key={`success-${chunk.index}`}
+              chunk={chunk}
+              isDev={isDev}
+              rawChunk={rawChunks.find((c) => c.index === chunk.index)}
+            />
+          ))}
+          {pendingChunks.map((chunk) => (
+            <ChunkCardPendingOrFailed
+              key={`pending-${chunk.index}`}
+              chunk={chunk}
+              variant="pending"
+              isDev={isDev}
+              rawChunk={rawChunks.find((c) => c.index === chunk.index)}
+            />
+          ))}
+          {failedChunks.map((chunk) => (
+            <ChunkCardPendingOrFailed
+              key={`failed-${chunk.index}`}
+              chunk={chunk}
+              variant={
+                chunk.status === "cancelled" || chunk.status === "canceled"
+                  ? "cancelled"
+                  : "failed"
+              }
+              isDev={isDev}
+              rawChunk={rawChunks.find((c) => c.index === chunk.index)}
+            />
+          ))}
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -581,13 +578,13 @@ function ChunkDescriptionDisplay({
   if (parsed.type === "trigger") {
     return (
       <>
-        Trigger price not met, current output{" "}
+        Trigger condition not met. Current quoted output:{" "}
         <Amount
           amount={parsed.current}
           className="font-semibold"
           decimalAmount
         />
-        {sym(parsed)} &gt; trigger{" "}
+        {sym(parsed)}; trigger output:{" "}
         <Amount
           amount={parsed.trigger}
           className="font-semibold"
@@ -611,8 +608,8 @@ function ChunkDescriptionDisplay({
           decimalAmount
         />
         {sym(parsed)} — <Amount amount={parsed.pct} className="font-semibold" />
-        % of target. This chunk will fill when the market reaches your limit
-        price.
+        % of target. Execution remains subject to the price condition, available
+        liquidity, and the order deadline.
       </>
     );
   }
@@ -648,16 +645,22 @@ const ChunkCardPendingOrFailed = ({
       ? "bg-muted border-border"
       : "bg-amber-500/10 border-amber-500/20";
   const iconColor = isFailed
-    ? "text-red-500"
+    ? "text-red-700 dark:text-red-400"
     : isCancelled
       ? "text-muted-foreground"
-      : "text-amber-500";
+      : "text-amber-700 dark:text-amber-400";
   const labelColor = isFailed
-    ? "text-red-500"
+    ? "text-red-700 dark:text-red-400"
     : isCancelled
       ? "text-muted-foreground"
-      : "text-amber-500";
-  const label = isFailed ? "Failed" : isCancelled ? "Cancelled" : "Pending";
+      : "text-amber-700 dark:text-amber-400";
+  const label = isFailed
+    ? "Attempt unsuccessful"
+    : isCancelled
+      ? "Cancelled"
+      : chunk.status.includes("price")
+        ? "Waiting for price"
+        : "Waiting";
 
   const hoverBorder = isFailed
     ? "hover:border-red-500/30"
@@ -667,13 +670,13 @@ const ChunkCardPendingOrFailed = ({
 
   return (
     <details
-      className={`group rounded-xl border border-border/60 bg-card/50 shadow-sm ${hoverBorder} hover:shadow-md transition-all duration-200 overflow-hidden`}
+      className={`group rounded-xl border border-border/60 bg-card/50 shadow-sm ${hoverBorder} hover:shadow-md transition-colors duration-200 overflow-hidden`}
     >
-      <summary className="flex flex-col gap-3 px-4 py-3.5 cursor-pointer list-none select-none hover:bg-muted/20 transition-colors">
+      <summary className="flex flex-col gap-2 px-3 py-3 cursor-pointer list-none select-none hover:bg-muted/20 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring">
         <div className="flex items-center justify-between w-full">
-          <div className="flex items-center gap-2">
+          <div className="flex min-w-0 flex-wrap items-center gap-2">
             <span className="text-sm font-semibold text-foreground tabular-nums">
-              Chunk #{chunk.index}
+              Trade {chunk.index}
             </span>
             {isDev && rawChunk && (
               <div
@@ -700,17 +703,28 @@ const ChunkCardPendingOrFailed = ({
               className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-xs font-medium shrink-0 ${badgeStyles}`}
             >
               {isFailed ? (
-                <AlertCircle className="w-3 h-3 text-red-500" />
+                <AlertCircle className="w-3 h-3 text-red-700 dark:text-red-400" />
               ) : isCancelled ? (
                 <XCircle className={`w-3 h-3 ${iconColor}`} />
               ) : (
-                <Loader2 className={`w-3 h-3 ${iconColor} animate-spin`} />
+                <Clock aria-hidden className={`w-3 h-3 ${iconColor}`} />
               )}
               <span className={labelColor}>{label}</span>
             </div>
           </div>
-          <ChevronDown className="w-4 h-4 text-muted-foreground shrink-0 transition-transform duration-200 group-open:rotate-180" />
+          <div className="flex items-center gap-3">
+            <span className="hidden text-xs text-muted-foreground sm:inline">
+              <ActivityTime value={chunk.updatedAt || chunk.createdAt} />
+            </span>
+            <ChevronDown
+              aria-hidden
+              className="w-4 h-4 text-muted-foreground shrink-0 transition-transform duration-200 group-open:rotate-180"
+            />
+          </div>
         </div>
+        <span className="text-xs text-muted-foreground sm:hidden">
+          <ActivityTime value={chunk.updatedAt || chunk.createdAt} />
+        </span>
       </summary>
       <div className="px-4 pb-4 pt-3 border-t border-border/50 bg-muted/5">
         <div className="text-sm text-muted-foreground leading-relaxed">
@@ -719,7 +733,7 @@ const ChunkCardPendingOrFailed = ({
         {chunk.dueTime && (
           <div className="flex items-center gap-1.5 text-xs text-muted-foreground mt-3">
             <Clock className="w-3.5 h-3.5 shrink-0" />
-            <span>Due: {toMoment(chunk.dueTime).format("lll")}</span>
+            <span>Scheduled for: {toMoment(chunk.dueTime).format("lll")}</span>
           </div>
         )}
       </div>
@@ -729,6 +743,32 @@ const ChunkCardPendingOrFailed = ({
 
 function hasAmount(amount?: string): boolean {
   return Boolean(amount && amount !== "0");
+}
+
+// The summary opens the trade, so its amount labels must stay noninteractive.
+function ChunkSummaryAmount({
+  amount,
+  token,
+}: {
+  amount: string;
+  token?: Token;
+}) {
+  const formatted = useToUiAmount(token?.decimals, amount);
+  if (!token || token.decimals === undefined) {
+    return (
+      <span className="text-xs text-muted-foreground">
+        Token amount unavailable
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex flex-wrap items-center gap-2 text-[13px] font-medium">
+      <span className="font-mono" title={formatted}>
+        {abbreviate(formatted, 3) || "0"}
+      </span>
+      <span>{token.symbol || shortenAddress(token.address)}</span>
+    </span>
+  );
 }
 
 function ChunkSummaryLine({
@@ -750,13 +790,7 @@ function ChunkSummaryLine({
         <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest shrink-0">
           In
         </span>
-        <TokenAmount
-          amountRaw={inAmount}
-          address={inToken?.address}
-          chainId={chainId ?? 0}
-          usd=""
-          className="pointer-events-none font-medium"
-        />
+        <ChunkSummaryAmount amount={inAmount} token={inToken} />
       </div>
 
       <ArrowRight className="w-4 h-4 text-muted-foreground/70 shrink-0" />
@@ -765,13 +799,7 @@ function ChunkSummaryLine({
         <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest shrink-0">
           Out
         </span>
-        <TokenAmount
-          amountRaw={outAmount}
-          address={outToken?.address}
-          chainId={chainId ?? 0}
-          usd=""
-          className="pointer-events-none font-medium"
-        />
+        <ChunkSummaryAmount amount={outAmount} token={outToken} />
       </div>
     </div>
   );
@@ -790,15 +818,15 @@ const ChunkCard = ({
 
   return (
     <details
-      className="group rounded-xl border border-border/60 bg-card/50 shadow-sm hover:border-emerald-500/30 hover:shadow-md transition-all duration-200 overflow-hidden"
+      className="group rounded-xl border border-border/60 bg-card/50 shadow-sm hover:border-emerald-500/30 hover:shadow-md transition-colors duration-200 overflow-hidden"
       open={open}
       onToggle={(e) => setOpen((e.target as HTMLDetailsElement).open)}
     >
-      <summary className="flex flex-col gap-3 px-4 py-3.5 cursor-pointer list-none select-none hover:bg-muted/20 transition-colors">
+      <summary className="flex flex-col gap-3 px-4 py-3.5 cursor-pointer list-none select-none hover:bg-muted/20 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring">
         <div className="flex items-center gap-3 justify-between w-full">
           <div className="flex items-center gap-2">
             <span className="text-sm font-semibold text-foreground tabular-nums">
-              Chunk #{chunk.index}
+              Trade #{chunk.index}
             </span>
             {isDev && rawChunk && (
               <div
@@ -839,6 +867,9 @@ const ChunkCard = ({
             chainId={chunk.chainId ?? 0}
           />
         </div>
+        <span className="text-xs text-muted-foreground">
+          <ActivityTime value={chunk.updatedAt || chunk.createdAt} />
+        </span>
       </summary>
       {open && (
         <div className="px-4 pb-4 pt-1 border-t border-border/50 bg-muted/5">
@@ -848,3 +879,61 @@ const ChunkCard = ({
     </details>
   );
 };
+
+export function OrderExecutionHistory() {
+  const { hash, order } = useOrderViewContext();
+  const ended = getOrderStory(order).ended;
+  const { chunks } = useSpotOrderChunks(hash);
+  const recent = [...chunks.chunks]
+    .sort(
+      (a, b) =>
+        Date.parse(b.updatedAt || b.createdAt) -
+        Date.parse(a.updatedAt || a.createdAt),
+    )
+    .slice(0, 3);
+  return (
+    <section className="rounded-lg border border-border bg-card p-4 sm:p-5">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0 flex-1">
+          <h2 className="text-base font-semibold">Trade history</h2>
+          <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+            Trades and execution updates.
+          </p>
+        </div>
+        <OrderChunks />
+      </div>
+      <div className="mt-4 space-y-3">
+        {recent.length ? (
+          recent.map((chunk) =>
+            chunk.status === "success" ? (
+              <ChunkCard key={chunk.index} chunk={chunk} />
+            ) : (
+              <ChunkCardPendingOrFailed
+                key={chunk.index}
+                chunk={chunk}
+                variant={
+                  chunk.status === "cancelled" || chunk.status === "canceled"
+                    ? "cancelled"
+                    : chunk.status === "failed" || chunk.status === "error"
+                      ? "failed"
+                      : "pending"
+                }
+              />
+            ),
+          )
+        ) : (
+          <p className="rounded-md bg-muted/40 p-3 text-sm text-muted-foreground">
+            {ended
+              ? "No trade attempts were reported before the order ended."
+              : "No trade attempts yet. Checks run automatically until the order trades or expires."}
+          </p>
+        )}
+        {order.metadata.chunks?.length > 3 && (
+          <p className="text-xs text-muted-foreground">
+            Showing the latest 3 records. Select Full history to see the rest.
+          </p>
+        )}
+      </div>
+    </section>
+  );
+}

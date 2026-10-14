@@ -1,416 +1,213 @@
 "use client";
 
-import { useState, useMemo } from "react";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { useId, useMemo, useRef, useState } from "react";
 import {
   type PartnerCard,
-  type PartnerStats,
-  type ListOrder,
-  isListOrderCompleted,
-  isListOrderPartiallyCompleted,
-  isListOrderPending,
-  isListOrderError,
-} from "@/lib/twap";
-import {
-  CheckCircle2,
-  AlertCircle,
-  XCircle,
-  Clock,
-  TrendingUp,
-  DollarSign,
-  ChevronRight,
-  ArrowRightLeft,
-} from "lucide-react";
+  groupOverviewOrders,
+  OVERVIEW_STATUSES,
+  type OverviewOrderStatus,
+  getOrderValueUsd,
+  getTopPairsByVolume,
+} from "@/lib/twap/utils/orders-overview";
 import { usePartner } from "@/lib/hooks/use-partner";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Network } from "@/components/ui/network";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { FilterCombobox } from "@/components/filter-combobox";
+import { ChevronRight, ArrowRight } from "lucide-react";
 import { StatusOrdersModal } from "./status-order-modal";
-import { TokenDisplay } from "@/components/token-display";
-import { cn } from "@/lib/utils";
-import { abbreviate } from "@/lib/utils/utils";
+import { OrderTokenLabel } from "./order-token-label";
+import { STATUS_COLORS, formatOrderUsd } from "./overview-display";
+import { cn } from "@/lib/utils/utils";
 
-function isFilledOrder(order: ListOrder): boolean {
-  return isListOrderCompleted(order);
-}
-function isPartiallyFilledOrder(order: ListOrder): boolean {
-  return isListOrderPartiallyCompleted(order);
-}
-function isPendingOrder(order: ListOrder): boolean {
-  return isListOrderPending(order);
-}
-function isErrorOrder(order: ListOrder): boolean {
-  return isListOrderError(order);
-}
-
-const sortByCreatedAtDesc = (a: ListOrder, b: ListOrder) =>
-  new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
-
-function TrendingPairList({
-  pairs,
-  chainId,
-  limit = 3,
+export function PartnerStatsCard({
+  partnerCard,
 }: {
-  pairs: { inputToken: string; outputToken: string; totalUsd: number }[];
-  chainId: number;
-  limit?: number;
+  partnerCard: PartnerCard;
 }) {
-  const display = pairs.slice(0, limit);
-  return (
-    <div className="space-y-1.5">
-      {display.map((p) => (
-        <div
-          key={`${p.inputToken}-${p.outputToken}`}
-          className="flex items-center justify-between gap-2 text-sm"
-        >
-          <div className="flex items-center gap-1.5 min-w-0 flex-1">
-            <TokenDisplay
-              address={p.inputToken}
-              chainId={chainId}
-              className="!px-1.5 !py-0.5 text-xs shrink-0"
-            />
-            <span className="text-muted-foreground shrink-0">→</span>
-            <TokenDisplay
-              address={p.outputToken}
-              chainId={chainId}
-              className="!px-1.5 !py-0.5 text-xs shrink-0"
-            />
-          </div>
-          <span className="text-xs font-medium tabular-nums shrink-0">
-            ${abbreviate(p.totalUsd, 2)}
-          </span>
-        </div>
-      ))}
-    </div>
+  const { partnerId, partnerName, chains } = partnerCard;
+  const partner = usePartner(partnerId);
+  const id = useId();
+  const [network, setNetwork] = useState<string[]>([]);
+  const lastTrigger = useRef<HTMLButtonElement>(null);
+  const [openStatus, setOpenStatus] = useState<OverviewOrderStatus | null>(
+    null,
   );
-}
-
-const statRow = (
-  label: string,
-  value: string | number,
-  icon: React.ReactNode,
-  valueClassName?: string,
-  onClick?: () => void
-) => {
-  const content = (
-    <>
-      <span className="flex items-center gap-2 text-sm text-muted-foreground">
-        {icon}
-        {label}
-      </span>
-      <span
-        className={cn(
-          "text-sm font-semibold tabular-nums flex items-center gap-1",
-          valueClassName ?? "text-foreground"
-        )}
-      >
-        {value}
-        {onClick && <ChevronRight className="h-3.5 w-3.5 opacity-70" />}
-      </span>
-    </>
+  const [showRoutes, setShowRoutes] = useState(false);
+  const selectedChains = useMemo(
+    () =>
+      network.length
+        ? chains.filter((c) => network.includes(String(c.chainId)))
+        : chains,
+    [chains, network],
   );
-
-  if (onClick) {
-    return (
-      <button
-        type="button"
-        key={label}
-        onClick={onClick}
-        className="flex w-full items-center justify-between py-2.5 border-b border-border/50 last:border-0 text-left transition-colors hover:bg-muted/50 rounded-sm -mx-1 px-1 cursor-pointer"
-      >
-        {content}
-      </button>
-    );
-  }
-
+  const routes = useMemo(
+    () =>
+      selectedChains
+        .flatMap((chain) =>
+          getTopPairsByVolume(chain.orders, 3).map((pair) => ({
+            ...pair,
+            chainId: chain.chainId,
+            chainName: chain.chainName,
+          })),
+        )
+        .sort((a, b) => b.totalUsd - a.totalUsd)
+        .slice(0, 3),
+    [selectedChains],
+  );
+  const orders = useMemo(
+    () => selectedChains.flatMap((c) => c.orders),
+    [selectedChains],
+  );
+  const groups = useMemo(() => groupOverviewOrders(orders), [orders]);
+  const totalUsd = orders.reduce(
+    (sum, order) => sum + getOrderValueUsd(order),
+    0,
+  );
+  const networkLabel =
+    selectedChains.length === 1
+      ? selectedChains[0].chainName
+      : `${selectedChains.length} networks`;
+  const statuses = (
+    Object.keys(OVERVIEW_STATUSES) as OverviewOrderStatus[]
+  ).filter((key) => key !== "unknown" || groups.unknown.length);
   return (
-    <div
-      key={label}
-      className="flex items-center justify-between py-2.5 border-b border-border/50 last:border-0"
+    <article
+      aria-labelledby={id}
+      className="min-w-0 self-start rounded-xl border border-border bg-card p-4"
     >
-      {content}
-    </div>
-  );
-};
-
-function ChainStatsContent({
-  stats,
-  orders,
-  topPairs,
-  chainId,
-  onOpenFilled,
-  onOpenPartial,
-  onOpenPending,
-  onOpenError,
-}: {
-  stats: PartnerStats;
-  orders: ListOrder[];
-  topPairs: { inputToken: string; outputToken: string; totalUsd: number }[];
-  chainId: number;
-  onOpenFilled: () => void;
-  onOpenPartial: () => void;
-  onOpenPending: () => void;
-  onOpenError: () => void;
-}) {
-  return (
-    <>
-      {statRow(
-        "Total orders",
-        stats.totalOrders,
-        <TrendingUp className="h-4 w-4 text-muted-foreground" />
-      )}
-      {statRow(
-        "Total USD",
-        `$${abbreviate(stats.totalUsd)}`,
-        <DollarSign className="h-4 w-4 text-muted-foreground" />
-      )}
-      {statRow(
-        "Filled",
-        `${stats.filledOrders} · $${abbreviate(stats.filledUsd, 2)}`,
-        <CheckCircle2 className="h-4 w-4 text-emerald-500" />,
-        "text-emerald-600 dark:text-emerald-400",
-        stats.filledOrders > 0 ? onOpenFilled : undefined
-      )}
-      {statRow(
-        "Partially filled",
-        `${stats.partiallyFilledOrders} · $${abbreviate(stats.partiallyFilledUsd, 2)}`,
-        <AlertCircle className="h-4 w-4 text-amber-500" />,
-        "text-amber-600 dark:text-amber-400",
-        stats.partiallyFilledOrders > 0 ? onOpenPartial : undefined
-      )}
-      {statRow(
-        "Error / failed",
-        `${stats.errorOrders} · $${abbreviate(stats.errorUsd, 2)}`,
-        <XCircle className="h-4 w-4 text-destructive" />,
-        "text-destructive",
-        stats.errorOrders > 0 ? onOpenError : undefined
-      )}
-      {statRow(
-        "Pending",
-        `${stats.pendingOrders} · $${abbreviate(stats.pendingUsd, 2)}`,
-        <Clock className="h-4 w-4 text-muted-foreground" />,
-        "text-muted-foreground",
-        stats.pendingOrders > 0 ? onOpenPending : undefined
-      )}
-      {topPairs.length > 0 && (
-        <div className="pt-3 mt-3 border-t border-border/50">
-          <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">
-            <ArrowRightLeft className="h-3.5 w-3.5" />
-            Trending pairs
-          </div>
-          <TrendingPairList
-            pairs={topPairs}
-            chainId={chainId}
-            limit={3}
+      <div className="flex items-start gap-3">
+        {partner && (
+          <Avatar aria-hidden className="size-9 shrink-0 border border-border">
+            <AvatarImage src={partner.logo} alt="" />
+            <AvatarFallback>{partnerName.slice(0, 2)}</AvatarFallback>
+          </Avatar>
+        )}
+        <div className="min-w-0 flex-1">
+          <h3 id={id} className="break-words font-semibold">
+            {partnerName}
+          </h3>
+          <p className="mt-0.5 text-xs text-muted-foreground">{networkLabel}</p>
+        </div>
+        <span className="shrink-0 text-right tabular-nums">
+          <strong className="block text-lg font-semibold">
+            {orders.length.toLocaleString()}
+          </strong>
+          <span className="text-xs text-muted-foreground">
+            {orders.length === 1 ? "order" : "orders"}
+          </span>
+        </span>
+      </div>
+      {chains.length > 1 && (
+        <div className="mt-3">
+          <FilterCombobox
+            label="Network"
+            options={chains.map((c) => ({
+              label: c.chainName,
+              value: String(c.chainId),
+            }))}
+            value={network}
+            onChange={setNetwork}
           />
         </div>
       )}
-    </>
-  );
-}
-
-export function PartnerStatsCard({ partnerCard }: { partnerCard: PartnerCard }) {
-  const { partnerId, partnerName, chains } = partnerCard;
-  const partner = usePartner(partnerId);
-
-  const [filledModalOpen, setFilledModalOpen] = useState(false);
-  const [partialModalOpen, setPartialModalOpen] = useState(false);
-  const [pendingModalOpen, setPendingModalOpen] = useState(false);
-  const [errorModalOpen, setErrorModalOpen] = useState(false);
-  const [modalChainId, setModalChainId] = useState<number | null>(null);
-
-  const defaultTab = chains[0] ? String(chains[0].chainId) : undefined;
-
-  const openFilled = (chainId: number) => {
-    setModalChainId(chainId);
-    setFilledModalOpen(true);
-  };
-  const openPartial = (chainId: number) => {
-    setModalChainId(chainId);
-    setPartialModalOpen(true);
-  };
-  const openPending = (chainId: number) => {
-    setModalChainId(chainId);
-    setPendingModalOpen(true);
-  };
-  const openError = (chainId: number) => {
-    setModalChainId(chainId);
-    setErrorModalOpen(true);
-  };
-
-  const currentChainForModal = useMemo(
-    () => (modalChainId != null ? chains.find((c) => c.chainId === modalChainId) ?? null : null),
-    [modalChainId, chains]
-  );
-
-  const filledOrders = useMemo(() => {
-    if (!currentChainForModal) return [];
-    return currentChainForModal.orders
-      .filter(isFilledOrder)
-      .sort(sortByCreatedAtDesc);
-  }, [currentChainForModal]);
-  const partialOrders = useMemo(() => {
-    if (!currentChainForModal) return [];
-    return currentChainForModal.orders
-      .filter(isPartiallyFilledOrder)
-      .sort(sortByCreatedAtDesc);
-  }, [currentChainForModal]);
-  const pendingOrders = useMemo(() => {
-    if (!currentChainForModal) return [];
-    return currentChainForModal.orders
-      .filter(isPendingOrder)
-      .sort(sortByCreatedAtDesc);
-  }, [currentChainForModal]);
-  const errorOrders = useMemo(() => {
-    if (!currentChainForModal) return [];
-    return currentChainForModal.orders
-      .filter(isErrorOrder)
-      .sort(sortByCreatedAtDesc);
-  }, [currentChainForModal]);
-
-  const modalDisplayName = currentChainForModal
-    ? `${partnerName} ${currentChainForModal.chainName}`
-    : partnerName;
-
-  const totalOrdersAcrossChains = chains.reduce(
-    (sum, c) => sum + c.stats.totalOrders,
-    0
-  );
-  const hasNoOrders = totalOrdersAcrossChains === 0;
-  const singleChain = chains.length === 1 ? chains[0] : null;
-
-  if (chains.length === 0) return null;
-
-  return (
-    <>
-      <Card
-        className={cn(
-          "overflow-hidden border bg-card shadow-sm transition-all hover:shadow-md",
-          hasNoOrders
-            ? "border-border/60 opacity-90"
-            : "border-border hover:border-primary/20"
-        )}
-      >
-        <CardHeader className="pb-2 pt-5 px-5">
-          <div className="flex items-center gap-3">
-            {partner && (
-              <Avatar className="h-10 w-10 shrink-0 border border-border">
-                <AvatarImage src={partner.logo} alt={partnerName} />
-                <AvatarFallback className="text-sm bg-muted">
-                  {partnerName.slice(0, 2).toUpperCase()}
-                </AvatarFallback>
-              </Avatar>
-            )}
-            <div className="min-w-0 flex-1">
-              <div className="flex flex-wrap items-center gap-2">
-                <h3 className="text-lg font-semibold tracking-tight text-foreground">
-                  {partnerName}
-                </h3>
-                {singleChain && (
-                  <Network
-                    chainId={singleChain.chainId}
-                    variant="compact"
-                    showChainId={false}
-                    className="shrink-0 rounded-md border border-border bg-muted/40 px-1.5 py-0.5 [&_span]:text-xs"
-                  />
-                )}
-              </div>
-              {hasNoOrders && (
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  No orders in last 7 days
-                </p>
+      <div className="my-3 flex items-center justify-between gap-2 border-b border-border pb-3 text-sm">
+        <span className="text-muted-foreground">Placed order value</span>
+        <strong className="font-medium tabular-nums">
+          {formatOrderUsd(totalUsd)}
+        </strong>
+      </div>
+      <div className="grid grid-cols-2 gap-x-3 gap-y-1">
+        {statuses.map((key) => (
+          <button
+            key={key}
+            type="button"
+            disabled={!groups[key].length}
+            onClick={(event) => {
+              lastTrigger.current = event.currentTarget;
+              setOpenStatus(key);
+            }}
+            aria-label={`View ${groups[key].length} ${OVERVIEW_STATUSES[key].label.toLowerCase()} orders for ${partnerName}, ${networkLabel}`}
+            className="flex min-w-0 items-center justify-between gap-1 rounded-md px-1 py-2 text-left text-xs transition-colors enabled:hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-default"
+          >
+            <span className="text-muted-foreground">
+              {OVERVIEW_STATUSES[key].label}
+            </span>
+            <span
+              className={cn(
+                "inline-flex items-center gap-0.5 font-semibold tabular-nums",
+                STATUS_COLORS[key],
               )}
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent className="px-5 pb-5 pt-0">
-          {singleChain ? (
-            <ChainStatsContent
-              stats={singleChain.stats}
-              orders={singleChain.orders}
-              topPairs={singleChain.topPairs}
-              chainId={singleChain.chainId}
-              onOpenFilled={() => openFilled(singleChain.chainId)}
-              onOpenPartial={() => openPartial(singleChain.chainId)}
-              onOpenPending={() => openPending(singleChain.chainId)}
-              onOpenError={() => openError(singleChain.chainId)}
-            />
-          ) : (
-            <Tabs defaultValue={defaultTab!} className="w-full">
-              <TabsList className="w-fit max-w-full flex flex-wrap h-auto gap-1.5 p-1.5 mb-3 rounded-xl bg-muted/50 border border-border/50">
-                {chains.map((ch) => (
-                  <TabsTrigger
-                    key={ch.chainId}
-                    value={String(ch.chainId)}
-                    className="cursor-pointer flex-none flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium transition-all data-[state=inactive]:text-muted-foreground hover:text-foreground hover:bg-muted/60 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-md data-[state=active]:ring-1 data-[state=active]:ring-primary/30 data-[state=active]:border data-[state=active]:border-primary/20"
-                  >
-                    <Network
-                      chainId={ch.chainId}
-                      variant="compact"
-                      showChainId={false}
-                      className="[&_span]:text-xs"
+            >
+              {groups[key].length}
+              {groups[key].length > 0 && (
+                <ChevronRight aria-hidden className="size-3" />
+              )}
+            </span>
+          </button>
+        ))}
+      </div>
+      <details
+        className="mt-3 border-t border-border pt-3"
+        onToggle={(event) => setShowRoutes(event.currentTarget.open)}
+      >
+        <summary className="cursor-pointer text-xs text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+          Popular token routes
+        </summary>
+        {showRoutes && (
+          <div className="mt-3 space-y-3">
+            <p className="text-xs text-muted-foreground">
+              Largest routes by placed order value.
+            </p>
+            {routes.map((pair) => (
+              <div
+                key={`${pair.chainId}:${pair.inputToken}:${pair.outputToken}`}
+                className="space-y-1"
+              >
+                {selectedChains.length > 1 && (
+                  <p className="text-xs text-muted-foreground">
+                    {pair.chainName}
+                  </p>
+                )}
+                <div className="flex items-center justify-between gap-2 text-xs">
+                  <span className="flex min-w-0 items-center gap-1">
+                    <OrderTokenLabel
+                      address={pair.inputToken}
+                      chainId={pair.chainId}
                     />
-                  </TabsTrigger>
-                ))}
-              </TabsList>
-              {chains.map((ch) => (
-                <TabsContent
-                  key={ch.chainId}
-                  value={String(ch.chainId)}
-                  className="space-y-0 mt-0"
-                >
-                  <ChainStatsContent
-                    stats={ch.stats}
-                    orders={ch.orders}
-                    topPairs={ch.topPairs}
-                    chainId={ch.chainId}
-                    onOpenFilled={() => openFilled(ch.chainId)}
-                    onOpenPartial={() => openPartial(ch.chainId)}
-                    onOpenPending={() => openPending(ch.chainId)}
-                    onOpenError={() => openError(ch.chainId)}
-                  />
-                </TabsContent>
-              ))}
-            </Tabs>
-          )}
-        </CardContent>
-      </Card>
-      <StatusOrdersModal
-        open={filledModalOpen}
-        onOpenChange={setFilledModalOpen}
-        partnerName={modalDisplayName}
-        orders={filledOrders}
-        title="Filled"
-        variant="filled"
-        emptyMessage="No filled orders in this period."
-      />
-      <StatusOrdersModal
-        open={partialModalOpen}
-        onOpenChange={setPartialModalOpen}
-        partnerName={modalDisplayName}
-        orders={partialOrders}
-        title="Partially filled"
-        variant="partial"
-        emptyMessage="No partially filled orders in this period."
-      />
-      <StatusOrdersModal
-        open={pendingModalOpen}
-        onOpenChange={setPendingModalOpen}
-        partnerName={modalDisplayName}
-        orders={pendingOrders}
-        title="Pending"
-        variant="pending"
-        emptyMessage="No pending orders in this period."
-      />
-      <StatusOrdersModal
-        open={errorModalOpen}
-        onOpenChange={setErrorModalOpen}
-        partnerName={modalDisplayName}
-        orders={errorOrders}
-        title="Error / failed"
-        variant="error"
-        emptyMessage="No error orders in this period."
-      />
-    </>
+                    <ArrowRight
+                      aria-hidden
+                      className="size-3 shrink-0 text-muted-foreground"
+                    />
+                    <OrderTokenLabel
+                      address={pair.outputToken}
+                      chainId={pair.chainId}
+                    />
+                  </span>
+                  <span className="shrink-0 tabular-nums">
+                    {formatOrderUsd(pair.totalUsd)} · {pair.orderCount}{" "}
+                    {pair.orderCount === 1 ? "order" : "orders"}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </details>
+      {openStatus && (
+        <StatusOrdersModal
+          onCloseAutoFocus={(event) => {
+            event.preventDefault();
+            lastTrigger.current?.focus();
+          }}
+          open
+          onOpenChange={(open) => {
+            if (!open) setOpenStatus(null);
+          }}
+          partnerName={`${partnerName} · ${networkLabel}`}
+          orders={groups[openStatus]}
+          title={OVERVIEW_STATUSES[openStatus].label}
+          variant={openStatus}
+        />
+      )}
+    </article>
   );
 }

@@ -8,7 +8,7 @@ const getStatusConfig = (status: string) => {
     return {
       icon: CheckCircle2,
       label: "Completed",
-      color: "text-green-500",
+      color: "text-green-700 dark:text-green-400",
       bg: "bg-green-500/10",
       border: "border-green-500/20",
     };
@@ -17,7 +17,7 @@ const getStatusConfig = (status: string) => {
     return {
       icon: XCircle,
       label: "Canceled",
-      color: "text-red-500",
+      color: "text-red-700 dark:text-red-400",
       bg: "bg-red-500/10",
       border: "border-red-500/20",
     };
@@ -26,7 +26,7 @@ const getStatusConfig = (status: string) => {
     return {
       icon: Clock,
       label: "Expired",
-      color: "text-orange-500",
+      color: "text-orange-700 dark:text-orange-400",
       bg: "bg-orange-500/10",
       border: "border-orange-500/20",
     };
@@ -36,7 +36,7 @@ const getStatusConfig = (status: string) => {
     return {
       icon: PlayCircle,
       label: "In Progress",
-      color: "text-blue-500",
+      color: "text-blue-700 dark:text-blue-400",
       bg: "bg-blue-500/10",
       border: "border-blue-500/20",
     };
@@ -45,7 +45,7 @@ const getStatusConfig = (status: string) => {
     return {
       icon: XCircle,
       label: "Failed",
-      color: "text-red-500",
+      color: "text-red-700 dark:text-red-400",
       bg: "bg-red-500/10",
       border: "border-red-500/20",
     };
@@ -54,7 +54,7 @@ const getStatusConfig = (status: string) => {
     return {
       icon: CheckCircle2,
       label: "Partially Completed",
-      color: "text-yellow-500",
+      color: "text-yellow-700 dark:text-yellow-400",
       bg: "bg-green-500/10",
       border: "border-green-500/20",
     };
@@ -62,7 +62,7 @@ const getStatusConfig = (status: string) => {
   return {
     icon: RefreshCw,
     label: status.replace("_", " ").charAt(0).toUpperCase() + status.replace("_", " ").slice(1),
-    color: "text-primary",
+    color: "text-link",
     bg: "bg-primary/10",
     border: "border-primary/20",
   };

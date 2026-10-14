@@ -1,3 +1,4 @@
+import { availableResults } from "@/lib/perpetual-hub/available-results";
 import { NextResponse } from "next/server";
 import {
   type PerpetualHubDeployment,
@@ -242,11 +243,17 @@ export async function GET(request: Request) {
     return NextResponse.json(emptyPayload(limit, offset));
   }
 
+  let warnings: string[] = [];
   let deploymentResults: Awaited<ReturnType<typeof fetchDeploymentUsers>>[];
   try {
-    deploymentResults = await Promise.all(
+    const available = await availableResults(
       deployments.map((deployment) => fetchDeploymentUsers(deployment)),
+      deployments.map(
+        (deployment) => `${deployment.partnerName} on ${deployment.chainName}`,
+      ),
     );
+    deploymentResults = available.data;
+    warnings = available.warnings;
   } catch (error) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : String(error) },
@@ -286,6 +293,7 @@ export async function GET(request: Request) {
     limit === undefined ? filtered : filtered.slice(offset, offset + limit);
 
   const payload: PerpetualHubUsers = {
+    warnings,
     onChainSeq: Math.max(
       0,
       ...deploymentResults.map((item) => item.onChainSeq),

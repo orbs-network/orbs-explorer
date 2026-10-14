@@ -50,7 +50,17 @@ const UsdValueCell = ({ item }: { item: LiquidityHubSwap }) => {
 };
 
 const StatusCell = ({ item }: { item: LiquidityHubSwap }) => (
-  <SwapStatusBadge swapStatus={item.swapStatus} />
+  <div className="max-w-64 space-y-1">
+    <SwapStatusBadge swapStatus={item.swapStatus} />
+    {(item.error || item.stage) && (
+      <p
+        className="line-clamp-2 text-xs text-muted-foreground"
+        title={item.error || item.stage}
+      >
+        {item.error || item.stage}
+      </p>
+    )}
+  </div>
 );
 
 const PartnerCell = ({ item }: { item: LiquidityHubSwap }) => {
@@ -113,11 +123,11 @@ const FeesCell = ({ item }: { item: LiquidityHubSwap }) => {
 // ============================================================================
 
 const TABLE_COLUMNS = [
-  { Component: SessionIdCell, text: "Session ID" },
-  { Component: PartnerCell, text: "Partner" },
-  { Component: TimestampCell, text: "Timestamp" },
+  { Component: SessionIdCell, text: "Swap attempt ID" },
+  { Component: PartnerCell, text: "Trading app" },
+  { Component: TimestampCell, text: "Time" },
   { Component: TokenPairCell, text: "Token Pair" },
-  { Component: UsdValueCell, text: "USD" },
+  { Component: UsdValueCell, text: "Swap value" },
   { Component: FeesCell, text: "Fees" },
   { Component: StatusCell, text: "Status" },
 ];
@@ -130,7 +140,16 @@ const HEADER_LABELS = TABLE_COLUMNS.map((col) => ({ text: col.text }));
 
 export function LiquidityHubTable() {
   const router = useRouter();
-  const { data, isLoading, isFetchingNextPage, fetchNextPage } = useLHSwaps();
+  const {
+    data,
+    isLoading,
+    isError,
+    refetch,
+    isFetching,
+    hasNextPage,
+    isFetchingNextPage,
+    fetchNextPage,
+  } = useLHSwaps();
 
   const swaps = useMemo(
     () => data?.pages.flatMap((page) => page) ?? [],
@@ -148,7 +167,12 @@ export function LiquidityHubTable() {
     <VirtualTable<LiquidityHubSwap>
       isLoading={isLoading}
       isFetchingNextPage={isFetchingNextPage}
-      fetchNextPage={fetchNextPage}
+      fetchNextPage={() => {
+        if (hasNextPage && !isFetching) void fetchNextPage();
+      }}
+      hasNextPage={hasNextPage}
+      isError={isError}
+      onRetry={() => refetch()}
       tableItems={swaps}
       headerLabels={HEADER_LABELS}
       desktopRows={TABLE_COLUMNS}

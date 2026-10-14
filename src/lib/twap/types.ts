@@ -1,6 +1,7 @@
 import type { Token } from "../types";
 
 export interface ListOrder {
+  source?: "v1" | "v2";
   exchangeAdapter: string;
   hash: string;
   inputToken: string;
@@ -38,6 +39,7 @@ export interface ListOrder {
 }
 
 export interface Order {
+  source?: "v1" | "v2";
   hash: `0x${string}`;
   metadata: OrderMetadata;
   order: SignedOrder;
@@ -53,6 +55,9 @@ export interface OrderMetadata {
   expectedChunks: number;
   instanceId: string;
   lastPriceCheck: string;
+  nextEligibleTime?: string;
+  displayOnlyPriceCheckNextTime?: string;
+  displayOnlyStatusDescription?: string;
   logLoopCounter: number;
   orderType: string;
   status: string;
@@ -149,10 +154,13 @@ export interface TriggerPriceOrderWitness {
     token: `0x${string}`;
   };
   nonce: string;
+  start?: string;
   output: {
     limit: string;
     recipient: `0x${string}`;
-    stop: string;
+    stop?: string;
+    triggerLower?: string;
+    triggerUpper?: string;
     token: `0x${string}`;
   };
   reactor: `0x${string}`;

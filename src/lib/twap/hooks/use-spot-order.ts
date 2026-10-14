@@ -26,12 +26,15 @@ const parseValue = (value: string | undefined, decimals?: number) => {
 };
 
 export function useSpotOrder(hash?: string) {
-  const { data: order, isLoading } = useSpotOrderQuery(hash);
+  const { data, isLoading, isError, refetch, dataUpdatedAt, isFetching } = useSpotOrderQuery(hash);
+  const order = data ?? undefined;
   const orderChainId = getTwapOrderChainId(order);
-  const { chainId: partnerChainId, partner, config } = useSpotPartner(
-    order?.order.witness.exchange.adapter,
-    orderChainId
-  );
+  const {
+    chainId: partnerChainId,
+    partner,
+    config,
+    partnerId,
+  } = useSpotPartner(order?.order.witness.exchange.adapter, orderChainId);
   const chainId = orderChainId ?? (partnerChainId || undefined);
   const srcToken = useToken(order?.order.witness.input.token, chainId).data;
   const dstToken = useToken(order?.order.witness.output.token, chainId).data;
@@ -39,7 +42,7 @@ export function useSpotOrder(hash?: string) {
   return useMemo(() => {
     const expectedAmountOutPerChunk = parseValue(
       getSpotOrderTriggerPricePerChunk(order),
-      dstToken?.decimals
+      dstToken?.decimals,
     );
     const limitPrice = getSpotOrderLimitPrice(order);
 
@@ -50,31 +53,25 @@ export function useSpotOrder(hash?: string) {
     } = getOrderFilledAmounts(order);
     const chunkAmount = parseValue(
       order?.order.witness.input.amount,
-      srcToken?.decimals
+      srcToken?.decimals,
     );
     const minOutAmountPerChunk = parseValue(
       getMinAmountPerChunk(order),
-      dstToken?.decimals
+      dstToken?.decimals,
     );
-    const srcFilledAmount = parseValue(
-      srcFilledAmountRaw,
-      srcToken?.decimals
-    );
-    const dstFilledAmount = parseValue(
-      dstFilledAmountRaw,
-      dstToken?.decimals
-    );
+    const srcFilledAmount = parseValue(srcFilledAmountRaw, srcToken?.decimals);
+    const dstFilledAmount = parseValue(dstFilledAmountRaw, dstToken?.decimals);
     const executionRate = getOrderExecutionRate(
       srcFilledAmount.formatted,
-      dstFilledAmount.formatted
+      dstFilledAmount.formatted,
     );
     const triggerPriceRate = getOrderTriggerPriceRate(
       chunkAmount.formatted,
-      expectedAmountOutPerChunk.formatted
+      expectedAmountOutPerChunk.formatted,
     );
     const limitPriceRate = getOrderLimitPriceRate(
       chunkAmount.formatted,
-      minOutAmountPerChunk.formatted
+      minOutAmountPerChunk.formatted,
     );
     const deadline = BN(order?.order.witness.deadline || 0)
       .multipliedBy(1000)
@@ -84,13 +81,13 @@ export function useSpotOrder(hash?: string) {
       BN(minOutAmountPerChunk.raw || 0)
         .multipliedBy(order?.metadata.expectedChunks || 1)
         .toFixed(),
-      dstToken?.decimals
+      dstToken?.decimals,
     );
     const totalExpectedAmountOut = parseValue(
       BN(expectedAmountOutPerChunk.raw || 0)
         .multipliedBy(order?.metadata.expectedChunks || 1)
         .toFixed(),
-      dstToken?.decimals
+      dstToken?.decimals,
     );
 
     return {
@@ -98,9 +95,18 @@ export function useSpotOrder(hash?: string) {
       hash: order?.hash,
       swapper: order?.order.witness.swapper,
       isLoading,
+      isError,
+      dataUpdatedAt,
+      isFetching,
+      refetch,
       srcToken,
       dstToken,
       partner,
+      partnerName:
+        partner?.name ??
+        (partnerId
+          ? partnerId.charAt(0).toUpperCase() + partnerId.slice(1)
+          : "Unknown partner"),
       chainId,
       config,
       type: getSpotOrderType(order),
@@ -110,7 +116,7 @@ export function useSpotOrder(hash?: string) {
       epoch: order?.order.witness.epoch || 0,
       totalInAmount: parseValue(
         order?.order.witness.input.maxAmount || "0",
-        srcToken?.decimals
+        srcToken?.decimals,
       ),
       expectedAmountOutPerChunk,
       totalExpectedAmountOut,
@@ -127,5 +133,18 @@ export function useSpotOrder(hash?: string) {
       totalChunks: order?.metadata.expectedChunks || 0,
       status: getOrderStatus(order),
     };
-  }, [isLoading, srcToken, dstToken, chainId, partner, config, order]);
+  }, [
+    isLoading,
+    isError,
+    dataUpdatedAt,
+    isFetching,
+    refetch,
+    srcToken,
+    dstToken,
+    chainId,
+    partner,
+    partnerId,
+    config,
+    order,
+  ]);
 }

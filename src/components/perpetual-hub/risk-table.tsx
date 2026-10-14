@@ -44,7 +44,7 @@ function MarketCell({ item }: { item: PerpetualHubRiskExposure }) {
 
 function LongOiCell({ item }: { item: PerpetualHubRiskExposure }) {
   return (
-    <span className="font-mono text-emerald-500">
+    <span className="font-mono text-emerald-700 dark:text-emerald-400">
       {formatUsdCompact(item.longNotional)}
     </span>
   );
@@ -64,7 +64,7 @@ function NetOiCell({ item }: { item: PerpetualHubRiskExposure }) {
     <span
       className={cn(
         "font-mono",
-        net > 0 && "text-emerald-500",
+        net > 0 && "text-emerald-700 dark:text-emerald-400",
         net < 0 && "text-destructive",
         net === 0 && "text-muted-foreground",
       )}
@@ -79,7 +79,7 @@ function NetQuantityCell({ item }: { item: PerpetualHubRiskExposure }) {
     <span
       className={cn(
         "font-mono",
-        item.netQuantity > 0 && "text-emerald-500",
+        item.netQuantity > 0 && "text-emerald-700 dark:text-emerald-400",
         item.netQuantity < 0 && "text-destructive",
         item.netQuantity === 0 && "text-muted-foreground",
       )}
@@ -103,14 +103,26 @@ function SequenceCell({ item }: { item: PerpetualHubRiskExposure }) {
 
 const TABLE_COLUMNS = [
   { Component: MarketCell, text: "Market" },
-  { Component: PartnerCell, text: "Partner" },
-  { Component: ChainCell, text: "Chain" },
-  { Component: LongOiCell, text: "Long OI", className: "text-right" },
-  { Component: ShortOiCell, text: "Short OI", className: "text-right" },
-  { Component: NetOiCell, text: "Net OI", className: "text-right" },
-  { Component: NetQuantityCell, text: "Net Qty", className: "text-right" },
+  { Component: PartnerCell, text: "Trading app" },
+  { Component: ChainCell, text: "Network" },
+  {
+    Component: LongOiCell,
+    text: "Long positions value",
+    className: "text-right",
+  },
+  {
+    Component: ShortOiCell,
+    text: "Short positions value",
+    className: "text-right",
+  },
+  {
+    Component: NetOiCell,
+    text: "Net positions value",
+    className: "text-right",
+  },
+  { Component: NetQuantityCell, text: "Net quantity", className: "text-right" },
   { Component: PositionsCell, text: "Positions", className: "text-right" },
-  { Component: SequenceCell, text: "Seq", className: "text-right" },
+  { Component: SequenceCell, text: "Change number", className: "text-right" },
 ];
 
 const HEADER_LABELS = TABLE_COLUMNS.map((column) => ({
@@ -146,12 +158,16 @@ export function PerpetualHubRiskTable() {
   return (
     <VirtualTable<PerpetualHubRiskExposure>
       isLoading={riskQuery.isLoading}
+      isError={riskQuery.isError}
+      onRetry={() => riskQuery.refetch()}
+      hasNextPage={riskQuery.hasNextPage}
+      warnings={riskQuery.data?.pages[0]?.warnings ?? []}
       isFetchingNextPage={riskQuery.isFetchingNextPage}
       fetchNextPage={handleFetchNextPage}
       tableItems={rows}
       headerLabels={HEADER_LABELS}
       desktopRows={TABLE_COLUMNS}
-      title="Risk"
+      title="Market risk"
       headerAction={<PerpetualRiskFilter />}
     />
   );

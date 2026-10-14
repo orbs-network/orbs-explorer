@@ -9,11 +9,12 @@ export function Page({
   auth?: boolean;
 }) {
   const content = (
-    <div className="flex flex-row w-full mx-auto px-3 sm:px-4 max-w-full">
-      <div className="flex-1 flex flex-col gap-4 relative min-w-0">
-        <div className="flex-1 pl-0 sm:pl-5">{children}</div>
-      </div>
-    </div>
+    <main
+      id="main-content"
+      className="mx-auto w-full max-w-[1440px] min-w-0 px-4 py-6 sm:px-6"
+    >
+      {children}
+    </main>
   );
 
   if (auth) {

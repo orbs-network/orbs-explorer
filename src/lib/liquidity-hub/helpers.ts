@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { LiquidityHubQuote, LiquidityHubSwap } from "./types";
 import BN from "bignumber.js";
 import {

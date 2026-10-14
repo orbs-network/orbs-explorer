@@ -1,3 +1,4 @@
+import { availableResults } from "@/lib/perpetual-hub/available-results";
 import { NextResponse } from "next/server";
 import {
   type PerpetualHubDeployment,
@@ -262,7 +263,11 @@ export async function GET(request: Request) {
   const timeout = setTimeout(() => controller.abort(), 15_000);
 
   try {
-    const pages = await Promise.all(
+    const { data: pages, warnings } = await availableResults<{
+      events: PerpetualHubOperation[];
+      total: number;
+      stats?: PerpetualHubEventListStats;
+    }>(
       scopes.map(({ deployment, eventType }) => {
         if (shouldPageLocally) {
           return fetchDeploymentEventsWindow({
@@ -284,6 +289,10 @@ export async function GET(request: Request) {
           signal: controller.signal,
         });
       }),
+      scopes.map(
+        ({ deployment }) =>
+          `${deployment.partnerName} on ${deployment.chainName}`,
+      ),
     );
 
     const filteredEvents = pages
@@ -301,6 +310,7 @@ export async function GET(request: Request) {
         : pages.reduce((sum, page) => sum + (page.total ?? 0), 0);
 
     return NextResponse.json({
+      warnings,
       events,
       total,
       limit,

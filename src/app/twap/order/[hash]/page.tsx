@@ -11,13 +11,16 @@ const OrderPage = ({
 }) => {
   const { hash } = use(params);
   const { from } = use(searchParams);
-  const backHref = from === "orders-dashboard" ? ROUTES.ORDERS_DASHBOARD : undefined;
+  const backHref =
+    from === "orders-dashboard" ? ROUTES.ORDERS_DASHBOARD : undefined;
   return (
-    <OrderView
-      hash={hash}
-      backHref={backHref}
-      defaultBackHref={ROUTES.TWAP.ROOT}
-    />
+    <main id="main-content" className="min-w-0">
+      <OrderView
+        hash={hash}
+        backHref={backHref}
+        defaultBackHref={ROUTES.TWAP.ROOT}
+      />
+    </main>
   );
 };
 

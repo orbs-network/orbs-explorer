@@ -3,7 +3,7 @@ import { Token } from "@/lib/types";
 import { getChain } from "@/lib/utils/utils";
 import { NextResponse } from "next/server";
 import { erc20Abi } from "viem";
-  import { isNativeAddress } from "@/lib/utils/utils";
+import { isNativeAddress } from "@/lib/utils/utils";
 
 const cache = new Map<number, Map<string, Token>>();
 const normalizeAddress = (addr: string) => addr.toLowerCase();
@@ -18,11 +18,35 @@ const setCachedToken = (chainId: number, token: Token) => {
 };
 
 export async function POST(request: Request) {
-  const { addresses, chainId }: { addresses: string[]; chainId: number } =
-    await request.json();
-
+  let payload: { addresses?: unknown; chainId?: unknown };
+  try {
+    payload = await request.json();
+  } catch {
+    return NextResponse.json(
+      { error: "Invalid token request" },
+      { status: 400 },
+    );
+  }
+  const { addresses, chainId } = payload ?? {};
+  if (
+    typeof chainId !== "number" ||
+    !Number.isSafeInteger(chainId) ||
+    chainId <= 0 ||
+    !Array.isArray(addresses) ||
+    !addresses.every(
+      (address): address is string =>
+        typeof address === "string" && /^0x[a-fA-F0-9]{40}$/.test(address),
+    )
+  ) {
+    return NextResponse.json(
+      { error: "A valid chain and token addresses are required" },
+      { status: 400 },
+    );
+  }
   const publicClient = getPublicClient(chainId);
-  if (!publicClient) throw new Error("Public client not found");
+  // Historical orders can refer to chains missing from the current RPC registry.
+  // An empty metadata result lets the UI retain the token address as its label.
+  if (!publicClient) return NextResponse.json([]);
 
   const nativeToken = getChain(chainId)?.nativeCurrency;
 
@@ -49,15 +73,35 @@ export async function POST(request: Request) {
 
   if (toFetch.length) {
     const contracts = toFetch.flatMap(({ address }) => [
-      { address: address as `0x${string}`, abi: erc20Abi, functionName: "decimals" as const },
-      { address: address as `0x${string}`, abi: erc20Abi, functionName: "name" as const },
-      { address: address as `0x${string}`, abi: erc20Abi, functionName: "symbol" as const },
+      {
+        address: address as `0x${string}`,
+        abi: erc20Abi,
+        functionName: "decimals" as const,
+      },
+      {
+        address: address as `0x${string}`,
+        abi: erc20Abi,
+        functionName: "name" as const,
+      },
+      {
+        address: address as `0x${string}`,
+        abi: erc20Abi,
+        functionName: "symbol" as const,
+      },
     ]);
 
-    const multicallResults = await publicClient.multicall({
-      contracts,
-      allowFailure: true,
-    });
+    let multicallResults;
+    try {
+      multicallResults = await publicClient.multicall({
+        contracts,
+        allowFailure: true,
+      });
+    } catch {
+      return NextResponse.json(
+        { error: "Token metadata is unavailable" },
+        { status: 502 },
+      );
+    }
 
     for (let i = 0; i < toFetch.length; i++) {
       const offset = i * 3;

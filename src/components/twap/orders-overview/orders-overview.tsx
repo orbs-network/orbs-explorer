@@ -1,184 +1,114 @@
 "use client";
 
-import { useState, useMemo } from "react";
-import type { PartnerStats } from "@/lib/twap";
+import { useMemo, useRef, useState } from "react";
 import {
-  isListOrderCompleted,
-  isListOrderPartiallyCompleted,
-  isListOrderPending,
-  isListOrderError,
-} from "@/lib/twap";
-import type { ListOrder } from "@/lib/twap";
-import { Amount } from "@/components/ui/amount";
-import {
-  CheckCircle2,
-  XCircle,
-  MinusCircle,
-  LayoutGrid,
-  Clock,
-  ChevronRight,
-} from "lucide-react";
+  groupOverviewOrders,
+  OVERVIEW_STATUSES,
+  type OverviewOrderStatus,
+  getOrderValueUsd,
+} from "@/lib/twap/utils/orders-overview";
+import type { ListOrder } from "@/lib/twap/types";
+import { ChevronRight } from "lucide-react";
 import { StatusOrdersModal } from "./status-order-modal";
+import { cn } from "@/lib/utils/utils";
 
-const sortByCreatedAtDesc = (a: ListOrder, b: ListOrder) =>
-  new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
+import { STATUS_COLORS, formatOrderUsd } from "./overview-display";
 
-const STATUS_TILES = [
-  {
-    key: "filled",
-    label: "Filled",
-    getValue: (stats: PartnerStats[]) =>
-      stats.reduce((a, s) => a + s.filledOrders, 0),
-    icon: CheckCircle2,
-    className: "text-emerald-600 dark:text-emerald-400",
-    filter: isListOrderCompleted,
-    title: "Filled",
-    variant: "filled" as const,
-    emptyMessage: "No filled orders in this period.",
-  },
-  {
-    key: "partial",
-    label: "Partially filled",
-    getValue: (stats: PartnerStats[]) =>
-      stats.reduce((a, s) => a + s.partiallyFilledOrders, 0),
-    icon: MinusCircle,
-    className: "text-amber-600 dark:text-amber-400",
-    filter: isListOrderPartiallyCompleted,
-    title: "Partially filled",
-    variant: "partial" as const,
-    emptyMessage: "No partially filled orders in this period.",
-  },
-  {
-    key: "error",
-    label: "Error / failed",
-    getValue: (stats: PartnerStats[]) =>
-      stats.reduce((a, s) => a + s.errorOrders, 0),
-    icon: XCircle,
-    className: "text-destructive",
-    filter: isListOrderError,
-    title: "Error / failed",
-    variant: "error" as const,
-    emptyMessage: "No error orders in this period.",
-  },
-  {
-    key: "pending",
-    label: "Pending",
-    getValue: (stats: PartnerStats[]) =>
-      stats.reduce((a, s) => a + s.pendingOrders, 0),
-    icon: Clock,
-    className: "text-muted-foreground",
-    filter: isListOrderPending,
-    title: "Pending",
-    variant: "pending" as const,
-    emptyMessage: "No pending orders in this period.",
-  },
-];
-
-const SUMMARY_TILES = [
-  {
-    key: "orders",
-    label: "Total orders",
-    getValue: (stats: PartnerStats[]) =>
-      stats.reduce((a, s) => a + s.totalOrders, 0),
-    icon: LayoutGrid,
-    className: "text-foreground",
-  },
-  ...STATUS_TILES,
-];
-
-export function OrdersOverview({
-  stats,
-  allOrders = [],
-}: {
-  stats: PartnerStats[];
-  allOrders?: ListOrder[];
-}) {
-  const [openModalKey, setOpenModalKey] = useState<string | null>(null);
-
-  const ordersByStatus = useMemo(() => {
-    const acc: Record<string, ListOrder[]> = {};
-    for (const t of STATUS_TILES) {
-      acc[t.key] = allOrders.filter(t.filter).sort(sortByCreatedAtDesc);
-    }
-    return acc;
-  }, [allOrders]);
-
-  const usdByTileKey = useMemo(() => {
-    const totalUsd = stats.reduce((a, s) => a + s.totalUsd, 0);
-    const acc: Record<string, number> = {
-      orders: totalUsd,
-    };
-    for (const t of STATUS_TILES) {
-      acc[t.key] = (ordersByStatus[t.key] ?? []).reduce(
-        (sum, o) => sum + parseFloat(o.totalUSDAmount || "0"),
-        0
-      );
-    }
-    return acc;
-  }, [stats, ordersByStatus]);
-
+export function OrdersOverview({ allOrders }: { allOrders: ListOrder[] }) {
+  const lastTrigger = useRef<HTMLButtonElement>(null);
+  const [openStatus, setOpenStatus] = useState<OverviewOrderStatus | null>(
+    null,
+  );
+  const groups = useMemo(() => groupOverviewOrders(allOrders), [allOrders]);
+  const statuses = (
+    Object.keys(OVERVIEW_STATUSES) as OverviewOrderStatus[]
+  ).filter((key) => key !== "unknown" || groups.unknown.length);
+  const totalValue = allOrders.reduce(
+    (sum, order) => sum + getOrderValueUsd(order),
+    0,
+  );
   return (
-    <>
-      <div className="flex flex-nowrap gap-3 overflow-x-auto pb-1">
-        {SUMMARY_TILES.map((tile) => {
-          const isStatusTile = "filter" in tile;
-          const count = isStatusTile ? tile.getValue(stats) : 0;
-          const clickable = isStatusTile && count > 0;
-          const className = `rounded-xl border border-border bg-card px-4 py-3 shadow-sm transition-all text-left hover:shadow-md hover:border-border/80 flex-1 min-w-[7rem] basis-0 ${
-            clickable ? "cursor-pointer" : "cursor-default"
-          }`;
-          const usd = usdByTileKey[tile.key] ?? 0;
-          const content = (
-            <>
-              <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider truncate">
-                {tile.label}
-              </p>
-              <div className="mt-2 flex items-baseline gap-1.5">
-                <tile.icon
-                  className={`h-4 w-4 shrink-0 ${tile.className || "text-muted-foreground"}`}
-                />
-                <p
-                  className={`text-lg font-bold tabular-nums truncate ${tile.className || "text-foreground"}`}
-                >
-                  {tile.getValue(stats)}
-                </p>
-                {clickable && (
-                  <ChevronRight className="h-4 w-4 shrink-0 opacity-70 ml-auto" />
-                )}
-              </div>
-              <p className="mt-1 text-xs text-muted-foreground tabular-nums truncate">
-                <Amount amount={String(usd)} prefix="$" className="text-inherit font-normal" />
-              </p>
-            </>
-          );
-          return clickable ? (
-            <button
-              key={tile.key}
-              type="button"
-              onClick={() => setOpenModalKey(tile.key)}
-              className={className}
-            >
-              {content}
-            </button>
-          ) : (
-            <div key={tile.key} className={className}>
-              {content}
-            </div>
-          );
-        })}
+    <section aria-label="Order outcomes" className="space-y-4">
+      <div className="flex flex-wrap items-baseline justify-between gap-3">
+        <h2 className="text-lg font-semibold">
+          {allOrders.length.toLocaleString()}{" "}
+          {allOrders.length === 1 ? "order" : "orders"}{" "}
+          <span className="text-sm font-normal text-muted-foreground">
+            in this view
+          </span>
+        </h2>
+        <p className="text-sm text-muted-foreground">
+          Placed order value{" "}
+          <strong
+            className="ml-1 font-semibold text-foreground tabular-nums"
+            title={new Intl.NumberFormat(undefined, {
+              style: "currency",
+              currency: "USD",
+            }).format(totalValue)}
+          >
+            {formatOrderUsd(totalValue)}
+          </strong>
+        </p>
       </div>
-      {STATUS_TILES.map((tile) => (
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-6">
+        {statuses.map((key) => (
+          <button
+            key={key}
+            type="button"
+            disabled={!groups[key].length}
+            onClick={(event) => {
+              lastTrigger.current = event.currentTarget;
+              setOpenStatus(key);
+            }}
+            aria-label={`View ${OVERVIEW_STATUSES[key].label.toLowerCase()} orders (${groups[key].length})`}
+            className="min-w-0 rounded-xl border border-border bg-card p-4 text-left transition-colors enabled:hover:border-primary/40 enabled:hover:bg-muted/30 disabled:cursor-default focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            <span className="flex items-center justify-between gap-1 text-sm font-medium">
+              <span>{OVERVIEW_STATUSES[key].label}</span>
+              {groups[key].length > 0 && (
+                <ChevronRight
+                  aria-hidden
+                  className="size-3.5 shrink-0 text-muted-foreground"
+                />
+              )}
+            </span>
+            <span
+              className={cn(
+                "mt-2 block text-2xl font-semibold tabular-nums",
+                STATUS_COLORS[key],
+              )}
+            >
+              {groups[key].length.toLocaleString()}
+            </span>
+            <span className="mt-1 block text-xs text-muted-foreground">
+              {formatOrderUsd(
+                groups[key].reduce((sum, o) => sum + getOrderValueUsd(o), 0),
+              )}{" "}
+              placed
+            </span>
+          </button>
+        ))}
+      </div>
+      <p className="text-xs text-muted-foreground">
+        Values are the original order sizes reported by the services, not the
+        amounts actually traded. Select a status to see its orders.
+      </p>
+      {openStatus && (
         <StatusOrdersModal
-          key={tile.key}
-          open={openModalKey === tile.key}
-          onOpenChange={(open) => setOpenModalKey(open ? tile.key : null)}
-          partnerName="All partners"
-          orders={ordersByStatus[tile.key] ?? []}
-          title={tile.title}
-          variant={tile.variant}
-          emptyMessage={tile.emptyMessage}
+          onCloseAutoFocus={(event) => {
+            event.preventDefault();
+            lastTrigger.current?.focus();
+          }}
+          open
+          onOpenChange={(open) => {
+            if (!open) setOpenStatus(null);
+          }}
+          partnerName="All trading apps in this view"
+          orders={groups[openStatus]}
+          title={OVERVIEW_STATUSES[openStatus].label}
+          variant={openStatus}
         />
-      ))}
-    </>
+      )}
+    </section>
   );
 }

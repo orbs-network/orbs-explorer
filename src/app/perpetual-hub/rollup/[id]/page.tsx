@@ -7,7 +7,11 @@ function PerpetualHubRollupPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = use(params);
-  return <PerpetualHubRollupView id={id} />;
+  return (
+    <main id="main-content" className="min-w-0">
+      <PerpetualHubRollupView id={id} />
+    </main>
+  );
 }
 
 export default PerpetualHubRollupPage;

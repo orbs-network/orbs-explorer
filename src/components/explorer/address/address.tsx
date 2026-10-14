@@ -1,14 +1,10 @@
 "use client";
 
+import { ActivitySummary, ActivityTime } from "@/components/activity-summary";
 import Link from "next/link";
 import { useExplorerAddress } from "@/lib/explorer/hooks";
 import { ROUTES } from "@/lib/routes";
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "@/components/ui/tabs";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Hash } from "@/components/explorer/ui/hash";
 import { Mono, formatId } from "@/components/explorer/ui/mono";
 import { OpTypePill } from "@/components/explorer/ui/op-type-pill";
@@ -65,6 +61,24 @@ export function ExplorerAddress({ address }: { address: string }) {
   return (
     <div className="flex flex-col gap-4 sm:gap-5">
       <AddressHeader address={address} data={q.data} />
+      <ActivitySummary
+        title={
+          q.data.current
+            ? "Current account"
+            : "Current account data unavailable"
+        }
+        tone={q.data.current ? "pending" : "warning"}
+        explanation="Positions and waiting orders show the latest account data. Activity and Trades explain earlier changes; an order may have traded or been cancelled since it was placed."
+        onRefresh={() => q.refetch()}
+        refreshing={q.isFetching}
+        facts={[
+          {
+            label: "Last updated",
+            value: <ActivityTime value={q.dataUpdatedAt} />,
+          },
+        ]}
+        nextStep="Check waiting orders, then open Activity to see what succeeded, what was rejected, and whether it was confirmed on the blockchain."
+      />
       <StatsStrip data={q.data} />
       <Tabs defaultValue="positions">
         <TabsList>
@@ -81,10 +95,16 @@ export function ExplorerAddress({ address }: { address: string }) {
           <OrdersTab orders={q.data.current?.pendingOrders ?? []} />
         </TabsContent>
         <TabsContent value="activity">
-          <ActivityTab events={q.data.history.events} total={q.data.history.totalEvents} />
+          <ActivityTab
+            events={q.data.history.events}
+            total={q.data.history.totalEvents}
+          />
         </TabsContent>
         <TabsContent value="trades">
-          <TradesTab trades={q.data.history.trades} total={q.data.history.totalTrades} />
+          <TradesTab
+            trades={q.data.history.trades}
+            total={q.data.history.totalTrades}
+          />
         </TabsContent>
         <TabsContent value="accounting">
           <AccountingTab data={q.data} />
@@ -108,11 +128,15 @@ function AddressHeader({
     <header className="flex flex-col gap-2 border-b border-border pb-4">
       <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
         <h1 className="font-mono text-xs uppercase tracking-wider text-muted-foreground">
-          Address
+          Wallet address
         </h1>
       </div>
       <div className="min-w-0">
-        <Hash value={address} full hashClassName="text-xl font-semibold text-foreground" />
+        <Hash
+          value={address}
+          full
+          hashClassName="text-xl font-semibold text-foreground"
+        />
       </div>
       {nonce !== undefined ? (
         <p className="text-xs text-muted-foreground">
@@ -162,19 +186,39 @@ function StatsStrip({ data }: { data: PerpetualHubUserDetail }) {
         value={marginUsed !== undefined ? formatUsdCompact(marginUsed) : "—"}
       />
       <StatCard
-        label="Unrealized PnL"
+        label="Unrealized profit / loss"
         value={upnl !== undefined ? signedUsd(upnl) : "—"}
-        tone={upnl !== undefined ? (upnl > 0 ? "success" : upnl < 0 ? "danger" : "default") : "default"}
+        tone={
+          upnl !== undefined
+            ? upnl > 0
+              ? "success"
+              : upnl < 0
+                ? "danger"
+                : "default"
+            : "default"
+        }
       />
-      <StatCard label="Positions" value={formatInteger(positions)} sublabel="open" />
-      <StatCard label="Orders" value={formatInteger(orders)} sublabel="pending" />
+      <StatCard
+        label="Positions"
+        value={formatInteger(positions)}
+        sublabel="open"
+      />
+      <StatCard
+        label="Orders"
+        value={formatInteger(orders)}
+        sublabel="pending"
+      />
     </section>
   );
 }
 
 // ---------- Positions tab ----------
 
-function PositionsTab({ positions }: { positions: PerpetualHubUserPosition[] }) {
+function PositionsTab({
+  positions,
+}: {
+  positions: PerpetualHubUserPosition[];
+}) {
   return (
     <SectionCard title="Open positions">
       {positions.length === 0 ? (
@@ -182,30 +226,61 @@ function PositionsTab({ positions }: { positions: PerpetualHubUserPosition[] }) 
           no open positions
         </p>
       ) : (
-        <div className="overflow-x-auto">
+        <div
+          tabIndex={0}
+          role="region"
+          aria-label="Current positions table"
+          className="overflow-x-auto"
+        >
           <table className="w-full text-sm">
             <thead className="border-b border-border bg-muted/30">
               <tr className="text-[10px] uppercase tracking-wider text-muted-foreground">
-                <th className="px-3 py-2 text-left font-mono font-medium">Symbol</th>
-                <th className="px-3 py-2 text-left font-mono font-medium">Side</th>
-                <th className="px-3 py-2 text-right font-mono font-medium">Quantity</th>
-                <th className="px-3 py-2 text-right font-mono font-medium">Entry</th>
-                <th className="px-3 py-2 text-right font-mono font-medium">Mark</th>
-                <th className="px-3 py-2 text-right font-mono font-medium">Notional</th>
-                <th className="px-3 py-2 text-right font-mono font-medium">uPnL</th>
-                <th className="px-3 py-2 text-right font-mono font-medium">Lev</th>
-                <th className="px-3 py-2 text-right font-mono font-medium">Liq</th>
+                <th className="px-3 py-2 text-left font-mono font-medium">
+                  Market
+                </th>
+                <th className="px-3 py-2 text-left font-mono font-medium">
+                  Side
+                </th>
+                <th className="px-3 py-2 text-right font-mono font-medium">
+                  Quantity
+                </th>
+                <th className="px-3 py-2 text-right font-mono font-medium">
+                  Entry
+                </th>
+                <th className="px-3 py-2 text-right font-mono font-medium">
+                  Mark
+                </th>
+                <th className="px-3 py-2 text-right font-mono font-medium">
+                  Notional
+                </th>
+                <th className="px-3 py-2 text-right font-mono font-medium">
+                  uPnL
+                </th>
+                <th className="px-3 py-2 text-right font-mono font-medium">
+                  Lev
+                </th>
+                <th className="px-3 py-2 text-right font-mono font-medium">
+                  Liq
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
               {positions.map((p, i) => (
                 <tr key={`${p.symbol ?? "?"}-${i}`}>
-                  <td className="px-3 py-2 font-mono text-foreground">{p.symbol ?? "—"}</td>
+                  <td className="px-3 py-2 font-mono text-foreground">
+                    {p.symbol ?? "—"}
+                  </td>
                   <td className="px-3 py-2">
-                    {p.side ? <SideTag side={p.side} /> : <Mono className="text-muted-foreground">—</Mono>}
+                    {p.side ? (
+                      <SideTag side={p.side} />
+                    ) : (
+                      <Mono className="text-muted-foreground">—</Mono>
+                    )}
                   </td>
                   <td className="px-3 py-2 text-right font-mono text-foreground">
-                    {p.quantity ?? p.positionAmt ? formatNumber(p.quantity ?? p.positionAmt!, 4) : "—"}
+                    {(p.quantity ?? p.positionAmt)
+                      ? formatNumber(p.quantity ?? p.positionAmt!, 4)
+                      : "—"}
                   </td>
                   <td className="px-3 py-2 text-right font-mono text-muted-foreground">
                     {p.entryPrice ? formatNumber(p.entryPrice, 6) : "—"}
@@ -223,7 +298,9 @@ function PositionsTab({ positions }: { positions: PerpetualHubUserPosition[] }) 
                     {p.leverage !== undefined ? `${p.leverage}×` : "—"}
                   </td>
                   <td className="px-3 py-2 text-right font-mono text-destructive">
-                    {p.liquidationPrice ? formatNumber(p.liquidationPrice, 6) : "—"}
+                    {p.liquidationPrice
+                      ? formatNumber(p.liquidationPrice, 6)
+                      : "—"}
                   </td>
                 </tr>
               ))}
@@ -245,18 +322,39 @@ function OrdersTab({ orders }: { orders: PerpetualHubUserOrder[] }) {
           no pending orders
         </p>
       ) : (
-        <div className="overflow-x-auto">
+        <div
+          tabIndex={0}
+          role="region"
+          aria-label="Pending orders table"
+          className="overflow-x-auto"
+        >
           <table className="w-full text-sm">
             <thead className="border-b border-border bg-muted/30">
               <tr className="text-[10px] uppercase tracking-wider text-muted-foreground">
-                <th className="px-3 py-2 text-left font-mono font-medium">Order</th>
-                <th className="px-3 py-2 text-left font-mono font-medium">Symbol</th>
-                <th className="px-3 py-2 text-left font-mono font-medium">Side</th>
-                <th className="px-3 py-2 text-left font-mono font-medium">Type</th>
-                <th className="px-3 py-2 text-right font-mono font-medium">Quantity</th>
-                <th className="px-3 py-2 text-right font-mono font-medium">Price</th>
-                <th className="px-3 py-2 text-right font-mono font-medium">Stop</th>
-                <th className="px-3 py-2 text-left font-mono font-medium">Status</th>
+                <th className="px-3 py-2 text-left font-mono font-medium">
+                  Order
+                </th>
+                <th className="px-3 py-2 text-left font-mono font-medium">
+                  Market
+                </th>
+                <th className="px-3 py-2 text-left font-mono font-medium">
+                  Side
+                </th>
+                <th className="px-3 py-2 text-left font-mono font-medium">
+                  Type
+                </th>
+                <th className="px-3 py-2 text-right font-mono font-medium">
+                  Quantity
+                </th>
+                <th className="px-3 py-2 text-right font-mono font-medium">
+                  Price
+                </th>
+                <th className="px-3 py-2 text-right font-mono font-medium">
+                  Stop
+                </th>
+                <th className="px-3 py-2 text-left font-mono font-medium">
+                  Result
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
@@ -265,11 +363,19 @@ function OrdersTab({ orders }: { orders: PerpetualHubUserOrder[] }) {
                   <td className="px-3 py-2 font-mono text-foreground">
                     {o.orderId ?? o.id ?? "—"}
                   </td>
-                  <td className="px-3 py-2 font-mono text-foreground">{o.symbol ?? "—"}</td>
-                  <td className="px-3 py-2">
-                    {o.side ? <SideTag side={o.side} /> : <Mono className="text-muted-foreground">—</Mono>}
+                  <td className="px-3 py-2 font-mono text-foreground">
+                    {o.symbol ?? "—"}
                   </td>
-                  <td className="px-3 py-2 font-mono text-muted-foreground">{o.orderType ?? "—"}</td>
+                  <td className="px-3 py-2">
+                    {o.side ? (
+                      <SideTag side={o.side} />
+                    ) : (
+                      <Mono className="text-muted-foreground">—</Mono>
+                    )}
+                  </td>
+                  <td className="px-3 py-2 font-mono text-muted-foreground">
+                    {o.orderType ?? "—"}
+                  </td>
                   <td className="px-3 py-2 text-right font-mono text-foreground">
                     {o.quantity ? formatNumber(o.quantity, 4) : "—"}
                   </td>
@@ -280,7 +386,11 @@ function OrdersTab({ orders }: { orders: PerpetualHubUserOrder[] }) {
                     {o.stopPrice ? formatNumber(o.stopPrice, 6) : "—"}
                   </td>
                   <td className="px-3 py-2">
-                    {o.status ? <StatusBadge status={o.status} /> : <Mono className="text-muted-foreground">—</Mono>}
+                    {o.status ? (
+                      <StatusBadge status={o.status} />
+                    ) : (
+                      <Mono className="text-muted-foreground">—</Mono>
+                    )}
                   </td>
                 </tr>
               ))}
@@ -304,7 +414,11 @@ function ActivityTab({
   return (
     <SectionCard
       title={`Activity${total ? ` (${formatInteger(total)})` : ""}`}
-      hint={total > events.length ? `showing ${events.length} most recent` : undefined}
+      hint={
+        total > events.length
+          ? `showing ${events.length} most recent`
+          : undefined
+      }
     >
       {events.length === 0 ? (
         <p className="px-3 py-6 text-center text-xs text-muted-foreground">
@@ -313,7 +427,10 @@ function ActivityTab({
       ) : (
         <ul className="divide-y divide-border">
           {events.map((op, i) => (
-            <ActivityRow key={`${op.teeSequence ?? "noseq"}-${op.id ?? i}`} op={op} />
+            <ActivityRow
+              key={`${op.teeSequence ?? "noseq"}-${op.id ?? i}`}
+              op={op}
+            />
           ))}
         </ul>
       )}
@@ -348,7 +465,10 @@ function ActivityRow({ op }: { op: PerpetualHubOperation }) {
   return (
     <li>
       {href ? (
-        <Link href={href} className="group block transition-colors hover:bg-muted/40">
+        <Link
+          href={href}
+          className="group block transition-colors hover:bg-muted/40"
+        >
           {inner}
         </Link>
       ) : (
@@ -360,29 +480,60 @@ function ActivityRow({ op }: { op: PerpetualHubOperation }) {
 
 // ---------- Trades tab ----------
 
-function TradesTab({ trades, total }: { trades: PerpetualHubTrade[]; total: number }) {
+function TradesTab({
+  trades,
+  total,
+}: {
+  trades: PerpetualHubTrade[];
+  total: number;
+}) {
   return (
     <SectionCard
       title={`Trades${total ? ` (${formatInteger(total)})` : ""}`}
-      hint={total > trades.length ? `showing ${trades.length} most recent` : undefined}
+      hint={
+        total > trades.length
+          ? `showing ${trades.length} most recent`
+          : undefined
+      }
     >
       {trades.length === 0 ? (
         <p className="px-3 py-6 text-center text-xs text-muted-foreground">
           no trades
         </p>
       ) : (
-        <div className="overflow-x-auto">
+        <div
+          tabIndex={0}
+          role="region"
+          aria-label="Trade history table"
+          className="overflow-x-auto"
+        >
           <table className="w-full text-sm">
             <thead className="border-b border-border bg-muted/30">
               <tr className="text-[10px] uppercase tracking-wider text-muted-foreground">
-                <th className="px-3 py-2 text-left font-mono font-medium">Time</th>
-                <th className="px-3 py-2 text-left font-mono font-medium">Symbol</th>
-                <th className="px-3 py-2 text-left font-mono font-medium">Side</th>
-                <th className="px-3 py-2 text-right font-mono font-medium">Quantity</th>
-                <th className="px-3 py-2 text-right font-mono font-medium">Price</th>
-                <th className="px-3 py-2 text-right font-mono font-medium">Fee</th>
-                <th className="px-3 py-2 text-right font-mono font-medium">Realized PnL</th>
-                <th className="px-3 py-2 text-left font-mono font-medium">Kind</th>
+                <th className="px-3 py-2 text-left font-mono font-medium">
+                  Time
+                </th>
+                <th className="px-3 py-2 text-left font-mono font-medium">
+                  Market
+                </th>
+                <th className="px-3 py-2 text-left font-mono font-medium">
+                  Side
+                </th>
+                <th className="px-3 py-2 text-right font-mono font-medium">
+                  Quantity
+                </th>
+                <th className="px-3 py-2 text-right font-mono font-medium">
+                  Price
+                </th>
+                <th className="px-3 py-2 text-right font-mono font-medium">
+                  Fee
+                </th>
+                <th className="px-3 py-2 text-right font-mono font-medium">
+                  Realized profit / loss
+                </th>
+                <th className="px-3 py-2 text-left font-mono font-medium">
+                  Kind
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
@@ -391,9 +542,15 @@ function TradesTab({ trades, total }: { trades: PerpetualHubTrade[]; total: numb
                   <td className="px-3 py-2">
                     <RelativeTime timestamp={t.timestamp} className="text-xs" />
                   </td>
-                  <td className="px-3 py-2 font-mono text-foreground">{t.symbol ?? "—"}</td>
+                  <td className="px-3 py-2 font-mono text-foreground">
+                    {t.symbol ?? "—"}
+                  </td>
                   <td className="px-3 py-2">
-                    {t.side ? <SideTag side={t.side} /> : <Mono className="text-muted-foreground">—</Mono>}
+                    {t.side ? (
+                      <SideTag side={t.side} />
+                    ) : (
+                      <Mono className="text-muted-foreground">—</Mono>
+                    )}
                   </td>
                   <td className="px-3 py-2 text-right font-mono text-foreground">
                     {t.quantity ? formatNumber(t.quantity, 4) : "—"}
@@ -447,7 +604,9 @@ function AccountingTab({ data }: { data: PerpetualHubUserDetail }) {
       </DataRow>
       <DataRow label="Commission paid">
         <Mono className="text-muted-foreground">
-          {a.totalCommissionPaid ? formatUsdCompact(num(a.totalCommissionPaid)) : "—"}
+          {a.totalCommissionPaid
+            ? formatUsdCompact(num(a.totalCommissionPaid))
+            : "—"}
         </Mono>
       </DataRow>
       <DataRow label="Funding paid">
@@ -455,7 +614,7 @@ function AccountingTab({ data }: { data: PerpetualHubUserDetail }) {
           {a.totalFundingPaid ? formatUsdCompact(num(a.totalFundingPaid)) : "—"}
         </Mono>
       </DataRow>
-      <DataRow label="Realized PnL">
+      <DataRow label="Realized profit / loss">
         <PnlValue value={a.realizedPnl} compact />
       </DataRow>
     </SectionCard>
@@ -471,11 +630,16 @@ function AddressSkeleton({ address }: { address: string }) {
         <p className="font-mono text-xs uppercase tracking-wider text-muted-foreground">
           Address
         </p>
-        <p className="break-all font-mono text-xl font-semibold text-foreground">{address}</p>
+        <p className="break-all font-mono text-xl font-semibold text-foreground">
+          {address}
+        </p>
       </header>
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6 lg:gap-3">
         {Array.from({ length: 6 }).map((_, i) => (
-          <span key={i} className="block h-16 animate-pulse rounded-md bg-muted/30" />
+          <span
+            key={i}
+            className="block h-16 animate-pulse rounded-md bg-muted/30"
+          />
         ))}
       </div>
       <span className="block h-9 w-full max-w-md animate-pulse rounded-md bg-muted/30" />
@@ -501,7 +665,9 @@ function SectionCard({
         <h2 className="font-mono text-[11px] font-semibold uppercase tracking-wider text-foreground">
           {title}
         </h2>
-        {hint ? <p className="text-[11px] text-muted-foreground">{hint}</p> : null}
+        {hint ? (
+          <p className="text-[11px] text-muted-foreground">{hint}</p>
+        ) : null}
       </header>
       <div className="divide-y divide-border">{children}</div>
     </section>
@@ -532,8 +698,8 @@ function SideTag({ side }: { side: string }) {
   const tone = isBuy
     ? "bg-[var(--explorer-success)]/15 text-[var(--explorer-success)]"
     : isSell
-    ? "bg-destructive/15 text-destructive"
-    : "bg-muted text-muted-foreground";
+      ? "bg-destructive/15 text-destructive"
+      : "bg-muted text-muted-foreground";
   return (
     <span
       className={`inline-flex items-center rounded px-1.5 py-0.5 font-mono text-[10px] font-medium uppercase ${tone}`}
@@ -554,13 +720,14 @@ function PnlValue({
     return <Mono className="text-muted-foreground">—</Mono>;
   }
   const n = Number(value);
-  if (!Number.isFinite(n)) return <Mono className="text-muted-foreground">—</Mono>;
+  if (!Number.isFinite(n))
+    return <Mono className="text-muted-foreground">—</Mono>;
   const tone =
     n > 0
       ? "text-[var(--explorer-success)]"
       : n < 0
-      ? "text-destructive"
-      : "text-foreground";
+        ? "text-destructive"
+        : "text-foreground";
   const display = compact ? formatUsdCompact(n) : formatNumber(n, 6);
   return (
     <Mono className={tone}>

@@ -182,7 +182,7 @@ export async function GET(request: Request) {
   const firstError = stateResponses.find(
     (item) => item.response.error || !item.response.data,
   );
-  if (firstError) {
+  if (firstError && stateResponses.every((item) => !item.response.data)) {
     return NextResponse.json(
       {
         error:
@@ -193,7 +193,14 @@ export async function GET(request: Request) {
     );
   }
 
+  const warnings = stateResponses
+    .filter((item) => !item.response.data)
+    .map(
+      (item) =>
+        `${item.deployment.partnerName} on ${item.deployment.chainName} is unavailable. Results and totals cover available deployments only.`,
+    );
   const exposures = stateResponses
+    .filter((item) => item.response.data)
     .flatMap(({ deployment, response }) =>
       buildRiskRows(response.data!, deployment),
     )
@@ -204,6 +211,7 @@ export async function GET(request: Request) {
     );
 
   return NextResponse.json({
+    warnings,
     exposures: exposures.slice(offset, offset + limit),
     total: exposures.length,
     limit,

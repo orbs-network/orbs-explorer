@@ -36,11 +36,15 @@ export const queryInitialData = {
 export async function fetchElastic<T>(
   url: string,
   data: unknown,
-  signal?: AbortSignal
+  signal?: AbortSignal,
 ): Promise<T[]> {
   const payload = typeof data === "object" && data !== null ? { ...data } : {};
-  const response = await axios.post(`${url}/_search`, payload, { signal });
+  const response = await axios.post(`${url}/_search`, payload, {
+    signal,
+    timeout: 20_000,
+  });
   return normalizeSessions(
-    response.data.hits?.hits.map((hit: { fields: unknown }) => hit.fields) ?? []
+    response.data.hits?.hits.map((hit: { fields: unknown }) => hit.fields) ??
+      [],
   ) as T[];
 }

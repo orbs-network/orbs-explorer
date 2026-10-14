@@ -32,12 +32,18 @@ export default async function ExplorerSearchPage({
     return (
       <SearchFallback
         title="Search"
-        message="Type a sequence number, address, state root, batch id, or L1 tx hash."
+        message="Enter a wallet address, change number, or blockchain transaction ID. Technical verification IDs also work."
       />
     );
   }
 
-  return <SearchFallback title="Not found" message={result.reason} query={result.query} />;
+  return (
+    <SearchFallback
+      title="Not found"
+      message={result.reason}
+      query={result.query}
+    />
+  );
 }
 
 function SearchFallback({
@@ -64,16 +70,16 @@ function SearchFallback({
       ) : null}
       <p className="mt-3 text-sm text-muted-foreground">{message}</p>
       <div className="mt-5 grid gap-2 text-xs text-muted-foreground sm:grid-cols-2">
-        <FormatHint label="Sequence (block)">
+        <FormatHint label="Account change (block)">
           <code className="font-mono">12345</code>
         </FormatHint>
         <FormatHint label="Address">
           <code className="font-mono">0x… (40 hex)</code>
         </FormatHint>
-        <FormatHint label="State root">
+        <FormatHint label="Technical verification ID">
           <code className="font-mono">0x… (64 hex)</code>
         </FormatHint>
-        <FormatHint label="L1 anchor tx">
+        <FormatHint label="Blockchain transaction ID">
           <code className="font-mono">0x… (64 hex)</code>
         </FormatHint>
       </div>

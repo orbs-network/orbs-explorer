@@ -335,7 +335,7 @@ export async function GET(request: Request) {
     (item) => item.response.error || !item.response.data,
   );
 
-  if (firstError) {
+  if (firstError && stateResponses.every((item) => !item.response.data)) {
     return NextResponse.json(
       {
         error:
@@ -346,7 +346,14 @@ export async function GET(request: Request) {
     );
   }
 
+  const warnings = stateResponses
+    .filter((item) => !item.response.data)
+    .map(
+      (item) =>
+        `${item.deployment.partnerName} on ${item.deployment.chainName} is unavailable. Results and totals cover available deployments only.`,
+    );
   const allItems = stateResponses
+    .filter((item) => item.response.data)
     .flatMap(({ deployment, response }) => [
       ...buildPositions(response.data!, deployment),
       ...buildOrders(response.data!, deployment),
@@ -371,6 +378,7 @@ export async function GET(request: Request) {
   const pageItems = allItems.slice(offset, offset + limit);
 
   const payload: PerpetualHubPositionList = {
+    warnings,
     items: pageItems,
     positions: pageItems.filter(
       (item): item is PerpetualHubPositionRecord =>

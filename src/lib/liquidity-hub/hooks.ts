@@ -61,7 +61,7 @@ export const useGasCostUsd = (swap?: LiquidityHubSwap) => {
 
 export const useTransfers = (swap?: LiquidityHubSwap) => {
   return useQuery({
-    queryKey: ["useTransfers", swap?.txHash],
+    queryKey: ["useTransfers", swap?.chainId, swap?.txHash],
     queryFn: async ({ signal }) => {
       if (!swap) {
         throw new Error("Swap is required");
@@ -69,12 +69,14 @@ export const useTransfers = (swap?: LiquidityHubSwap) => {
       signal?.throwIfAborted();
       const publicClient = getPublicClient(swap.chainId);
 
-      const receipt = await publicClient?.getTransactionReceipt({
+      if (!publicClient)
+        throw new Error("No receipt provider is available for this network");
+      const receipt = await publicClient.getTransactionReceipt({
         hash: swap.txHash! as `0x${string}`,
       });
 
       signal?.throwIfAborted();
-      if (!receipt) return null;
+      if (!receipt) throw new Error("Network receipt is not available yet");
       return getERC20Transfers(receipt);
     },
     staleTime: Infinity,

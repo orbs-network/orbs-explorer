@@ -6,8 +6,8 @@ export function useCopy() {
     try {
       await navigator.clipboard.writeText(text);
       toast.success("Copied to clipboard");
-    } catch (err) {
-      console.error(err);
+    } catch {
+      toast.error("Couldn’t copy. Select the value and copy it manually.");
     }
   }, []);
 }

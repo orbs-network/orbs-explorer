@@ -1,5 +1,8 @@
 "use client";
 
+import { ActivitySummary, ActivityTime } from "@/components/activity-summary";
+import { getSwapStory } from "@/lib/activity/swap-story";
+import { Copy } from "@/components/ui/copy";
 import AceEditor from "react-ace";
 import "ace-builds/src-noconflict/mode-sh";
 import "ace-builds/src-noconflict/theme-monokai";
@@ -66,6 +69,9 @@ import { ExplorerLink } from "../explorer-link";
 
 interface ContextType extends SwapQueryResponse {
   isPreview?: boolean;
+  onRefresh?: () => void;
+  refreshing?: boolean;
+  fetchedAt?: number;
 }
 
 const Context = createContext({} as ContextType);
@@ -112,17 +118,30 @@ const State = ({
   isPreview?: boolean;
   identifier: string;
 }) => {
-  const { data, isLoading } = useLHSwap(identifier);
+  const { data, isLoading, isError, refetch, isFetching, dataUpdatedAt } =
+    useLHSwap(identifier);
 
   if (isLoading) {
     return <TransactionDisplay.Loading message="Loading transaction..." />;
   }
 
+  if (isError) {
+    return (
+      <ActivitySummary
+        title="Swap data is unavailable"
+        tone="warning"
+        explanation="Swap details could not be loaded. This does not mean your swap failed."
+        nextStep="Refresh this page, or use the transaction ID from your trading app to check the blockchain record."
+        onRefresh={() => refetch()}
+        refreshing={isFetching}
+      />
+    );
+  }
   if (!data) {
     return (
       <TransactionDisplay.NotFound
-        title="Session Not Found"
-        description="The transaction you're looking for doesn't exist or has expired."
+        title="Swap not found"
+        description="No swap was found for this ID. Check the transaction ID or swap attempt ID in the app where you made the swap."
       />
     );
   }
@@ -136,6 +155,10 @@ const State = ({
         clientLogs: swapData.clientLogs,
         quote: swapData.quote,
         isPreview,
+        warnings: swapData.warnings,
+        onRefresh: () => refetch(),
+        refreshing: isFetching,
+        fetchedAt: dataUpdatedAt,
       }}
     >
       <Content />
@@ -154,11 +177,11 @@ const DexAmountOut = () => {
   return (
     <TransactionDisplay.SectionItem
       description="(minus gas)"
-      label="Dex Amount Out "
-      tooltip="The amount user would received via dex"
+      label="Alternative swap estimate"
+      tooltip="An estimate for the trading app’s own route, after gas costs."
     >
       <TokenAmount
-        amountRaw={swap.dexSimulateOutMinusGas.toString()}
+        amountRaw={swap.dexSimulateOutMinusGas?.toString()}
         address={swap.tokenOutAddress}
         chainId={swap.chainId}
         usd={usd}
@@ -176,10 +199,17 @@ const AmountOutLHEstimate = () => {
     decimalScale: 2,
   });
 
+  if (!quote)
+    return (
+      <TransactionDisplay.SectionItem label="Estimated output">
+        Quote data not available
+      </TransactionDisplay.SectionItem>
+    );
+
   return (
     <TransactionDisplay.SectionItem
       description="(estimate)"
-      label="Amount Out LH"
+      label="Estimated received amount"
     >
       <TokenAmount
         amountRaw={value.toString()}
@@ -200,10 +230,22 @@ const AmountOutLHPostDeductions = () => {
     decimalScale: 2,
   });
 
+  if (swap.swapStatus?.toLowerCase() !== "success")
+    return (
+      <TransactionDisplay.SectionItem label="Received amount">
+        No successful output reported
+      </TransactionDisplay.SectionItem>
+    );
+  if (swap.exactOutAmount === undefined)
+    return (
+      <TransactionDisplay.SectionItem label="Received amount">
+        Amount not reported
+      </TransactionDisplay.SectionItem>
+    );
   return (
     <TransactionDisplay.SectionItem
-      description="(actual post deductions)"
-      label="Amount Out LH"
+      description="(reported by the swap service)"
+      label="Received amount"
     >
       <TokenAmount
         amountRaw={value.toString()}
@@ -224,9 +266,9 @@ const Fees = () => {
   });
 
   return (
-    <TransactionDisplay.SectionItem label="Fees">
+    <TransactionDisplay.SectionItem label="Reported fee">
       <TokenAmount
-        amountRaw={swap.feeOutAmount.toString()}
+        amountRaw={swap.feeOutAmount?.toString()}
         address={swap.tokenOutAddress}
         chainId={swap.chainId}
         usd={usd}
@@ -244,6 +286,13 @@ const Savings = () => {
     value: useOutTokenUsd(swap, value),
     decimalScale: 2,
   });
+
+  if (!quote)
+    return (
+      <TransactionDisplay.SectionItem label="Savings">
+        Quote data not available
+      </TransactionDisplay.SectionItem>
+    );
 
   return (
     <TransactionDisplay.SectionItem label="Savings">
@@ -266,10 +315,17 @@ const AmountOutLHActual = () => {
     decimalScale: 2,
   });
 
+  if (!quote)
+    return (
+      <TransactionDisplay.SectionItem label="Output before deductions">
+        Quote data not available
+      </TransactionDisplay.SectionItem>
+    );
+
   return (
     <TransactionDisplay.SectionItem
-      description="(actual pre deductions)"
-      label="Amount Out LH"
+      description="(service reported, pre deductions)"
+      label="Reported output before fees and gas"
     >
       <TokenAmount
         amountRaw={value.toString()}
@@ -293,7 +349,7 @@ const SwapHeader = () => {
         <div className="flex items-center justify-between flex-wrap gap-2">
           <div className="flex items-center gap-2">
             {/* <TransactionDisplay.StatusBadge status="completed" /> */}
-            <TransactionDisplay.Badge>Liquidity Hub</TransactionDisplay.Badge>
+            <h1 className="text-xl font-semibold">Liquidity Hub swap</h1>
           </div>
           <TransactionDisplay.Timestamp date={swap.timestamp} />
         </div>
@@ -303,71 +359,163 @@ const SwapHeader = () => {
           fromAddress={swap.tokenInAddress}
           toAddress={swap.tokenOutAddress}
           chainId={swap.chainId}
-
         />
       </div>
     </TransactionDisplay.Hero>
   );
 };
 
+const SwapExplanation = () => {
+  const { swap, quotes, warnings, onRefresh, refreshing, fetchedAt } =
+    useSwapPageContext();
+  const story = getSwapStory(swap);
+  return (
+    <>
+      <ActivitySummary
+        {...story}
+        onRefresh={onRefresh}
+        refreshing={refreshing}
+        facts={[
+          {
+            label: "Latest step",
+            value: swap.stage || "Not reported",
+          },
+          {
+            label: "Blockchain status (reported)",
+            value: swap.txStatus || "Not reported",
+          },
+          {
+            label: "Network block",
+            value: swap.blockNumber
+              ? swap.blockNumber.toLocaleString()
+              : "Not reported",
+          },
+          {
+            label: "Price estimates available",
+            value: warnings?.some((warning) => warning.startsWith("Quote"))
+              ? "Unavailable"
+              : quotes.length.toLocaleString(),
+          },
+          {
+            label: "Recorded at",
+            value: <ActivityTime value={swap.timestamp} />,
+          },
+          {
+            label: "Last updated",
+            value: <ActivityTime value={fetchedAt} />,
+          },
+        ]}
+        actions={
+          swap.txHash ? (
+            <ExplorerLink value={swap.txHash} chainId={swap.chainId}>
+              Check on the blockchain
+            </ExplorerLink>
+          ) : undefined
+        }
+      />
+      {warnings?.map((warning) => (
+        <p
+          key={warning}
+          role="status"
+          className="text-sm text-muted-foreground"
+        >
+          {warning}
+        </p>
+      ))}
+    </>
+  );
+};
+
 const Content = () => {
+  const [showTransfers, setShowTransfers] = useState(false);
   const { swap } = useSwapPageContext();
   return (
     <div className="flex flex-col gap-4">
       <SwapHeader />
+      <SwapExplanation />
 
       <TransactionDisplay.Grid>
         {/* Transaction Details Card */}
-        <TransactionDisplay.SectionCard title="Transaction Details" icon={Receipt}>
-          <TransactionDisplay.SectionItem label="Tx Hash">
+        <TransactionDisplay.SectionCard
+          title="Transaction Details"
+          icon={Receipt}
+        >
+          <TransactionDisplay.SectionItem label="Blockchain transaction">
             <div className="flex items-center gap-2">
               <ExplorerLink value={swap.txHash} chainId={swap.chainId} />
               <ExternalLink className="w-3.5 h-3.5 text-muted-foreground" />
             </div>
           </TransactionDisplay.SectionItem>
-          <TransactionDisplay.SectionItem label="Session ID">
-            <span className="text-xs font-mono text-muted-foreground truncate max-w-[200px]">
-              {swap.sessionId}
-            </span>
+          <TransactionDisplay.SectionItem label="Swap attempt ID">
+            <Copy text={swap.sessionId} value={swap.sessionId} />
           </TransactionDisplay.SectionItem>
           <TransactionDisplay.SectionItem label="Network">
             <Network chainId={swap.chainId} />
           </TransactionDisplay.SectionItem>
-          <TransactionDisplay.SectionItem label="Partner">
+          <TransactionDisplay.SectionItem label="Trading app">
             <Partner id={swap.dex} />
           </TransactionDisplay.SectionItem>
-          <TransactionDisplay.SectionItem label="Swapper">
+          <TransactionDisplay.SectionItem label="Your wallet">
             <div className="flex items-center gap-2">
               <Wallet className="w-3.5 h-3.5 text-muted-foreground" />
               <ExplorerLink value={swap.user} chainId={swap.chainId} />
             </div>
           </TransactionDisplay.SectionItem>
-          <TransactionDisplay.SectionItem label="Slippage">
+          <TransactionDisplay.SectionItem label="Price protection (slippage)">
             <span className="px-2 py-0.5 bg-muted rounded text-sm font-mono">
-              {swap.slippage.toString()}%
+              {swap.slippage?.toString() ?? "Not reported"}%
             </span>
           </TransactionDisplay.SectionItem>
         </TransactionDisplay.SectionCard>
 
         {/* Swap Amounts Card */}
-        <TransactionDisplay.SectionCard title="Swap Amounts" icon={PiggyBank}>
-          <TransactionDisplay.SectionItem label="Amount In">
+        <TransactionDisplay.SectionCard title="Amounts" icon={PiggyBank}>
+          <TransactionDisplay.SectionItem label="Amount to swap">
             <TokenAmount
-              amountRaw={swap.amountIn.toString()}
+              amountRaw={swap.amountIn?.toString()}
               address={swap.tokenInAddress}
               chainId={swap.chainId}
               usd={swap.amountInUSD?.toString() || "0"}
             />
           </TransactionDisplay.SectionItem>
-          <DexAmountOut />
-          <AmountOutLHEstimate />
-          <AmountOutLHActual />
           <AmountOutLHPostDeductions />
+          <details className="border-t border-border pt-3">
+            <summary className="cursor-pointer text-sm font-medium">
+              Price comparison and estimates
+            </summary>
+            <div className="mt-3 space-y-3">
+              <DexAmountOut />
+              <AmountOutLHEstimate />
+              <AmountOutLHActual />
+            </div>
+          </details>
         </TransactionDisplay.SectionCard>
       </TransactionDisplay.Grid>
 
+      {swap.txHash && (
+        <details
+          className="rounded-lg border border-border bg-card p-4"
+          onToggle={(event) => setShowTransfers(event.currentTarget.open)}
+        >
+          <summary className="cursor-pointer text-sm font-medium">
+            Check token transfers on the blockchain
+          </summary>
+          <p className="mt-2 text-xs text-muted-foreground">
+            Receipt transfers show token movements reported by the network,
+            separately from quote estimates.
+          </p>
+          {showTransfers && (
+            <div className="mt-3">
+              <Transfers />
+            </div>
+          )}
+        </details>
+      )}
       {/* Fees & Savings Card */}
-      <TransactionDisplay.SectionCard title="Fees & Savings" icon={CheckCircle2}>
+      <TransactionDisplay.SectionCard
+        title="Fees & Savings"
+        icon={CheckCircle2}
+      >
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <TransactionDisplay.InfoBox>
             <Fees />
@@ -397,11 +545,15 @@ const DexRouterData = () => {
             <FileText className="w-5 h-5 text-primary" />
             DEX Router Data
           </DialogTitle>
-          <p className="text-sm text-muted-foreground font-mono">{swap.sessionId}</p>
+          <p className="text-sm text-muted-foreground font-mono">
+            {swap.sessionId}
+          </p>
         </DialogHeader>
         <div className="flex-1 flex flex-col gap-4 overflow-y-auto">
           <div className="flex flex-col gap-2">
-            <label className="text-sm font-semibold text-foreground uppercase tracking-wide">Data</label>
+            <label className="text-sm font-semibold text-foreground uppercase tracking-wide">
+              Data
+            </label>
             <div className="p-4 bg-muted/50 rounded-lg border border-border overflow-x-auto">
               <p className="text-sm font-mono break-all text-muted-foreground">
                 {swap.dexRouteData}
@@ -409,7 +561,9 @@ const DexRouterData = () => {
             </div>
           </div>
           <div className="flex flex-col gap-2">
-            <label className="text-sm font-semibold text-foreground uppercase tracking-wide">To Address</label>
+            <label className="text-sm font-semibold text-foreground uppercase tracking-wide">
+              To Address
+            </label>
             <div className="p-4 bg-muted/50 rounded-lg border border-border">
               <ExplorerLink value={swap.dexRouteTo} chainId={swap.chainId}>
                 {swap.dexRouteTo}
@@ -424,17 +578,42 @@ const DexRouterData = () => {
 
 const Transfers = () => {
   const { swap } = useSwapPageContext();
-  const transfers = useTransfers(swap).data;
+  const transfersQuery = useTransfers(swap);
+  const transfers = transfersQuery.data;
   const addresses = useMemo(() => {
     if (!transfers) return [];
     return transfers
       .filter((transfer) => transfer.value)
-      .map((it) => [it.tokenAddress, it.from, it.to])
-      .flat();
+      .map((it) => it.tokenAddress);
   }, [transfers]);
 
   const tokens = useTokens(addresses, swap.chainId).data;
-  if (!transfers || !swap) return null;
+  if (transfersQuery.isLoading)
+    return (
+      <p role="status" className="text-sm text-muted-foreground">
+        Loading network receipt…
+      </p>
+    );
+  if (transfersQuery.isError)
+    return (
+      <div role="status" className="text-sm text-muted-foreground">
+        Network receipt unavailable. This does not establish the transaction
+        outcome.{" "}
+        <button
+          className="text-primary underline"
+          onClick={() => transfersQuery.refetch()}
+        >
+          Retry receipt
+        </button>
+      </div>
+    );
+  if (!transfers?.length)
+    return (
+      <p className="text-sm text-muted-foreground">
+        No ERC-20 transfers found in this receipt. Native currency transfers are
+        not included.
+      </p>
+    );
 
   return (
     <Dialog>
@@ -452,13 +631,19 @@ const Transfers = () => {
             Token Transfers
           </DialogTitle>
           <p className="text-sm text-muted-foreground">
-            {transfers.length} transfer{transfers.length !== 1 ? "s" : ""} in this transaction
+            {transfers.length} transfer{transfers.length !== 1 ? "s" : ""} in
+            this transaction
           </p>
         </DialogHeader>
         <div className="flex flex-col gap-3 overflow-y-auto flex-1 max-h-[500px]">
           {transfers?.map((transfer, index) => {
             return (
-              <Transfer key={index} log={transfer} tokens={tokens ?? []} index={index} />
+              <Transfer
+                key={index}
+                log={transfer}
+                tokens={tokens ?? []}
+                index={index}
+              />
             );
           })}
         </div>
@@ -467,7 +652,15 @@ const Transfers = () => {
   );
 };
 
-const Transfer = ({ log, tokens, index }: { log: TransferLog; tokens: Token[]; index: number }) => {
+const Transfer = ({
+  log,
+  tokens,
+  index,
+}: {
+  log: TransferLog;
+  tokens: Token[];
+  index: number;
+}) => {
   const { swap } = useSwapPageContext();
   const { fromToken, toToken } = useMemo(() => {
     return {
@@ -543,7 +736,9 @@ const LogTrace = () => {
                 <FileText className="w-5 h-5 text-primary" />
                 Log Trace
               </DialogTitle>
-              <p className="text-sm text-muted-foreground font-mono mt-1">{swap.sessionId}</p>
+              <p className="text-sm text-muted-foreground font-mono mt-1">
+                {swap.sessionId}
+              </p>
             </div>
             <div className="flex items-center gap-3 px-3 py-2 bg-muted/50 rounded-lg">
               <span className="text-sm text-muted-foreground">Theme</span>
@@ -551,7 +746,9 @@ const LogTrace = () => {
                 checked={darkMode}
                 onCheckedChange={(checked) => setDarkMode(checked)}
               />
-              <span className="text-xs text-muted-foreground">{darkMode ? "Dark" : "Light"}</span>
+              <span className="text-xs text-muted-foreground">
+                {darkMode ? "Dark" : "Light"}
+              </span>
             </div>
           </div>
         </DialogHeader>
@@ -592,7 +789,9 @@ const Logs = () => {
             <FileText className="w-5 h-5 text-primary" />
             Transaction Logs
           </DialogTitle>
-          <p className="text-sm text-muted-foreground font-mono">{swap.sessionId}</p>
+          <p className="text-sm text-muted-foreground font-mono">
+            {swap.sessionId}
+          </p>
         </DialogHeader>
         <Tabs defaultValue="swap" className="overflow-y-auto">
           <div className="sticky top-0 z-10 bg-background pb-4">
@@ -613,17 +812,23 @@ const Logs = () => {
           </div>
           <TabsContent value="client" className="mt-0">
             <div className="p-4 bg-muted/30 rounded-lg border border-border min-h-[200px] flex items-center justify-center">
-              <p className="text-muted-foreground text-sm">Client logs not available</p>
+              <p className="text-muted-foreground text-sm">
+                Client logs not available
+              </p>
             </div>
           </TabsContent>
           <TabsContent value="swap" className="mt-0">
             <div className="p-4 bg-muted/30 rounded-lg border border-border min-h-[200px] flex items-center justify-center">
-              <p className="text-muted-foreground text-sm">Swap logs not available</p>
+              <p className="text-muted-foreground text-sm">
+                Swap logs not available
+              </p>
             </div>
           </TabsContent>
           <TabsContent value="quote" className="mt-0">
             <div className="p-4 bg-muted/30 rounded-lg border border-border min-h-[200px] flex items-center justify-center">
-              <p className="text-muted-foreground text-sm">Quote logs not available</p>
+              <p className="text-muted-foreground text-sm">
+                Quote logs not available
+              </p>
             </div>
           </TabsContent>
         </Tabs>

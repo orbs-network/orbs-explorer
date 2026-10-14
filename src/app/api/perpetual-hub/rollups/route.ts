@@ -1,3 +1,4 @@
+import { availableResults } from "@/lib/perpetual-hub/available-results";
 import { NextResponse } from "next/server";
 import {
   type PerpetualHubDeployment,
@@ -235,7 +236,11 @@ export async function GET(request: Request) {
     const shouldPageLocally =
       deployments.length > 1 || Boolean(filters.status || filters.hash);
 
-    const pages = await Promise.all(
+    const { data: pages, warnings } = await availableResults<{
+      rollups: PerpetualHubRollup[];
+      total: number;
+      stats?: PerpetualHubRollupListStats;
+    }>(
       deployments.map((deployment) => {
         if (shouldPageLocally) {
           return fetchDeploymentRollupsWindow({
@@ -253,6 +258,9 @@ export async function GET(request: Request) {
           signal: controller.signal,
         });
       }),
+      deployments.map(
+        (deployment) => `${deployment.partnerName} on ${deployment.chainName}`,
+      ),
     );
 
     const filteredRollups = pages
@@ -265,6 +273,7 @@ export async function GET(request: Request) {
       : filteredRollups;
 
     return NextResponse.json({
+      warnings,
       rollups,
       total: shouldPageLocally
         ? filteredRollups.length
