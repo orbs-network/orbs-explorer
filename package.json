@@ -15,7 +15,7 @@
     "screenshot:install": "playwright install chromium",
     "screenshot:pr": "./scripts/pr-screenshots.sh",
     "screenshot:upload": "./scripts/screenshot-upload.sh",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "next typegen && tsc --noEmit",
     "test": "node --import tsx --test tests/*.test.ts"
   },
   "dependencies": {

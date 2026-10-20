@@ -199,6 +199,34 @@ test("cancelled preloads never publish partial or failed metadata", async (t) =>
   assert.equal(requests, 2);
 });
 
+test("metadata with an empty symbol retries after the failure cache expires", async (t) => {
+  const cache = client();
+  cache.setQueryData(tokenQueryKey(a, 1), token(a, " "));
+  let requests = 0;
+  t.mock.method(globalThis, "fetch", async () => {
+    requests++;
+    return Response.json([token(a, "RECOVERED")]);
+  });
+  await preloadTokenMetadata(cache, [{ address: a, chainId: 1 }]);
+  assert.equal(requests, 0, "avoid immediate retries for partial metadata");
+  cache.setQueryData(tokenQueryKey(a, 1), token(a, " "), {
+    updatedAt: Date.now() - TOKEN_FAILURE_STALE_TIME - 1,
+  });
+  await preloadTokenMetadata(cache, [{ address: a, chainId: 1 }]);
+  assert.equal(requests, 1);
+  assert.equal(read(cache, a, 1)?.symbol, "RECOVERED");
+});
+
+test("partial metadata cannot overwrite a symbol resolved during a preload", async (t) => {
+  const cache = client();
+  t.mock.method(globalThis, "fetch", async () => {
+    cache.setQueryData(tokenQueryKey(a, 1), token(a, "RESOLVED"));
+    return Response.json([token(a, "")]);
+  });
+  await preloadTokenMetadata(cache, [{ address: a, chainId: 1 }]);
+  assert.equal(read(cache, a, 1)?.symbol, "RESOLVED");
+});
+
 test("collects tokens from list rows and detailed order trade history using either chain field", () => {
   const list = {
     inputToken: a,

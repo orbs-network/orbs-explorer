@@ -54,7 +54,7 @@ export async function POST(request: Request) {
   const toFetch: { address: string; outIndex: number }[] = [];
 
   for (let i = 0; i < addresses.length; i++) {
-    const address = addresses[i];
+    const address = addresses[i].toLowerCase();
 
     if (isNativeAddress(address)) {
       output[i] = {
@@ -116,7 +116,8 @@ export async function POST(request: Request) {
           name: name ?? "",
           symbol: symbol ?? "",
         };
-        setCachedToken(chainId, token);
+        // A failed symbol call must not become a permanent cached success.
+        if (token.symbol.trim()) setCachedToken(chainId, token);
         output[toFetch[i].outIndex] = token;
       }
     }

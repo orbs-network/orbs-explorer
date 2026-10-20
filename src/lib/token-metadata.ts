@@ -12,6 +12,10 @@ export const tokenQueryKey = (address?: string, chainId?: number) =>
 export const TOKEN_FAILURE_STALE_TIME = 60_000;
 const TOKENS_PER_BATCH = 100;
 
+export function hasTokenSymbol(token?: Token | null): boolean {
+  return Boolean(token?.symbol.trim());
+}
+
 export function isValidTokenReference(
   reference: TokenReference,
 ): reference is { address: string; chainId: number } {
@@ -117,7 +121,7 @@ export async function preloadTokenMetadata(
     if (
       cached?.status === "success" &&
       !cached.isInvalidated &&
-      (cached.data !== null ||
+      (hasTokenSymbol(cached.data) ||
         Date.now() - cached.dataUpdatedAt < TOKEN_FAILURE_STALE_TIME)
     )
       continue;
@@ -157,7 +161,11 @@ export async function preloadTokenMetadata(
       // The API omits failed tokens. Match by address, never by response position.
       queryClient.setQueryData<Token | null>(
         tokenQueryKey(address, chainId),
-        (previous) => tokens.get(address) ?? previous ?? null,
+        (previous) => {
+          const next = tokens.get(address);
+          // A partial response must not erase a concurrently resolved symbol.
+          return hasTokenSymbol(previous) ? previous : next ?? previous ?? null;
+        },
       );
     }
   });

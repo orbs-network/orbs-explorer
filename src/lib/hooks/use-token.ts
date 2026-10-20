@@ -2,6 +2,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { Token } from "../types";
 import {
   fetchTokenBatch,
+  hasTokenSymbol,
   isValidTokenReference,
   preloadTokenMetadata,
   TOKEN_FAILURE_STALE_TIME,
@@ -19,7 +20,7 @@ export const useToken = (
       (await fetchTokenBatch([address!], chainId!, signal))[0] ?? null,
     enabled: isValidTokenReference({ address, chainId }) && !disabled,
     staleTime: (query) =>
-      query.state.data === null ? TOKEN_FAILURE_STALE_TIME : Infinity,
+      hasTokenSymbol(query.state.data) ? Infinity : TOKEN_FAILURE_STALE_TIME,
   });
   return { ...query, data: query.data ?? undefined };
 };

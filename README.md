@@ -43,6 +43,13 @@ Local `.env` files, credentials, build output, and browser audit artifacts are
 excluded by `.vercelignore`. Authentication tokens stay in the environment,
 rather than in command arguments or script output.
 
+Token metadata uses `NEXT_PUBLIC_RPC_URL` as an optional RPC proxy base URL
+(`{base}/rpc?chainId={id}&appId=debug-tool`). If it is unset or unavailable,
+the app falls back to the public RPC endpoints in the chain registry. Set the
+proxy variable in both Preview and Production for your preferred RPC service.
+Unresolved symbols retry on a later refresh; token addresses remain visible
+when metadata cannot be read.
+
 The existing `vercel.json` includes the production Telegram-alert cron schedule.
 
 See the [Vercel deployment CLI documentation](https://vercel.com/docs/cli/deploy)
