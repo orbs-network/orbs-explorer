@@ -13,6 +13,7 @@ export const INVESTIGATION_QUERY_PARAMS = {
   order_source: StringParam,
   order_errors: StringParam,
   order_active_age: StringParam,
+  order_review: StringParam,
   order_deadline: StringParam,
   order_since: StringParam,
   order_until: StringParam,
@@ -58,6 +59,7 @@ export function readInvestigationFilters(
       "all",
     ) as InvestigationFilters["errors"],
     activeAge: query.order_active_age === "24h" ? "24h" : "all",
+    review: query.order_review === "attention" ? "attention" : "all",
     deadline: valid(
       query.order_deadline,
       ["all", "past", "soon", "unreported"],
@@ -93,6 +95,7 @@ export function investigationFilterQuery(
     order_source: value.source === "all" ? undefined : value.source,
     order_errors: value.errors === "all" ? undefined : value.errors,
     order_active_age: value.activeAge === "24h" ? "24h" : undefined,
+    order_review: value.review === "attention" ? "attention" : undefined,
     order_deadline: value.deadline === "all" ? undefined : value.deadline,
     order_since: value.placedSince || undefined,
     order_until: value.placedUntil || undefined,

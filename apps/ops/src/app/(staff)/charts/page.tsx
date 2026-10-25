@@ -10,6 +10,7 @@ import { Button } from "@orbs/ui/controls/button";
 import { Spinner } from "@orbs/ui/controls/spinner";
 import { ExportOrders } from "@/components/orders-overview/export-orders";
 import { SnapshotFreshness } from "@/components/operations/snapshot-freshness";
+import { OperationsDataProvider } from "@/components/operations/operations-view";
 import { InfoHint } from "@/components/info-hint";
 
 const OrderCharts = dynamic(() => import("@/components/charts/order-charts"), {
@@ -35,7 +36,9 @@ export default function ChartsPage() {
             <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">
               Activity
             </h1>
-            <InfoHint>Track orders placed over time. Chart dates use UTC.</InfoHint>
+            <InfoHint>
+              Track orders placed over time. Chart dates use UTC.
+            </InfoHint>
           </div>
           <div className="flex items-center gap-2">
             {overview.updatedAt > 0 && (
@@ -86,10 +89,7 @@ export default function ChartsPage() {
             </p>
           </div>
         ) : overview.isError ? (
-          <div
-            role="alert"
-            className="rounded-xl bg-destructive/10 p-6"
-          >
+          <div role="alert" className="rounded-xl bg-destructive/10 p-6">
             <h2 className="font-semibold">Activity is unavailable</h2>
             <p className="mt-2 text-sm text-muted-foreground">
               Order activity could not be loaded. Try again to load complete
@@ -100,14 +100,9 @@ export default function ChartsPage() {
             </Button>
           </div>
         ) : overview.orders.length ? (
-          <OrderCharts
-            key={scope.key}
-            orders={overview.orders}
-            snapshot={overview.updatedAt}
-            days={scope.days}
-            partnerCards={overview.partnerCards}
-            networks={overview.networkActivity}
-          />
+          <OperationsDataProvider data={overview} scope={scope}>
+            <OrderCharts key={scope.key} />
+          </OperationsDataProvider>
         ) : (
           <div className="rounded-xl bg-card p-10 text-center">
             <h2 className="font-medium">No orders to chart</h2>

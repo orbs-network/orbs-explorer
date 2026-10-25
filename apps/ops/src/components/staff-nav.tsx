@@ -11,6 +11,7 @@ import { globalScopeHref } from "@/lib/partner-navigation";
 import { ViewNavigation } from "./view-navigation";
 import { QuickOrderSearch } from "./investigation/quick-order-search";
 import { MetricDefinitions } from "./metric-definitions";
+import { ConsolidatedView } from "./consolidated-view";
 
 const groups = [
   {
@@ -29,12 +30,6 @@ const groups = [
         href: "/orders",
         label: "All orders",
         description: "Find an order, review its details, or search by hash.",
-      },
-      {
-        href: "/health",
-        label: "Active orders",
-        description:
-          "Check orders still running, their progress, and approaching deadlines.",
       },
       {
         href: "/failures",
@@ -197,7 +192,7 @@ export function StaffNav({
         })),
       }))}
     >
-      {children}
+      <ConsolidatedView>{children}</ConsolidatedView>
     </ViewNavigation>
   );
 }

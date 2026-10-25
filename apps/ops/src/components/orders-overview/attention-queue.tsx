@@ -139,7 +139,9 @@ export function AttentionQueue() {
   const reviewSearch = new URLSearchParams(
     attentionOrdersHref(data.scope).split("?")[1],
   );
-  reviewSearch.set("active_scope", operational.placement);
+  reviewSearch.set("period", operational.navigation.period!);
+  reviewSearch.set("order_status", "active");
+  reviewSearch.set("order_review", "attention");
   const scopeNote =
     operational.placement === "all"
       ? "All placement dates · selected networks and trading apps"
@@ -165,7 +167,7 @@ export function AttentionQueue() {
             !stale &&
             activeReview.length > 0 && (
               <Button asChild size="sm">
-                <Link href={`/health?${reviewSearch}`}>
+                <Link href={`/orders?${reviewSearch}`}>
                   Review {activeReview.length} orders
                   <ChevronRight aria-hidden className="size-3.5" />
                 </Link>

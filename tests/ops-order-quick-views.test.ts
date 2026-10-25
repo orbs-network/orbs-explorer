@@ -19,6 +19,7 @@ import {
   investigationFilterQuery,
   readInvestigationFilters,
 } from "../apps/ops/src/lib/investigation-filter-query";
+import { buildExecutionHealth } from "../apps/ops/src/lib/execution-analytics";
 
 const snapshot = Date.parse("2026-10-22T12:00:00Z");
 const day = 86_400_000;
@@ -48,6 +49,60 @@ const statusOrder = (
 const filters = (patch: Partial<InvestigationFilters> = {}) => ({
   ...DEFAULT_INVESTIGATION_FILTERS,
   ...patch,
+});
+
+test("the consolidated review preset matches the former active review queue and survives navigation", () => {
+  const orders = [
+    statusOrder("missing-deadline"),
+    statusOrder("past-deadline", "pending", {
+      order: {
+        witness: { chainId: 137, deadline: String(snapshot / 1000 - 60) },
+      } as ListOrder["order"],
+      metadata: {
+        status: "pending",
+      } as ListOrder["metadata"],
+    }),
+    statusOrder("latest-error", "pending", {
+      order: {
+        witness: { chainId: 137, deadline: String(snapshot / 1000 + 3600) },
+      } as ListOrder["order"],
+      metadata: {
+        status: "pending",
+        chunkSummary: { lastChunkStatus: "error" },
+      } as ListOrder["metadata"],
+    }),
+    statusOrder("healthy", "pending", {
+      order: {
+        witness: { chainId: 137, deadline: String(snapshot / 1000 + 3600) },
+      } as ListOrder["order"],
+      metadata: {
+        status: "pending",
+        chunkSummary: { lastChunkStatus: "success" },
+      } as ListOrder["metadata"],
+    }),
+    statusOrder("closed", "completed"),
+  ];
+  const preset = orderQuickViewFilters("review");
+  assert.deepEqual(
+    new Set(investigateOrders(orders, preset, undefined, snapshot)),
+    new Set(buildExecutionHealth(orders, snapshot).attention),
+  );
+  assert.equal(
+    investigateOrders(orders, preset, undefined, snapshot).length,
+    3,
+  );
+  assert.deepEqual(
+    readInvestigationFilters(investigationFilterQuery(preset)),
+    preset,
+  );
+  const href = ordersScopeHref({
+    period: "all",
+    query: "order_review=attention&order_status=active",
+  });
+  assert.equal(
+    new URL(href, "https://ops.example").searchParams.get("order_review"),
+    "attention",
+  );
 });
 
 test("status and error facets ignore only their own selection, retaining every other list facet", () => {

@@ -11,7 +11,7 @@ import {
   hasLastExecutionError,
   reportedNumber,
 } from "./order-diagnostics";
-import { deadlineTime } from "./execution-analytics";
+import { activeOrderReviewState, deadlineTime } from "./execution-analytics";
 import { chunkReason, parseReportedTime } from "./order-evidence";
 
 export type OrderErrorFilter =
@@ -39,6 +39,7 @@ export type InvestigationFilters = {
   source: "all" | "v1" | "v2" | "unreported";
   errors: OrderErrorFilter;
   activeAge: "all" | "24h";
+  review: "all" | "attention";
   deadline: "all" | "past" | "soon" | "unreported";
   placedSince: string;
   placedUntil: string;
@@ -56,6 +57,7 @@ export const DEFAULT_INVESTIGATION_FILTERS: InvestigationFilters = {
   source: "all",
   errors: "all",
   activeAge: "all",
+  review: "all",
   deadline: "all",
   placedSince: "",
   placedUntil: "",
@@ -242,6 +244,18 @@ export function investigateOrders(
     )
       return false;
     if (!matchesErrorFilter(order, filters.errors)) return false;
+    if (filters.review === "attention") {
+      const state = activeOrderReviewState(order, snapshot);
+      if (
+        !state ||
+        !(
+          state.pastDeadline ||
+          state.latestAttemptFailed ||
+          state.deadlineUnreported
+        )
+      )
+        return false;
+    }
     if (filters.deadline !== "all") {
       if (
         getOverviewOrderStatus(order) !== "active" ||
@@ -346,6 +360,7 @@ function navigationSearch(scope?: OrderNavigationScope): URLSearchParams {
     "order_source",
     "order_errors",
     "order_active_age",
+    "order_review",
     "order_deadline",
     "order_since",
     "order_until",

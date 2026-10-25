@@ -4,7 +4,6 @@ import { useEffect, useId, useMemo } from "react";
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import { useRouter, useSearchParams } from "next/navigation";
-import { RefreshCw } from "lucide-react";
 import { usePartner } from "@orbs/domain/hooks/use-partner";
 import { getChainLogo } from "@orbs/domain/utils/utils";
 import { useSpotConfig } from "@orbs/domain/twap/hooks/use-spot-config";
@@ -15,28 +14,17 @@ import { OrderFilters } from "@/components/order-filters";
 import { Page } from "@/components/page";
 import { PartnerViewTabs } from "./partner-view-tabs";
 import { ExportOrders } from "@/components/orders-overview/export-orders";
-import { SnapshotFreshness } from "@/components/operations/snapshot-freshness";
-import {
-  Select,
-  SelectTrigger,
-  SelectValue,
-  SelectContent,
-  SelectItem,
-} from "@orbs/ui/controls/select";
 import { formatOrderDate } from "@/components/orders-overview/overview-display";
 import { OperationsDataProvider } from "@/components/operations/operations-view";
 import { useOrderScope } from "@/hooks/use-order-scope";
 import { useSpotOverview } from "@/hooks/use-spot-overview";
 import { buildSpotOverview } from "@/lib/overview-data";
-import { useOperationalScope } from "@/hooks/use-operational-scope";
-import { OperationalScopeControl } from "@/components/operations/operational-scope-control";
-import { ordersScopeHref } from "@/lib/order-investigation";
 import {
   PARTNER_VIEWS,
   getPartnerView,
   globalScopeHref,
   partnerHref,
-  partnerOrdersHref,
+  legacyPartnerOrdersHref,
   partnerScopeSearch,
   resolvePartnerId,
   type PartnerView,
@@ -57,36 +45,6 @@ const PartnerOverview = dynamic(
   () => import("./partner-overview").then((module) => module.PartnerOverview),
   { loading: PreparingView },
 );
-const PartnerActivity = dynamic(
-  () => import("./partner-activity").then((module) => module.PartnerActivity),
-  { loading: PreparingView },
-);
-const PartnerOutcomes = dynamic(
-  () => import("./partner-outcomes").then((module) => module.PartnerOutcomes),
-  { loading: PreparingView },
-);
-const PartnerNetworks = dynamic(
-  () => import("./partner-networks").then((module) => module.PartnerNetworks),
-  { loading: PreparingView },
-);
-const PartnerActiveOrders = dynamic(
-  () =>
-    import("./partner-execution").then(
-      (module) => module.PartnerExecutionHealth,
-    ),
-  { loading: PreparingView },
-);
-const PartnerProgress = dynamic(
-  () =>
-    import("./partner-execution").then(
-      (module) => module.PartnerExecutionProgress,
-    ),
-  { loading: PreparingView },
-);
-const PartnerFailures = dynamic(
-  () => import("./partner-failures").then((module) => module.PartnerFailures),
-  { loading: PreparingView },
-);
 const PartnerRoutes = dynamic(
   () => import("./partner-markets").then((module) => module.PartnerRoutes),
   { loading: PreparingView },
@@ -99,10 +57,6 @@ const PartnerOrders = dynamic(
   () => import("./partner-orders").then((module) => module.PartnerOrders),
   { loading: PreparingView },
 );
-const PartnerLookup = dynamic(
-  () => import("./partner-orders").then((module) => module.PartnerOrderLookup),
-  { loading: PreparingView },
-);
 
 function PartnerViewContent({
   partnerId,
@@ -112,26 +66,12 @@ function PartnerViewContent({
   view: PartnerView;
 }) {
   switch (view) {
-    case "activity":
-      return <PartnerActivity />;
-    case "outcomes":
-      return <PartnerOutcomes partnerId={partnerId} />;
-    case "networks":
-      return <PartnerNetworks partnerId={partnerId} />;
-    case "health":
-      return <PartnerActiveOrders />;
-    case "progress":
-      return <PartnerProgress />;
-    case "failures":
-      return <PartnerFailures partnerId={partnerId} />;
     case "routes":
       return <PartnerRoutes />;
     case "tokens":
       return <PartnerTokens />;
     case "orders":
       return <PartnerOrders />;
-    case "lookup":
-      return <PartnerLookup />;
     default:
       return <PartnerOverview partnerId={partnerId} />;
   }
@@ -159,7 +99,10 @@ export function PartnerWorkspace({
   );
   const view = getPartnerView(searchParams.get("view"));
   useEffect(() => {
-    if (
+    const legacy = legacyPartnerOrdersHref(partnerId, search);
+    if (legacy) {
+      router.replace(legacy, { scroll: false });
+    } else if (
       requestedId.toLowerCase().startsWith("adapter-") &&
       partnerId !== requestedId.toLowerCase()
     ) {
@@ -210,10 +153,6 @@ export function PartnerWorkspace({
     ...scope,
     loadTokenMetadata: ["orders", "routes", "tokens"].includes(view),
   });
-  const currentView = view === "health" || view === "progress";
-  const operational = useOperationalScope(data, scope, currentView);
-  const viewData = currentView ? operational.data : data;
-  const viewScope = currentView ? operational.scope : scope;
   // Identity and network choices cover this partner's full catalog/history, even
   // when the selected period or networks contain no matching orders.
   const catalog = useMemo(
@@ -294,96 +233,40 @@ export function PartnerWorkspace({
               </p>
             </div>
           </div>
-          <div className="flex flex-wrap items-end gap-2">
-            <Select
-              value={partnerId}
-              onValueChange={(value) => scope.setPartners([value])}
-            >
-              <SelectTrigger
-                aria-label="Switch trading app"
-                className="w-auto gap-2 text-xs"
-              >
-                <SelectValue>Switch app</SelectValue>
-              </SelectTrigger>
-              <SelectContent>
-                {!identity && (
-                  <SelectItem value={partnerId}>
-                    {data.isLoading ? "Loading partners…" : "Partner not found"}
-                  </SelectItem>
-                )}
-                {catalog.partnerOptions.map((option) => (
-                  <SelectItem key={option.value} value={option.value}>
-                    {option.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {data.updatedAt > 0 && (
-              <SnapshotFreshness
-                updatedAt={data.updatedAt}
-                refreshing={data.isRefreshing}
-                failed={data.isRefreshError}
-              />
-            )}
-            {view !== "orders" && <ExportOrders orders={viewData.orders} />}
-            <Button
-              variant="outline"
-              size="icon"
-              disabled={data.isRefreshing}
-              onClick={data.refresh}
-              aria-label="Refresh partner data"
-              title="Refresh partner data"
-            >
-              <RefreshCw
-                aria-hidden
-                className={`size-4 ${data.isRefreshing ? "animate-spin motion-reduce:animate-none" : ""}`}
-              />
-            </Button>
-          </div>
+          {view !== "orders" && <ExportOrders orders={data.orders} />}
         </header>
-        <OrderFilters
-          periodLabel={
-            currentView && operational.placement === "all"
-              ? null
-              : "Order placement period"
-          }
-          scope={scope}
-          networkOptions={networkOptions}
-          partnerOptions={catalog.partnerOptions}
-          partner={{ id: partnerId, label: partnerName }}
-          orderTypes={
-            view === "orders"
-              ? [
-                  ...new Set(
-                    data.orders.map(
-                      (order) =>
-                        order.metadata.orderType?.trim() || "unreported",
-                    ),
-                  ),
-                ].sort()
-              : undefined
-          }
-        />
-        {data.warnings.map((warning) => (
-          <p
-            key={warning}
-            role="status"
-            className="rounded-[8px] bg-amber-500/10 p-3 text-sm"
-          >
-            {warning}
-          </p>
-        ))}
         <PartnerViewTabs partnerId={partnerId} search={search} view={view}>
           {/* Inside the tabs so switching sections never moves the tab bar. */}
           <div className="min-w-0 space-y-4">
-            {currentView && (
-              <OperationalScopeControl
-                {...operational}
-                period={scope.period}
-                isLoading={data.isLoading}
-                isUnavailable={data.isError}
-              />
-            )}
+            <OrderFilters
+              omitStatus
+              periodLabel="Order placement period"
+              scope={scope}
+              networkOptions={networkOptions}
+              partnerOptions={catalog.partnerOptions}
+              partner={{ id: partnerId, label: partnerName }}
+              orderTypes={
+                view === "orders"
+                  ? [
+                      ...new Set(
+                        data.orders.map(
+                          (order) =>
+                            order.metadata.orderType?.trim() || "unreported",
+                        ),
+                      ),
+                    ].sort()
+                  : undefined
+              }
+            />
+            {data.warnings.map((warning) => (
+              <p
+                key={warning}
+                role="status"
+                className="rounded-[8px] bg-amber-500/10 p-3 text-sm"
+              >
+                {warning}
+              </p>
+            ))}
             {data.isLoading ? (
               <div
                 role="status"
@@ -417,15 +300,15 @@ export function PartnerWorkspace({
                 </h2>
                 <p className="mx-auto mt-2 max-w-xl text-sm text-muted-foreground">
                   This partner is not in the current configuration or loaded
-                  order history. Use Switch trading app to choose another app.
+                  order history. Return to Overview to choose another app.
                 </p>
               </section>
             ) : (
               <OperationsDataProvider
-                key={`${viewScope.key}:${view}`}
-                data={viewData}
-                scope={viewScope}
-                scopeLabel={`${partnerName} · ${currentView && operational.placement === "all" ? "all placement dates" : "reporting period"} and selected networks`}
+                key={`${scope.key}:${view}`}
+                data={data}
+                scope={scope}
+                scopeLabel={`${partnerName} · reporting period and selected networks`}
               >
                 <section
                   aria-label={`${activeView.label} for ${partnerName}`}

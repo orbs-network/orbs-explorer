@@ -12,8 +12,9 @@ import { buildOrderDiagnostics } from "@/lib/order-diagnostics";
 import { buildActiveOrderAttention } from "@/lib/attention-queue";
 import { useOperationalScope } from "@/hooks/use-operational-scope";
 import { OperationalScopeControl } from "@/components/operations/operational-scope-control";
-import { partnerHref, partnerOrdersHref } from "@/lib/partner-navigation";
+import { globalScopeHref, partnerOrdersHref } from "@/lib/partner-navigation";
 import { PartnerNetworks } from "./partner-networks";
+import { PartnerActivity } from "./partner-activity";
 
 export function PartnerOverview({ partnerId }: { partnerId: string }) {
   const reporting = useOperationsData();
@@ -70,7 +71,7 @@ export function PartnerOverview({ partnerId }: { partnerId: string }) {
         description="Past deadline, failed latest attempt, or missing deadline. Each order is counted once; these signals do not confirm an outage."
         action={
           <Link
-            href={partnerHref(partnerId, search, "failures")}
+            href={globalScopeHref("/failures", search, partnerId)}
             scroll={false}
             className="inline-flex min-h-9 items-center gap-1 rounded-sm text-xs text-link hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
@@ -113,15 +114,18 @@ export function PartnerOverview({ partnerId }: { partnerId: string }) {
             </Link>
           ))}
         </div>
-        <Link
-          href={partnerOrdersHref(partnerId, search, { status: "failed" })}
-          prefetch={false}
-          className="mt-3 block rounded border-t border-border pt-3 text-xs text-link hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-        >
-          {data.groups.failed.length} terminal failures in the reporting
-          placement period
-        </Link>
+        {data.groups.failed.length > 0 && (
+          <Link
+            href={partnerOrdersHref(partnerId, search, { status: "failed" })}
+            prefetch={false}
+            className="mt-3 block rounded border-t border-border pt-3 text-xs text-link hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            {data.groups.failed.length} terminal failures in the reporting
+            placement period
+          </Link>
+        )}
       </Panel>
+      <PartnerActivity />
       <PartnerNetworks partnerId={partnerId} />
     </div>
   );

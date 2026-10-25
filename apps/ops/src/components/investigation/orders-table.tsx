@@ -17,6 +17,7 @@ import { compactOrderType } from "./order-presentation";
 import {
   OrderIdentityCell,
   OrderRowErrors,
+  OrderRowDeadline,
   OrderRowNetwork,
   OrderRowProgress,
   OrderRowStatus,
@@ -76,7 +77,7 @@ export function OrdersTable({
         label="Order investigation results"
         items={orders}
         itemKey={orderIdentity}
-        minWidth={1120}
+        minWidth={1280}
         header={
           <tr>
             <th scope="col">Order{showApp ? " · trading app" : ""}</th>
@@ -99,6 +100,7 @@ export function OrdersTable({
               </InfoHint>
             </th>
             {sortHeader("Execution errors", "errors-desc", "errors-asc")}
+            <th scope="col">Deadline</th>
             {sortHeader("Placed", "newest", "oldest")}
           </tr>
         }
@@ -142,6 +144,9 @@ export function OrdersTable({
               </td>
               <td className="text-right">
                 <OrderRowErrors order={order} />
+              </td>
+              <td>
+                <OrderRowDeadline order={order} now={updatedAt} />
               </td>
               <td>
                 <OrderRowTime order={order} now={updatedAt} />

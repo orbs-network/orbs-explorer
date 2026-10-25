@@ -6,6 +6,7 @@ import {
   PARTNER_TABS,
   PARTNER_VIEWS,
   getPartnerView,
+  legacyPartnerOrdersHref,
   globalScopeHref,
   partnerHref,
   partnerOrdersHref,
@@ -13,13 +14,13 @@ import {
   resolvePartnerId,
 } from "../apps/ops/src/lib/partner-navigation";
 
-test("five partner tabs expose each browsing view once without a duplicate lookup", () => {
+test("three partner tabs expose only distinct browsing views", () => {
   assert.deepEqual(
     PARTNER_TABS.map((tab) => tab.value),
-    ["overview", "orders", "execution", "activity", "markets"],
+    ["overview", "orders", "markets"],
   );
   const views = PARTNER_TABS.flatMap((tab) => [...tab.views]);
-  const visible = PARTNER_VIEWS.filter((view) => view.value !== "lookup");
+  const visible = PARTNER_VIEWS;
   assert.equal(views.length, visible.length);
   assert.equal(new Set(views).size, views.length);
   assert.deepEqual(new Set(views), new Set(visible.map((view) => view.value)));
@@ -142,7 +143,7 @@ test("invalid period and view values use the existing overview and seven-day def
   assert.equal(getPartnerView("HEALTH"), "overview");
   assert.equal(getPartnerView(null), "overview");
   assert.equal(getPartnerView("orders"), "orders");
-  assert.equal(getPartnerView("charts"), "activity");
+  assert.equal(getPartnerView("charts"), "overview");
   assert.equal(getPartnerView("markets"), "routes");
   assert.equal(partnerScopeSearch("lynex", "period=365").has("period"), false);
   assert.equal(
@@ -152,15 +153,7 @@ test("invalid period and view values use the existing overview and seven-day def
 });
 
 test("focused partner views keep the same partner, period and network filters", () => {
-  for (const view of [
-    "activity",
-    "outcomes",
-    "networks",
-    "progress",
-    "routes",
-    "tokens",
-    "lookup",
-  ] as const) {
+  for (const view of ["routes", "tokens"] as const) {
     const url = new URL(
       partnerHref(
         "quick",
@@ -180,7 +173,7 @@ test("focused partner views keep the same partner, period and network filters", 
 test("unknown adapter IDs and configured custom IDs produce local encoded links", () => {
   assert.equal(
     partnerHref("ADAPTER-0xAbC", "period=30", "failures"),
-    "/partners/adapter-0xabc?period=30&partner_id=adapter-0xabc&view=failures",
+    "/partners/adapter-0xabc?period=30&partner_id=adapter-0xabc&view=orders&order_status=failed",
   );
   const custom = "Custom / Dex?view=health#section";
   const url = new URL(partnerHref(custom, ""), "https://ops.example");
@@ -403,4 +396,38 @@ test("old adapter links resolve to the named app using only matching networks", 
     `adapter-${adapter.toLowerCase()}`,
   );
   assert.equal(resolvePartnerId(`adapter-${adapter}`, catalog), "blackhole");
+});
+
+test("retired partner execution links use Orders with explicit placement scope", () => {
+  for (const view of ["health", "progress", "failures", "lookup"]) {
+    const url = new URL(
+      legacyPartnerOrdersHref("quick", `period=7&chain_id=137&view=${view}`)!,
+      "https://ops.example",
+    );
+    assert.equal(url.pathname, "/partners/quickswap");
+    assert.equal(url.searchParams.get("view"), "orders");
+    assert.equal(url.searchParams.get("partner_id"), "quickswap");
+    assert.equal(url.searchParams.get("chain_id"), "137");
+    assert.equal(
+      url.searchParams.get("period"),
+      ["health", "progress"].includes(view) ? "all" : "7",
+    );
+    assert.equal(
+      url.searchParams.get("order_status"),
+      view === "failures" ? "failed" : view === "lookup" ? null : "active",
+    );
+  }
+  const href = legacyPartnerOrdersHref(
+    "quick",
+    "view=progress&progress_scope=all&active_scope=placement&period=30",
+  )!;
+  const params = new URL(href, "https://ops.example").searchParams;
+  assert.equal(params.get("period"), "30");
+  assert.equal(params.has("order_status"), false);
+  for (const view of ["activity", "outcomes", "networks", "charts"])
+    assert.equal(getPartnerView(view), "overview");
+  assert.equal(
+    legacyPartnerOrdersHref("quick", "view=orders&order_status=failed"),
+    undefined,
+  );
 });

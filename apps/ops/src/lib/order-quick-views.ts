@@ -33,6 +33,11 @@ export function orderHashSearchHref(
 export const ORDER_QUICK_VIEWS = [
   { value: "all", label: "All matching activity", filters: {} },
   {
+    value: "review",
+    label: "Active · needs review",
+    filters: { status: "active", review: "attention" },
+  },
+  {
     value: "erroring",
     label: "Latest attempt failed · any status",
     filters: { errors: "latest" },

@@ -18,7 +18,6 @@ import {
 
 import { ViewTabs } from "@/components/view-tabs";
 import { globalScopeHref } from "@/lib/partner-navigation";
-import { OverviewMonitoring } from "@/components/orders-overview/overview-monitoring";
 import { SystemHealth } from "@/components/operations/system-health";
 import { InfoHint } from "@/components/info-hint";
 
@@ -322,16 +321,6 @@ function SecurityCoverage({
             warn: !review.currentRegistrySize || isConfigError,
           },
           {
-            label: "Orders without a network",
-            value: review.missingNetwork.length.toLocaleString(),
-            warn: review.missingNetwork.length > 0,
-          },
-          {
-            label: "Orders without a valid placement time",
-            value: review.missingTime.length.toLocaleString(),
-            warn: review.missingTime.length > 0,
-          },
-          {
             label: "Burst checks skipped for short history",
             value: review.baselineSkipped.toLocaleString(),
             warn: false,
@@ -373,6 +362,7 @@ export function SecurityView({
     <ViewTabs
       label="Security check views"
       param="security_view"
+      aliases={{ activity: "findings" }}
       tabs={[
         {
           value: "health",
@@ -385,24 +375,14 @@ export function SecurityView({
           content: (
             <HistoryBoundary>
               <SecurityFindings />
-            </HistoryBoundary>
-          ),
-        },
-        {
-          value: "orders",
-          label: "Order activity",
-          content: (
-            <HistoryBoundary>
-              <OverviewMonitoring />
-            </HistoryBoundary>
-          ),
-        },
-        {
-          value: "activity",
-          label: "Activity signals",
-          content: (
-            <HistoryBoundary>
-              <SecurityActivity />
+              <details className="rounded-xl bg-card p-4">
+                <summary className="cursor-pointer rounded text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                  Flagged activity groups
+                </summary>
+                <div className="mt-4">
+                  <SecurityActivity />
+                </div>
+              </details>
             </HistoryBoundary>
           ),
         },

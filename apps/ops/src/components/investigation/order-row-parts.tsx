@@ -246,6 +246,35 @@ export function OrderRowProgress({ order }: { order: ListOrder }) {
   );
 }
 
+export function OrderRowDeadline({
+  order,
+  now,
+}: {
+  order: ListOrder;
+  now: number;
+}) {
+  const deadline = deadlineTime(order);
+  const active = getOverviewOrderStatus(order) === "active";
+  return (
+    <span
+      className={`whitespace-nowrap text-xs ${active && deadline !== undefined && deadline <= now ? "text-amber-700 dark:text-amber-400" : "text-muted-foreground"}`}
+    >
+      {deadline === undefined ? (
+        "Not reported"
+      ) : (
+        <>
+          <span className="block">{formatOrderDate(deadline)}</span>
+          {active && deadline <= now && (
+            <span className="block text-[10px]">
+              Past deadline · still active
+            </span>
+          )}
+        </>
+      )}
+    </span>
+  );
+}
+
 export function OrderRowErrors({ order }: { order: ListOrder }) {
   const errors = reportedNumber(order.metadata.chunkSummary?.error);
   return (

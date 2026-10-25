@@ -16,7 +16,6 @@ import {
   formatShare,
 } from "@/components/orders-overview/overview-display";
 import { CohortTable } from "./cohort-table";
-import { PlacementHeatmap } from "./placement-heatmap";
 import { inspectClass } from "./analytics-labels";
 import { ViewTabs } from "@/components/view-tabs";
 
@@ -254,11 +253,6 @@ export function PerformanceView() {
           content: <ComparePerformance by="networks" />,
         },
         { value: "sizes", label: "Order sizes", content: <OrderSizes /> },
-        {
-          value: "placement",
-          label: "Placement times",
-          content: <PlacementHeatmap />,
-        },
         {
           value: "types",
           label: "Order types",

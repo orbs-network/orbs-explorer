@@ -55,6 +55,8 @@ export function investigationBadges(
   if (value.errors !== "all")
     add("errors", `Errors: ${errors[value.errors]}`, "all");
   if (value.activeAge === "24h") add("activeAge", "Active age: 24h+", "all");
+  if (value.review === "attention")
+    add("review", "Active orders needing review", "all");
   if (value.deadline !== "all")
     add("deadline", deadlines[value.deadline], "all");
   if (value.placedSince || value.placedUntil)

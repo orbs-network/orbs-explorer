@@ -26,7 +26,7 @@ type Inspect = (
   orders: ListOrder[],
   description?: string,
 ) => void;
-type Ranking = "value" | "orders" | "errors";
+type Ranking = "value" | "orders" | "errors" | "input" | "output";
 
 function RankingsControl({
   kind,
@@ -76,6 +76,16 @@ function RankingsControl({
           <InvestigationSelectItem value="errors">
             Orders with errors
           </InvestigationSelectItem>
+          {kind === "tokens" && (
+            <>
+              <InvestigationSelectItem value="input">
+                Input orders
+              </InvestigationSelectItem>
+              <InvestigationSelectItem value="output">
+                Output orders
+              </InvestigationSelectItem>
+            </>
+          )}
         </InvestigationSelect>
       </div>
     </div>
@@ -92,14 +102,20 @@ function sortRankings<
     key: string;
     summary: { value: number; orders: ListOrder[]; withErrors: ListOrder[] };
   },
->(rows: T[], ranking: Ranking) {
+>(
+  rows: T[],
+  ranking: Ranking,
+  sideOrders?: (row: T, side: "input" | "output") => number,
+) {
   return rows.sort(
     (a, b) =>
-      (ranking === "orders"
-        ? b.summary.orders.length - a.summary.orders.length
-        : ranking === "errors"
-          ? b.summary.withErrors.length - a.summary.withErrors.length
-          : b.summary.value - a.summary.value) ||
+      (ranking === "input" || ranking === "output"
+        ? (sideOrders?.(b, ranking) ?? 0) - (sideOrders?.(a, ranking) ?? 0)
+        : ranking === "orders"
+          ? b.summary.orders.length - a.summary.orders.length
+          : ranking === "errors"
+            ? b.summary.withErrors.length - a.summary.withErrors.length
+            : b.summary.value - a.summary.value) ||
       b.summary.orders.length - a.summary.orders.length ||
       a.key.localeCompare(b.key),
   );
@@ -292,6 +308,7 @@ export function TokenRankings({
           ),
         ),
         ranking,
+        (token, side) => token[side].orders.length,
       ),
     [tokens, search, ranking],
   );

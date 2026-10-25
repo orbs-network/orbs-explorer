@@ -19,42 +19,6 @@ export const PARTNER_VIEWS = [
     description: "Search and filter this app’s order history.",
   },
   {
-    value: "lookup",
-    label: "Find by order hash",
-    description:
-      "Open a specific order using its full hash, including older orders.",
-  },
-  {
-    value: "health",
-    label: "Active orders",
-    description: "Check orders still running and approaching deadlines.",
-  },
-  {
-    value: "progress",
-    label: "Execution progress",
-    description: "See how much of each order has executed and what is left.",
-  },
-  {
-    value: "failures",
-    label: "Failed orders & errors",
-    description: "Understand execution errors and why orders failed.",
-  },
-  {
-    value: "activity",
-    label: "Activity over time",
-    description: "See when orders were placed and how activity changes.",
-  },
-  {
-    value: "outcomes",
-    label: "Order outcomes",
-    description: "Compare completed, active, cancelled, and failed orders.",
-  },
-  {
-    value: "networks",
-    label: "Activity by network",
-    description: "Compare order activity across blockchain networks.",
-  },
-  {
     value: "routes",
     label: "Swap pairs",
     description: "Explore which token pairs are traded most often.",
@@ -70,16 +34,6 @@ export type PartnerView = (typeof PARTNER_VIEWS)[number]["value"];
 export const PARTNER_TABS = [
   { value: "overview", label: "Overview", views: ["overview"] },
   { value: "orders", label: "Orders", views: ["orders"] },
-  {
-    value: "execution",
-    label: "Execution",
-    views: ["health", "progress", "failures"],
-  },
-  {
-    value: "activity",
-    label: "Activity",
-    views: ["activity", "outcomes", "networks"],
-  },
   { value: "markets", label: "Markets", views: ["routes", "tokens"] },
 ] as const satisfies readonly {
   value: string;
@@ -119,12 +73,56 @@ export function resolvePartnerId(
   );
 }
 
+export type LegacyPartnerView =
+  | "health"
+  | "progress"
+  | "failures"
+  | "lookup"
+  | "activity"
+  | "outcomes"
+  | "networks"
+  | "charts"
+  | "markets";
+
 export function getPartnerView(value?: string | null): PartnerView {
   const canonical =
-    value === "charts" ? "activity" : value === "markets" ? "routes" : value;
+    value === "markets"
+      ? "routes"
+      : ["health", "progress", "failures", "lookup"].includes(value ?? "")
+        ? "orders"
+        : value;
   return (
     PARTNER_VIEWS.find((view) => view.value === canonical)?.value ?? "overview"
   );
+}
+
+/** Old execution links now open the one Orders table with the same app scope. */
+export function legacyPartnerOrdersHref(
+  partnerId: string,
+  search: ScopeSearch,
+): string | undefined {
+  const current =
+    typeof search === "string" ? new URLSearchParams(search) : search;
+  const view = current.get("view");
+  if (!["health", "progress", "failures", "lookup"].includes(view ?? ""))
+    return;
+  const params = partnerScopeSearch(partnerId, search);
+  params.set("view", "orders");
+  if (view === "health" || view === "progress") {
+    if (current.get("active_scope") !== "placement")
+      params.set("period", "all");
+    if (view !== "progress" || current.get("progress_scope") !== "all")
+      params.set("order_status", "active");
+    if (view === "health") {
+      const review = current.get("review_filter");
+      if (review === "past" || review === "soon")
+        params.set("order_deadline", review);
+      else if (review === "latest") params.set("order_errors", "latest");
+      else if (review === "older") params.set("order_active_age", "24h");
+      else if (review !== "all") params.set("order_review", "attention");
+    }
+  } else if (view === "failures") params.set("order_status", "failed");
+  return `/partners/${encodeURIComponent(resolvePartnerId(partnerId))}?${params}`;
 }
 
 function normalizedChainIds(values: readonly string[]): string[] {
@@ -202,11 +200,16 @@ export function partnerOrdersHref(
 export function partnerHref(
   partnerId: string,
   search: ScopeSearch,
-  view: PartnerView | "charts" | "markets" = "overview",
+  view: PartnerView | LegacyPartnerView = "overview",
   chainIdsOverride?: readonly string[],
 ): string {
   const id = resolvePartnerId(partnerId);
   const params = partnerScopeSearch(id, search, chainIdsOverride);
+  const legacy = legacyPartnerOrdersHref(
+    id,
+    new URLSearchParams([...params, ["view", view]]),
+  );
+  if (legacy) return legacy;
   const selectedView = getPartnerView(view);
   if (selectedView !== "overview") params.set("view", selectedView);
   return `/partners/${encodeURIComponent(id)}?${params.toString()}`;
