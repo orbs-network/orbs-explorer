@@ -26,6 +26,7 @@ import {
   FAILURE_REASON_CATEGORIES,
   type FailureReasonCategory,
 } from "@/lib/failure-classification";
+import { orderReasonSummary } from "@/components/investigation/order-presentation";
 import { InspectCount, inspectClass } from "./execution-ui";
 
 const cohorts: { id: FailureCohortId; label: string }[] = [
@@ -40,6 +41,53 @@ type Filters = {
   category: "all" | FailureReasonCategory;
 };
 const defaults: Filters = { cohort: "all", category: "all" };
+
+function normalizeFailureGroups(
+  source: ReturnType<typeof buildFailureAnalytics>["reasons"],
+  category: "all" | FailureReasonCategory,
+  query: string,
+) {
+  const groups = new Map<
+    string,
+    ReturnType<typeof buildFailureAnalytics>["reasons"][number] & {
+      messages: string[];
+    }
+  >();
+  for (const reason of source) {
+    if (
+      (category !== "all" && reason.category !== category) ||
+      !reason.reason.toLowerCase().includes(query)
+    )
+      continue;
+    const label = orderReasonSummary(reason.reason);
+    const key = `${reason.category}:${label}`;
+    const existing = groups.get(key);
+    if (!existing)
+      groups.set(key, {
+        ...reason,
+        reason: label,
+        orders: [...reason.orders],
+        terminal: [...reason.terminal],
+        active: [...reason.active],
+        completed: [...reason.completed],
+        messages: [reason.reason],
+      });
+    else {
+      existing.orders.push(...reason.orders);
+      existing.terminal.push(...reason.terminal);
+      existing.active.push(...reason.active);
+      existing.completed.push(...reason.completed);
+      existing.value += reason.value;
+      existing.valueCoverage += reason.valueCoverage;
+      existing.latestPlaced = Math.max(
+        existing.latestPlaced ?? 0,
+        reason.latestPlaced ?? 0,
+      );
+      existing.messages.push(reason.reason);
+    }
+  }
+  return [...groups.values()].sort((a, b) => b.orders.length - a.orders.length);
+}
 
 /** Shared by global and partner failure views; consumes their existing scoped data. */
 export function FailureReasons({
@@ -81,13 +129,8 @@ export function FailureReasons({
     [data, cohort],
   );
   const reasons = useMemo(
-    () =>
-      selected.reasons.filter(
-        (reason) =>
-          (category === "all" || reason.category === category) &&
-          reason.reason.toLowerCase().includes(query),
-      ),
-    [selected, category, query],
+    () => normalizeFailureGroups(selected.reasons, category, query),
+    [selected.reasons, category, query],
   );
   const matchingOrders = useMemo(
     () => reasons.flatMap((reason) => reason.orders),
@@ -109,7 +152,7 @@ export function FailureReasons({
   return (
     <Panel
       title="Failure reasons"
-      description="Exact latest reported messages. Categories are text-based hints, not confirmed root causes."
+      description="Grouped by a plain-language reported reason. Each order appears once in this table. Categories are text hints, not confirmed root causes."
     >
       <div className="flex flex-wrap items-end gap-3">
         <FilterDrawer
@@ -203,10 +246,10 @@ export function FailureReasons({
           header={
             <tr>
               {[
-                "Reported reason",
+                "Reason category",
                 "Orders",
                 "Current outcomes",
-                "Placed value",
+                "Placed value (USD)",
                 "Latest order placed",
               ].map((label) => (
                 <th key={label} scope="col">
@@ -216,12 +259,6 @@ export function FailureReasons({
             </tr>
           }
           rowContent={(reason) => {
-            const others = reason.orders.filter(
-              (order) =>
-                !["failed", "active", "completed"].includes(
-                  getOverviewOrderStatus(order),
-                ),
-            );
             return (
               <>
                 <th
@@ -251,6 +288,16 @@ export function FailureReasons({
                   >
                     {reason.reason}
                   </button>
+                  <details className="mt-2 text-xs text-muted-foreground">
+                    <summary className="cursor-pointer rounded-sm focus-visible:ring-2 focus-visible:ring-ring">
+                      Reported messages ({reason.messages.length})
+                    </summary>
+                    <ul className="mt-2 max-w-lg space-y-2 break-words">
+                      {reason.messages.map((message) => (
+                        <li key={message}>{message}</li>
+                      ))}
+                    </ul>
+                  </details>
                 </th>
                 <td>
                   <InspectCount
@@ -264,7 +311,19 @@ export function FailureReasons({
                       { label: "Failed", orders: reason.terminal },
                       { label: "Active", orders: reason.active },
                       { label: "Completed", orders: reason.completed },
-                      { label: "Other outcomes", orders: others },
+                      ...(
+                        ["cancelled", "expired", "partial", "unknown"] as const
+                      ).map((status) => ({
+                        label: {
+                          cancelled: "Cancelled",
+                          expired: "Expired",
+                          partial: "Partly completed",
+                          unknown: "Unknown",
+                        }[status],
+                        orders: reason.orders.filter(
+                          (order) => getOverviewOrderStatus(order) === status,
+                        ),
+                      })),
                     ]
                       .filter((outcome) => outcome.orders.length)
                       .map((outcome) => (

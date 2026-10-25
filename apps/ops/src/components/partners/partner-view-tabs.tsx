@@ -27,8 +27,10 @@ export function PartnerViewTabs({
   children: ReactNode;
 }) {
   const router = useRouter();
-  const active = PARTNER_TABS.find((tab) =>
-    tab.views.some((candidate) => candidate === view),
+  const active = PARTNER_TABS.find(
+    (tab) =>
+      tab.views.some((candidate) => candidate === view) ||
+      (view === "lookup" && tab.value === "orders"),
   )!;
   return (
     <Tabs
@@ -62,43 +64,40 @@ export function PartnerViewTabs({
         className="min-w-0 space-y-4 focus-visible:ring-2 focus-visible:ring-ring"
       >
         {active.views.length > 1 ? (
-          <Tabs
-            value={view}
-            activationMode="manual"
-            onValueChange={(value) =>
-              router.push(
-                partnerHref(partnerId, search, value as PartnerView),
-                { scroll: false },
-              )
-            }
-            className="min-w-0 gap-4"
-          >
-            <TabsList
-              aria-label={`${active.label} views`}
-              className="h-auto max-w-full justify-start"
-            >
-              {active.views.map((value) => {
-                const option = PARTNER_VIEWS.find(
-                  (option) => option.value === value,
-                )!;
-                return (
-                  <TabsTrigger
-                    key={value}
-                    value={value}
-                    className="min-h-11 flex-none whitespace-normal px-3 text-xs motion-reduce:transition-none"
-                  >
-                    {option.label}
-                  </TabsTrigger>
-                );
-              })}
-            </TabsList>
-            <TabsContent
-              value={view}
-              className="min-w-0 space-y-4 focus-visible:ring-2 focus-visible:ring-ring"
-            >
-              {children}
-            </TabsContent>
-          </Tabs>
+          <div className="space-y-4">
+            <label className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+              {active.label === "Execution"
+                ? "Review"
+                : active.label === "Markets"
+                  ? "Analyze"
+                  : "Measure"}
+              <select
+                aria-label={`${active.label} question`}
+                value={view}
+                onChange={(event) =>
+                  router.push(
+                    partnerHref(
+                      partnerId,
+                      search,
+                      event.target.value as PartnerView,
+                    ),
+                    { scroll: false },
+                  )
+                }
+                className="h-10 max-w-full rounded-md bg-control-background px-3 text-foreground"
+              >
+                {active.views.map((value) => (
+                  <option key={value} value={value}>
+                    {
+                      PARTNER_VIEWS.find((option) => option.value === value)
+                        ?.label
+                    }
+                  </option>
+                ))}
+              </select>
+            </label>
+            {children}
+          </div>
         ) : (
           children
         )}

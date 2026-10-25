@@ -46,7 +46,7 @@ export function OrderFilters({
   orderTypes,
   applicationMode = "draft",
   omitStatus = false,
-  periodLabel = "Placed in",
+  periodLabel = "Order placement period",
 }: {
   scope: ReturnType<typeof useOrderScope>;
   networkOptions: FilterOption[];
@@ -68,9 +68,15 @@ export function OrderFilters({
     investigation: filters,
   };
   const apply = (next: FilterValue) =>
-    scope.applyFilters(next.scope, {
-      ...(orderTypes ? investigationFilterQuery(next.investigation) : {}),
-    });
+    scope.applyFilters(
+      orderTypes &&
+        (next.investigation.placedSince || next.investigation.placedUntil)
+        ? { ...next.scope, period: "all" }
+        : next.scope,
+      {
+        ...(orderTypes ? investigationFilterQuery(next.investigation) : {}),
+      },
+    );
   const clearValue: FilterValue = {
     scope: {
       period: "7",
@@ -134,7 +140,8 @@ export function OrderFilters({
               htmlFor={`${id}-period`}
               className="text-xs text-muted-foreground"
             >
-              {periodLabel}
+              <span className="sm:hidden">Placed in</span>
+              <span className="hidden sm:inline">{periodLabel}</span>
             </label>
             <Select
               name="period"
@@ -145,6 +152,7 @@ export function OrderFilters({
             >
               <SelectTrigger
                 id={`${id}-period`}
+                aria-label={periodLabel ?? undefined}
                 className="h-8 w-32 border-control-border bg-control-background text-xs"
               >
                 <SelectValue>
@@ -184,6 +192,7 @@ export function OrderFilters({
         <>
           <FilterCombobox
             label="Networks"
+            emptyLabel="All networks"
             options={networkOptions}
             mode="multiple"
             value={draft.scope.chainIds}
@@ -194,6 +203,7 @@ export function OrderFilters({
           {!partner && (
             <FilterCombobox
               label="Trading apps"
+              emptyLabel="All trading apps"
               options={partnerOptions}
               mode="multiple"
               value={draft.scope.partnerIds}

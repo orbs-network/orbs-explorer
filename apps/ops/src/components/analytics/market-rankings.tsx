@@ -300,6 +300,10 @@ export function TokenRankings({
       title="Token involvement"
       description="Tokens stay separate by network and address. Involved placed value is order exposure; it overlaps across tokens and is not token trading volume. Same-token orders count once in involvement."
     >
+      <p className="mb-4 text-xs text-muted-foreground">
+        The same order can appear under both its input and output tokens. Do not
+        sum token rows as platform volume.
+      </p>
       <RankingsControl
         kind="tokens"
         search={search}

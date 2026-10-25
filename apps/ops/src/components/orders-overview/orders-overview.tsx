@@ -192,7 +192,7 @@ export function OrdersOverview({
       )}
       <div
         className={cn(
-          "grid grid-cols-2 gap-2 sm:grid-cols-3",
+          "grid grid-cols-2 gap-px overflow-hidden rounded-xl bg-control-background sm:grid-cols-3",
           statuses.length === 7 ? "xl:grid-cols-7" : "xl:grid-cols-6",
         )}
       >
@@ -206,7 +206,7 @@ export function OrdersOverview({
             prefetch={false}
             aria-label={`View ${OVERVIEW_STATUSES[key].label.toLowerCase()} orders (${groups[key].length})`}
             className={cn(
-              "min-w-0 rounded-xl bg-card px-3.5 py-3 text-left transition-colors hover:bg-control-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring motion-reduce:transition-none",
+              "min-w-0 bg-card px-3.5 py-2.5 text-left transition-colors hover:bg-control-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring motion-reduce:transition-none",
               statuses.length === 7 &&
                 "last:col-span-2 sm:last:col-span-3 xl:last:col-span-1",
             )}

@@ -5,7 +5,6 @@ import Link from "next/link";
 import dynamic from "next/dynamic";
 import { useRouter, useSearchParams } from "next/navigation";
 import { RefreshCw } from "lucide-react";
-import { BackButton } from "@/components/back-button";
 import { usePartner } from "@orbs/domain/hooks/use-partner";
 import { getChainLogo } from "@orbs/domain/utils/utils";
 import { useSpotConfig } from "@orbs/domain/twap/hooks/use-spot-config";
@@ -197,6 +196,7 @@ export function PartnerWorkspace({
       const href = partnerHref(partnerId, params, view, selection.chainIds);
       const [pathname, query] = href.split("?");
       const next = new URLSearchParams(query);
+      next.delete("table_page_order_investigation_results");
       for (const [key, value] of Object.entries(extra)) {
         if (value === undefined) next.delete(key);
         else next.set(key, value);
@@ -263,7 +263,18 @@ export function PartnerWorkspace({
   return (
     <Page>
       <div className="space-y-4 sm:space-y-5">
-        <BackButton fallbackHref={globalScopeHref("/", allPartnersParams)} />
+        <nav aria-label="Breadcrumb" className="text-sm text-muted-foreground">
+          <Link
+            href={globalScopeHref("/", allPartnersParams)}
+            className="rounded-sm text-link hover:underline"
+          >
+            Overview
+          </Link>
+          <span aria-hidden className="mx-2">
+            /
+          </span>
+          <span aria-current="page">{partnerName}</span>
+        </nav>
         <header className="flex flex-wrap items-start justify-between gap-4">
           <div className="flex min-w-0 items-center gap-3">
             <Avatar aria-hidden className="size-11 shrink-0 rounded-[10px]">
@@ -284,21 +295,6 @@ export function PartnerWorkspace({
             </div>
           </div>
           <div className="flex flex-wrap items-end gap-2">
-            <Button asChild variant="outline">
-              <Link
-                href={
-                  currentView
-                    ? ordersScopeHref({
-                        ...viewScope,
-                        query: "order_status=active",
-                      })
-                    : partnerOrdersHref(partnerId, search)
-                }
-                prefetch={false}
-              >
-                {currentView ? "View active orders" : "View orders"}
-              </Link>
-            </Button>
             <Select
               value={partnerId}
               onValueChange={(value) => scope.setPartners([value])}
@@ -347,7 +343,9 @@ export function PartnerWorkspace({
         </header>
         <OrderFilters
           periodLabel={
-            currentView && operational.placement === "all" ? null : "Placed in"
+            currentView && operational.placement === "all"
+              ? null
+              : "Order placement period"
           }
           scope={scope}
           networkOptions={networkOptions}

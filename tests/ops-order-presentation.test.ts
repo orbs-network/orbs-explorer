@@ -203,7 +203,7 @@ test("schedule presentation tolerates numeric epochs and malformed optional serv
 test("active row status uses the latest attempt and explicit waiting reports, never cumulative error history", () => {
   assert.equal(
     orderRowStatus(list("pending", "error", "TakerError reverted")),
-    "Active · erroring",
+    "Active · latest attempt failed",
   );
   assert.equal(orderRowStatus(list("pending", "", "")), "Active · waiting");
   assert.equal(
@@ -231,13 +231,16 @@ test("active row status uses the latest attempt and explicit waiting reports, ne
 });
 
 test("compact type and network labels retain exact full-name context without inventing catalog entries", () => {
-  assert.equal(compactOrderType("TWAP Take Profit Order"), "TWAP TP");
-  assert.equal(compactOrderType("TWAP_STOP_LOSS_ORDER"), "TWAP SL");
-  assert.equal(compactOrderType("TWAP TP"), "TWAP TP");
+  assert.equal(
+    compactOrderType("TWAP Take Profit Order"),
+    "TWAP · take profit",
+  );
+  assert.equal(compactOrderType("TWAP_STOP_LOSS_ORDER"), "TWAP · stop loss");
+  assert.equal(compactOrderType("TWAP TP"), "TWAP · take profit");
   assert.equal(compactOrderType("Limit Order"), "Limit");
   assert.equal(compactOrderType("Custom order"), "Custom order");
   assert.equal(compactOrderType(undefined), "—");
-  assert.equal(compactOrderNetwork(42161).label, "Arbitrum");
+  assert.equal(compactOrderNetwork(42161).label, "Arbitrum One");
   assert.match(compactOrderNetwork(42161).title, /Arbitrum One.*42161/);
   assert.equal(compactOrderNetwork(4663).label, "Robinhood Chain");
   assert.equal(compactOrderNetwork(undefined).label, "Chain unreported");

@@ -9,10 +9,17 @@ import { useCopy } from "@orbs/domain/hooks/use-copy";
 import { hasTokenSymbol } from "@orbs/domain/token-metadata";
 import { getTwapOrderChainId } from "@orbs/domain/twap/utils";
 import { getOverviewOrderStatus } from "@orbs/domain/twap/utils/orders-overview";
+import {
+  orderDetailHref,
+  type OrderNavigationScope,
+} from "../../lib/order-investigation";
 import { shortenAddress } from "@orbs/domain/utils/utils";
 import { NetworkIcon } from "@orbs/ui/controls/network";
 import { Button } from "@orbs/ui/controls/button";
-import { reportedNumber } from "../../lib/order-diagnostics";
+import {
+  hasLastExecutionError,
+  reportedNumber,
+} from "../../lib/order-diagnostics";
 import { deadlineTime } from "../../lib/execution-analytics";
 import { getOrderStatusConflict } from "../../lib/order-evidence";
 import {
@@ -20,6 +27,7 @@ import {
   STATUS_COLORS,
 } from "../orders-overview/overview-display";
 import {
+  orderReasonSummary,
   compactOrderNetwork,
   orderListMessage,
   orderRowStatus,
@@ -34,12 +42,14 @@ function RowToken({
   token,
   label,
   resolveMetadata,
+  copyable,
 }: {
   address: string;
   chainId?: number;
   token?: Token;
   label: "input" | "output";
   resolveMetadata: boolean;
+  copyable: boolean;
 }) {
   const embedded =
     token?.address?.toLowerCase() === address?.toLowerCase() &&
@@ -64,7 +74,7 @@ function RowToken({
       >
         {address ? shortenAddress(address) : "Unreported"}
       </span>
-      {address && (
+      {address && copyable && (
         <Button
           type="button"
           variant="ghost"
@@ -84,9 +94,11 @@ function RowToken({
 export function OrderRowPair({
   order,
   resolveMetadata = true,
+  allowCopy = true,
 }: {
   order: ListOrder;
   resolveMetadata?: boolean;
+  allowCopy?: boolean;
 }) {
   const chainId = getTwapOrderChainId(order);
   return (
@@ -97,6 +109,7 @@ export function OrderRowPair({
         token={order.metadata.srcToken}
         label="input"
         resolveMetadata={resolveMetadata}
+        copyable={allowCopy}
       />
       <ArrowRight
         aria-hidden
@@ -108,8 +121,39 @@ export function OrderRowPair({
         token={order.metadata.dstToken}
         label="output"
         resolveMetadata={resolveMetadata}
+        copyable={allowCopy}
       />
     </span>
+  );
+}
+
+export function OrderIdentityCell({
+  order,
+  partner,
+  scope,
+}: {
+  order: ListOrder;
+  partner?: string;
+  scope: OrderNavigationScope;
+}) {
+  return (
+    <div className="min-w-44 space-y-1">
+      <Link
+        href={orderDetailHref(order.hash, order.source, scope)}
+        aria-label={`Open order ${order.hash}`}
+        title={`Order ${order.hash}`}
+        className="inline-flex min-h-8 rounded-sm text-sm text-link hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      >
+        <OrderRowPair order={order} allowCopy={false} />
+      </Link>
+      {partner && <p className="text-xs text-muted-foreground">{partner}</p>}
+      <p
+        className="font-mono text-[11px] text-muted-foreground"
+        title={order.hash}
+      >
+        {shortenAddress(order.hash)}
+      </p>
+    </div>
   );
 }
 
@@ -118,7 +162,7 @@ export function OrderRowNetwork({ order }: { order: ListOrder }) {
   const network = compactOrderNetwork(chainId);
   return (
     <span
-      className="inline-flex items-center gap-1.5 whitespace-nowrap text-[11px]"
+      className="inline-flex items-center gap-1.5 whitespace-nowrap text-xs"
       title={network.title}
     >
       <NetworkIcon chainId={chainId} name={network.label} />
@@ -129,7 +173,7 @@ export function OrderRowNetwork({ order }: { order: ListOrder }) {
 
 export function OrderRowStatus({
   order,
-  href,
+  href: _href,
   compact = false,
   reasonDisplay = "truncate",
 }: {
@@ -141,6 +185,9 @@ export function OrderRowStatus({
   const status = getOverviewOrderStatus(order);
   const message = orderListMessage(order);
   const conflict = getOrderStatusConflict(order);
+  const executionError =
+    status === "failed" ||
+    (status === "active" && hasLastExecutionError(order));
   return (
     <div
       className={
@@ -150,10 +197,10 @@ export function OrderRowStatus({
       }
     >
       <span
-        className={`inline-flex shrink-0 items-center gap-1 whitespace-nowrap text-xs font-medium ${message.error ? ORDER_ERROR_CLASS : STATUS_COLORS[status]}`}
+        className={`inline-flex shrink-0 items-center gap-1 whitespace-nowrap text-xs font-medium ${status === "failed" ? ORDER_ERROR_CLASS : STATUS_COLORS[status]}`}
         title={`Service status: ${order.metadata.status || "Not provided"}`}
       >
-        {message.error && (
+        {executionError && (
           <AlertTriangle aria-hidden className="size-3.5 shrink-0" />
         )}
         {orderRowStatus(order)}
@@ -163,39 +210,38 @@ export function OrderRowStatus({
           className="shrink-0 rounded bg-amber-500/15 px-1 text-[10px] text-amber-800 dark:text-amber-300"
           title={conflict.message}
         >
-          Review outcome
+          Status needs review
         </span>
       )}
       {message.text && (
-        <Link
-          href={href}
-          tabIndex={-1}
-          draggable={false}
-          className={`relative z-20 block min-w-0 select-text text-xs leading-relaxed hover:underline ${reasonDisplay === "full" ? "whitespace-pre-wrap break-words [overflow-wrap:anywhere]" : compact ? "basis-full line-clamp-2 whitespace-normal break-words [overflow-wrap:anywhere]" : "truncate"} ${message.error ? ORDER_ERROR_CLASS : "text-muted-foreground"}`}
-          title={message.text}
+        <p
+          className={`min-w-0 text-xs leading-relaxed ${compact ? "basis-full" : ""} ${executionError ? ORDER_ERROR_CLASS : "text-muted-foreground"}`}
+          title="Open order details for the full reported reason"
         >
           {reasonDisplay === "full"
             ? message.text
-            : withoutRawUnits(message.text)}
-        </Link>
+            : orderReasonSummary(message.text)}
+        </p>
       )}
     </div>
   );
 }
 
-/** Price-check reasons repeat both prices in raw token units; the list only needs the readable values. */
-const withoutRawUnits = (text: string) =>
-  text.replace(/\s*\(\d{6,} vs\.? \d{6,}\)/g, "");
-
 export function OrderRowProgress({ order }: { order: ListOrder }) {
-  const summary = order.metadata.chunkSummary;
+  const success = reportedNumber(order.metadata.chunkSummary?.success),
+    planned = reportedNumber(order.metadata.expectedChunks);
   return (
     <span
-      className="whitespace-nowrap text-[11px] tabular-nums text-muted-foreground"
-      title={`${reportedNumber(summary?.success) ?? "Unreported"} successful / ${reportedNumber(order.metadata.expectedChunks) ?? "unreported"} planned chunks`}
+      className="whitespace-nowrap text-xs tabular-nums text-muted-foreground"
+      title="Successful executions out of planned trades; this count does not measure value filled."
     >
-      {reportedNumber(summary?.success) ?? "?"}/
-      {reportedNumber(order.metadata.expectedChunks) ?? "?"}
+      {success === undefined && planned === undefined
+        ? "Not reported"
+        : success === undefined
+          ? `Completed count unavailable · ${planned} planned`
+          : planned === undefined
+            ? `${success} completed · plan unreported`
+            : `${success} of ${planned} trades`}
     </span>
   );
 }
@@ -204,7 +250,7 @@ export function OrderRowErrors({ order }: { order: ListOrder }) {
   const errors = reportedNumber(order.metadata.chunkSummary?.error);
   return (
     <span
-      className={`inline-flex items-center gap-1 whitespace-nowrap text-[11px] tabular-nums ${errors && errors > 0 ? ORDER_ERROR_CLASS : "text-muted-foreground"}`}
+      className={`inline-flex items-center gap-1 whitespace-nowrap text-xs tabular-nums ${errors && errors > 0 ? ORDER_ERROR_CLASS : "text-muted-foreground"}`}
     >
       {errors !== undefined && errors > 0 && (
         <AlertTriangle aria-hidden className="size-3" />
@@ -213,7 +259,7 @@ export function OrderRowErrors({ order }: { order: ListOrder }) {
         ? "—"
         : errors > 0
           ? `${errors} ${errors === 1 ? "error" : "errors"}`
-          : null}
+          : "0"}
     </span>
   );
 }
@@ -228,7 +274,7 @@ export function OrderRowTime({
   return (
     <time
       dateTime={order.timestamp}
-      className="whitespace-nowrap text-[11px] text-muted-foreground"
+      className="whitespace-nowrap text-xs text-muted-foreground"
       title={`Placed ${formatOrderDate(order.timestamp)} · Deadline ${formatOrderDate(deadlineTime(order))}`}
     >
       {relativeOrderTime(order.timestamp, now)}

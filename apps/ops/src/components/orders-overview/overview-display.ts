@@ -23,7 +23,11 @@ export function formatOrderDate(value: string | number | undefined) {
     ? new Intl.DateTimeFormat(undefined, {
         dateStyle: "medium",
         timeStyle: "short",
-      }).format(date)
+      }).format(date) +
+        " " +
+        (new Intl.DateTimeFormat(undefined, { timeZoneName: "short" })
+          .formatToParts(date)
+          .find((part) => part.type === "timeZoneName")?.value ?? "")
     : "Not provided";
 }
 

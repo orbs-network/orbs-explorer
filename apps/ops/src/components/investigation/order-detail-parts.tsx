@@ -1,4 +1,5 @@
 "use client";
+import { reportedNumber } from "@/lib/order-diagnostics";
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
@@ -39,6 +40,7 @@ import { OrderTokenLabel as OrderTokenName } from "@/components/orders-overview/
 import {
   latestOrderError,
   compactTokenAmount,
+  compactOrderType,
   orderListMessage,
   reportedScheduleValue,
   reportedTime,
@@ -280,7 +282,7 @@ export function OrderSummary({
             <span>{appName}</span>
           )}
           <span className="text-xs text-muted-foreground">
-            {full.metadata.orderType || "Type not provided"}
+            {compactOrderType(full.metadata.orderType)}
           </span>
         </div>
         <p className="mt-3 max-w-3xl text-sm leading-relaxed text-muted-foreground">
@@ -382,9 +384,10 @@ export function OrderSummary({
             {isZeroOutputLimit(witness.output?.limit) ? (
               <div>
                 <dt className="text-xs text-muted-foreground">Output limit</dt>
-                <dd className="mt-1 font-medium">No positive minimum</dd>
+                <dd className="mt-1 font-medium">Minimum output not set</dd>
                 <dd className="mt-1 text-xs! text-muted-foreground">
-                  Reported limit: 0. This is not an estimated return.
+                  The reported order has no positive minimum output. This is not
+                  an estimated return.
                 </dd>
               </div>
             ) : (
@@ -397,13 +400,31 @@ export function OrderSummary({
             )}
           </dl>
         </div>
+        {cachedList &&
+          reportedNumber(cachedList.totalUSDAmount) !== undefined && (
+            <div className="mt-4 text-sm">
+              <span className="text-muted-foreground">Placed value (USD)</span>
+              <p className="mt-1 text-lg font-semibold tabular-nums">
+                {new Intl.NumberFormat(undefined, {
+                  style: "currency",
+                  currency: "USD",
+                  maximumFractionDigits: 2,
+                }).format(reportedNumber(cachedList.totalUSDAmount)!)}
+              </p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Reported submitted value from the order-history snapshot
+                {listUpdatedAt ? ` · ${formatOrderDate(listUpdatedAt)}` : ""};
+                not executed volume.
+              </p>
+            </div>
+          )}
         <dl className="mt-4 grid gap-x-6 gap-y-4 empty:hidden sm:grid-cols-2 xl:grid-cols-3">
           {witness.input?.amount !== maximum && (
             <TokenAmount
               address={witness.input?.token}
               chainId={chainId}
               raw={witness.input?.amount}
-              label="Requested input per chunk"
+              label="Requested input per trade"
             />
           )}
           {/* Fill amounts are often absent; a pair of "Unreported" values adds nothing. */}
@@ -497,7 +518,7 @@ export function OrderSummary({
                 </span>
               </p>
               <p className="mt-1 text-xs text-muted-foreground">
-                Successful / planned chunks
+                Trades completed / planned
               </p>
             </div>
             {list.metadata.chunkSummary.error > 0 && (

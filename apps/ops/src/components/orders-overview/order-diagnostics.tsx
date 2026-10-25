@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useMemo } from "react";
 import { ChevronRight } from "lucide-react";
 import type { ListOrder } from "@orbs/domain/twap/types";
 import { buildOrderDiagnostics } from "@/lib/order-diagnostics";
@@ -9,7 +9,8 @@ import {
   formatOrderUsd,
   formatShare,
 } from "./overview-display";
-import { StatusOrdersModal } from "./status-order-modal";
+import { useOrderDrilldown } from "@/hooks/use-order-drilldown";
+import { useOrderNavigationScope } from "@/hooks/use-order-navigation-scope";
 import { CardDisclosure } from "./card-disclosure";
 
 export function OrderDiagnostics({
@@ -28,20 +29,10 @@ export function OrderDiagnostics({
     [orders, snapshot],
   );
   const Heading = headingLevel === 3 ? "h3" : "h4";
-  const trigger = useRef<HTMLButtonElement>(null);
-  const [selection, setSelection] = useState<{
-    title: string;
-    orders: ListOrder[];
-  } | null>(null);
-  if (!orders.length) return null;
-  const open = (
-    event: React.MouseEvent<HTMLButtonElement>,
-    title: string,
-    selected: ListOrder[],
-  ) => {
-    trigger.current = event.currentTarget;
-    setSelection({ title, orders: selected });
-  };
+  const navigationScope = useOrderNavigationScope();
+  const inspect = useOrderDrilldown(navigationScope, snapshot);
+  const open = (_event: unknown, title: string, selected: ListOrder[]) =>
+    inspect(title, selected);
   const errorMetrics = [
     {
       label: "Orders with errors",
@@ -264,22 +255,6 @@ export function OrderDiagnostics({
             None reported
           </span>
         </div>
-      )}
-      {selection && (
-        <StatusOrdersModal
-          open
-          onOpenChange={(open) => {
-            if (!open) setSelection(null);
-          }}
-          title={selection.title}
-          partnerName={scope}
-          orders={selection.orders}
-          description="Matching orders from the current view. Each row shows its current service status."
-          onCloseAutoFocus={(event) => {
-            event.preventDefault();
-            trigger.current?.focus();
-          }}
-        />
       )}
     </section>
   );

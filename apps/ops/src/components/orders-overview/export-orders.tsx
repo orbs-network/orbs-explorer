@@ -1,5 +1,8 @@
 "use client";
 
+import { useSearchParams } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
+import { spotOverviewOrdersQueryOptions } from "@/lib/spot-overview-queries";
 import type { ListOrder } from "@orbs/domain/twap/types";
 import { Button } from "@orbs/ui/controls/button";
 import { ChevronDown, Download } from "lucide-react";
@@ -34,9 +37,29 @@ export function ExportOrders({
   orders: ListOrder[];
   context?: string;
 }) {
+  const search = useSearchParams(),
+    client = useQueryClient();
+  const metadata = () => ({
+    exported_utc: new Date().toISOString(),
+    snapshot_utc: client.getQueryState(
+      spotOverviewOrdersQueryOptions().queryKey,
+    )?.dataUpdatedAt
+      ? new Date(
+          client.getQueryState(spotOverviewOrdersQueryOptions().queryKey)!
+            .dataUpdatedAt,
+        ).toISOString()
+      : "unavailable",
+    timezone: "UTC",
+    filter_query: search.toString(),
+    scope: "All matching records, not just the visible page",
+    value_definition:
+      "Original reported placed order value, not executed volume",
+  });
   const countLabel = `${orders.length.toLocaleString()}${context ? ` ${context}` : ""} ${orders.length === 1 ? "order" : "orders"}`;
   const csv = () => {
+    const meta = metadata();
     const fields = [
+      ...Object.keys(meta),
       "hash",
       "source",
       "chain_id",
@@ -64,6 +87,7 @@ export function ExportOrders({
       const m = order.metadata;
       const c = m.chunkSummary;
       return [
+        ...Object.values(meta),
         order.hash,
         order.source,
         getTwapOrderChainId(order),
@@ -116,20 +140,22 @@ export function ExportOrders({
               </span>
             </>
           ) : (
-            "Export"
+            "Export orders"
           )}
           <ChevronDown aria-hidden className="size-3" />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
-        <DropdownMenuLabel>{countLabel} in this export</DropdownMenuLabel>
+        <DropdownMenuLabel>
+          {countLabel} · all matching records · UTC
+        </DropdownMenuLabel>
         <DropdownMenuItem onSelect={csv}>
           {context ? `${countLabel}, CSV` : "Download CSV"}
         </DropdownMenuItem>
         <DropdownMenuItem
           onSelect={() =>
             download(
-              JSON.stringify(orders, null, 2),
+              JSON.stringify({ metadata: metadata(), orders }, null, 2),
               "application/json",
               "json",
             )

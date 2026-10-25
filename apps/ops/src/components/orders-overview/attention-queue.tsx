@@ -147,48 +147,54 @@ export function AttentionQueue() {
 
   return (
     <Panel
-      title="Needs attention"
+      title={
+        data.isLoading
+          ? "Needs attention · checking orders…"
+          : data.isError || stale
+            ? "Needs attention · fresh snapshot required"
+            : activeReview.length
+              ? `Needs attention · ${activeReview.length} active orders to review`
+              : "No active order review signals"
+      }
+      className="[&>div:first-child]:mb-2"
       description="Current review signals and coverage gaps. Counts can overlap; a failed execution attempt is not a terminal order failure. Rate rules use orders placed in the selected window."
       action={
-        <MonitoringRulesEditor
-          rules={rules}
-          onSave={saveRules}
-          partnerOptions={data.partnerOptions}
-        />
+        <div className="flex flex-wrap items-center gap-2">
+          {!data.isLoading &&
+            !data.isError &&
+            !stale &&
+            activeReview.length > 0 && (
+              <Button asChild size="sm">
+                <Link href={`/health?${reviewSearch}`}>
+                  Review {activeReview.length} orders
+                  <ChevronRight aria-hidden className="size-3.5" />
+                </Link>
+              </Button>
+            )}
+          <MonitoringRulesEditor
+            rules={rules}
+            onSave={saveRules}
+            partnerOptions={data.partnerOptions}
+          />
+        </div>
       }
     >
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="min-w-0">
-          <p role="status" className="text-sm font-medium">
-            {data.isLoading
-              ? "Checking active orders…"
-              : data.isError || stale
-                ? "Active order checks need a fresh snapshot"
-                : activeReview.length
-                  ? `${activeReview.length.toLocaleString()} active ${activeReview.length === 1 ? "order needs" : "orders need"} review`
-                  : "No active orders need review under the current checks"}
-          </p>
-          <p className="mt-1 text-xs text-muted-foreground">{scopeNote}</p>
-        </div>
-        {!data.isLoading &&
-          !data.isError &&
-          !stale &&
-          activeReview.length > 0 && (
-            <Button asChild size="sm">
-              <Link href={`/health?${reviewSearch}`}>
-                Review {activeReview.length.toLocaleString()}{" "}
-                {activeReview.length === 1 ? "order" : "orders"}
-                <ChevronRight aria-hidden className="size-3.5" />
-              </Link>
-            </Button>
-          )}
-      </div>
-      <details className="mt-4">
+      <p className="text-xs text-muted-foreground">{scopeNote}</p>
+      {serviceIssues.length > 0 && (
+        <Link
+          href={monitoringHref}
+          className="mt-2 inline-flex min-h-8 items-center gap-1 rounded-sm text-xs text-amber-800 hover:underline focus-visible:ring-2 focus-visible:ring-ring dark:text-amber-300"
+        >
+          <AlertTriangle aria-hidden className="size-3.5" />
+          {serviceIssues.length} service{" "}
+          {serviceIssues.length === 1 ? "check needs" : "checks need"} review ·
+          coverage may be incomplete
+          <ChevronRight aria-hidden className="size-3.5" />
+        </Link>
+      )}
+      <details className="mt-2">
         <summary className="w-fit cursor-pointer rounded text-xs text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
           Review details & coverage
-          {serviceIssues.length
-            ? ` · ${serviceIssues.length} service ${serviceIssues.length === 1 ? "check" : "checks"} to review`
-            : ""}
         </summary>
         <div className="mt-4">
           <div className="mb-3">

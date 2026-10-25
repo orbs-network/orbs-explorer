@@ -1,88 +1,18 @@
 "use client";
 
-import type { ComponentProps, ReactNode } from "react";
-import { TableVirtuoso } from "react-virtuoso";
-import { TableBody, TableHeader, TableRow } from "@orbs/ui/controls/table";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useId, useState, type ReactNode } from "react";
+import { Button } from "@orbs/ui/controls/button";
 
-type TableContext = {
-  label: string;
-  rowCount: number;
-  minWidth?: number;
-  columnWidths?: readonly string[];
-};
-
-function Table({
-  context,
-  children,
-  ...props
-}: ComponentProps<"table"> & { context?: TableContext }) {
-  return (
-    <table
-      {...props}
-      aria-label={context?.label}
-      aria-rowcount={context?.rowCount}
-      style={{
-        ...props.style,
-        minWidth: context?.minWidth,
-        tableLayout: context?.columnWidths ? "fixed" : undefined,
-      }}
-      className="w-full text-left text-[13px] tabular-nums [&_th]:whitespace-nowrap [&_th]:px-3 [&_th]:py-3 [&_th]:font-medium [&_td]:px-3 [&_td]:py-3 [&_thead]:bg-card [&_thead]:text-muted-foreground [&_tbody_tr]:align-middle"
-    >
-      {context?.columnWidths && (
-        <colgroup>
-          {context.columnWidths.map((width, index) => (
-            <col key={index} style={{ width }} />
-          ))}
-        </colgroup>
-      )}
-      {children}
-    </table>
-  );
-}
-
-function Row({
-  item: _item,
-  context: _context,
-  ...props
-}: ComponentProps<"tr"> & { item?: unknown; context?: unknown }) {
-  const index = (props as { "data-index"?: number })["data-index"];
-  return (
-    <TableRow
-      {...props}
-      aria-rowindex={index === undefined ? undefined : index + 2}
-      className="group/row relative cursor-default transition-colors motion-reduce:transition-none"
-    />
-  );
-}
-
-function Head({
-  context,
-  ...props
-}: ComponentProps<"thead"> & { context?: TableContext }) {
-  return (
-    <TableHeader
-      {...props}
-      style={{
-        ...props.style,
-        ...(context?.minWidth === undefined && !context?.columnWidths
-          ? {}
-          : { zIndex: 30 }),
-      }}
-    />
-  );
-}
-
-// Keep component identities stable so scrolling never remounts row controls.
-const components = { Table, TableHead: Head, TableBody, TableRow: Row };
-
+/** The shared record table: native semantics, fixed spacing, and URL-backed pages. */
 export function ContinuousTable<T>({
   label,
   items,
   header,
   rowContent,
   itemKey,
-  minWidth = 640,
-  viewportHeight,
+  minWidth = 720,
+  viewportHeight: _viewportHeight,
   columnWidths,
 }: {
   label: string;
@@ -94,33 +24,143 @@ export function ContinuousTable<T>({
   viewportHeight?: string | number;
   columnWidths?: readonly string[];
 }) {
+  const router = useRouter(),
+    pathname = usePathname(),
+    search = useSearchParams();
+  const id = useId();
+  const context = `${pathname}?${search}`;
+  const [pinned, setPinned] = useState<{ context: string; items: T[] } | null>(
+    null,
+  );
+  const tableItems = pinned?.context === context ? pinned.items : items;
+  const pending = tableItems !== items && pinned?.context === context;
+  const key = label
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/_$/, "");
+  const pageKey = `table_page_${key}`,
+    sizeKey = `table_size_${key}`;
+  const size = [25, 50, 100].includes(Number(search.get(sizeKey)))
+    ? Number(search.get(sizeKey))
+    : 25;
+  const pages = Math.max(1, Math.ceil(tableItems.length / size));
+  const requested = Number(search.get(pageKey) || 1);
+  const page = Math.min(
+    pages,
+    Number.isSafeInteger(requested) && requested > 0 ? requested : 1,
+  );
+  const start = (page - 1) * size;
+  const visible = tableItems.slice(start, start + size);
+  const update = (nextPage: number, nextSize = size) => {
+    const next = new URLSearchParams(search.toString());
+    if (nextPage === 1) next.delete(pageKey);
+    else next.set(pageKey, String(nextPage));
+    if (nextSize === 25) next.delete(sizeKey);
+    else next.set(sizeKey, String(nextSize));
+    router.push(`${pathname}${next.size ? `?${next}` : ""}`, { scroll: false });
+  };
   return (
     <div
-      role={viewportHeight ? undefined : "region"}
-      aria-label={viewportHeight ? undefined : label}
-      tabIndex={viewportHeight ? undefined : 0}
-      className={`min-w-0 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${columnWidths && !viewportHeight ? "overflow-visible" : "overflow-x-auto overflow-y-hidden"}`}
+      className="min-w-0 space-y-3"
+      onFocusCapture={() =>
+        setPinned((previous) =>
+          previous?.context === context ? previous : { context, items },
+        )
+      }
+      onBlurCapture={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget)) setPinned(null);
+      }}
     >
-      <TableVirtuoso<T, TableContext>
-        useWindowScroll={!viewportHeight}
-        role={viewportHeight ? "region" : undefined}
-        aria-label={viewportHeight ? label : undefined}
-        tabIndex={viewportHeight ? 0 : undefined}
-        className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
-        context={{
-          label,
-          rowCount: items.length + 1,
-          minWidth: viewportHeight ? minWidth : undefined,
-          columnWidths,
-        }}
-        data={items}
-        style={viewportHeight ? { height: viewportHeight } : { minWidth }}
-        overscan={400}
-        components={components}
-        computeItemKey={(_index, item) => itemKey(item)}
-        fixedHeaderContent={() => header}
-        itemContent={(index, item) => rowContent(item, index)}
-      />
+      {pending && (
+        <div
+          role="status"
+          className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground"
+        >
+          Updated data is available. Rows stay in place while you work.
+          <Button variant="outline" size="sm" onClick={() => setPinned(null)}>
+            Apply updated rows
+          </Button>
+        </div>
+      )}
+      <div
+        role="region"
+        aria-label={label}
+        tabIndex={0}
+        className="min-w-0 overflow-x-auto rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      >
+        <table
+          aria-label={label}
+          className="ops-data-table"
+          style={{
+            minWidth: Math.max(minWidth, columnWidths ? 960 : 640),
+            tableLayout: columnWidths ? "fixed" : undefined,
+          }}
+        >
+          {columnWidths && (
+            <colgroup>
+              {columnWidths.map((width, index) => (
+                <col key={index} style={{ width }} />
+              ))}
+            </colgroup>
+          )}
+          <thead>{header}</thead>
+          <tbody>
+            {visible.map((item, index) => (
+              <tr key={itemKey(item)} className="group/row">
+                {rowContent(item, start + index)}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <nav
+        aria-label={`${label} pages`}
+        className="flex flex-wrap items-center justify-between gap-3 px-1 text-xs text-muted-foreground"
+      >
+        <p role="status" aria-live="polite" className="tabular-nums">
+          {tableItems.length
+            ? `${(start + 1).toLocaleString()}–${Math.min(start + size, tableItems.length).toLocaleString()} of ${tableItems.length.toLocaleString()}`
+            : "0 results"}
+        </p>
+        {(tableItems.length > 25 || size !== 25) && (
+          <div className="flex flex-wrap items-center gap-3">
+            <label htmlFor={`${id}-size`} className="flex items-center gap-2">
+              Rows per page
+              <select
+                id={`${id}-size`}
+                value={size}
+                onChange={(event) => update(1, Number(event.target.value))}
+                className="h-9 rounded-md bg-control-background px-2 text-foreground"
+              >
+                {[25, 50, 100].map((value) => (
+                  <option key={value} value={value}>
+                    {value}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={page === 1}
+              onClick={() => update(page - 1)}
+            >
+              Previous
+            </Button>
+            <span className="tabular-nums">
+              {page} / {pages}
+            </span>
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={page === pages}
+              onClick={() => update(page + 1)}
+            >
+              Next
+            </Button>
+          </div>
+        )}
+      </nav>
     </div>
   );
 }

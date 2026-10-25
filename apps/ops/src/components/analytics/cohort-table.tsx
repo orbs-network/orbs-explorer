@@ -12,7 +12,7 @@ import {
   formatShare,
 } from "@/components/orders-overview/overview-display";
 import { cellClass, inspectClass, NetworkLabel } from "./analytics-labels";
-import { ViewTabs } from "@/components/view-tabs";
+import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import {
   InvestigationSelect,
   InvestigationSelectItem,
@@ -31,6 +31,15 @@ export function CohortTable({
   groups: PerformanceCohort[];
   label: string;
 }) {
+  const navigation = useRouter(),
+    pathname = usePathname(),
+    params = useSearchParams();
+  const measure =
+    params.get("cohort_view") === "sizes"
+      ? "sizes"
+      : params.get("cohort_view") === "errors"
+        ? "errors"
+        : "outcomes";
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState("orders");
   const rows = useMemo(
@@ -123,33 +132,26 @@ export function CohortTable({
           : " in this view"}
       </p>
       {filtered.length ? (
-        <ViewTabs
-          label={`${label} measures`}
-          param="cohort_view"
-          tabs={[
-            {
-              value: "outcomes",
-              label: "Outcomes",
-              content: (
-                <CohortResults rows={filtered} label={label} mode="outcomes" />
-              ),
-            },
-            {
-              value: "sizes",
-              label: "Order sizes",
-              content: (
-                <CohortResults rows={filtered} label={label} mode="sizes" />
-              ),
-            },
-            {
-              value: "errors",
-              label: "Error history",
-              content: (
-                <CohortResults rows={filtered} label={label} mode="errors" />
-              ),
-            },
-          ]}
-        />
+        <div className="space-y-4">
+          <label className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+            Measure
+            <select
+              aria-label={`${label} measure`}
+              value={measure}
+              onChange={(event) => {
+                const next = new URLSearchParams(params.toString());
+                next.set("cohort_view", event.target.value);
+                navigation.push(`${pathname}?${next}`, { scroll: false });
+              }}
+              className="h-10 rounded-md bg-control-background px-3 text-foreground"
+            >
+              <option value="outcomes">Current outcomes</option>
+              <option value="sizes">Order sizes</option>
+              <option value="errors">Execution error history</option>
+            </select>
+          </label>
+          <CohortResults rows={filtered} label={label} mode={measure} />
+        </div>
       ) : (
         <EmptyState
           title={`No matching ${label.toLowerCase()}`}
@@ -185,7 +187,7 @@ function CohortResults({
             "Orders",
             ...(mode === "outcomes"
               ? [
-                  "Completed / all",
+                  "Completed (% of placed orders)",
                   "Partial",
                   "Active",
                   "Cancelled",
@@ -196,9 +198,9 @@ function CohortResults({
               : mode === "sizes"
                 ? [
                     "Placed value",
-                    "Mean size",
+                    "Average order size",
                     "Median size",
-                    "P90 size",
+                    "90th percentile order size",
                     "USD coverage",
                   ]
                 : ["With errors"]),

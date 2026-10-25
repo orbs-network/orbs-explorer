@@ -1,13 +1,14 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import { ArrowDown, ArrowUp, ArrowUpDown } from "lucide-react";
 import type { PartnerChainEntry } from "@orbs/domain/twap/utils/orders-overview";
 import { groupOverviewOrders } from "@orbs/domain/twap/utils/orders-overview";
 import { NetworkIcon } from "@orbs/ui/controls/network";
 import { hasExecutionErrors, reportedNumber } from "@/lib/order-diagnostics";
 import { formatOrderUsd } from "./overview-display";
-import { StatusOrdersModal } from "./status-order-modal";
+import { useOrderDrilldown } from "@/hooks/use-order-drilldown";
+import { useOrderNavigationScope } from "@/hooks/use-order-navigation-scope";
 
 const columns = [
   { key: "network", label: "Network" },
@@ -90,8 +91,8 @@ export function NetworkActivity({
       );
     });
   }, [rows, sort]);
-  const [selected, setSelected] = useState<PartnerChainEntry | null>(null);
-  const trigger = useRef<HTMLButtonElement>(null);
+  const navigationScope = useOrderNavigationScope();
+  const inspect = useOrderDrilldown(navigationScope, 0);
   return (
     <>
       <div
@@ -150,10 +151,9 @@ export function NetworkActivity({
                   <button
                     type="button"
                     disabled={!chain.orders.length}
-                    onClick={(event) => {
-                      trigger.current = event.currentTarget;
-                      setSelected(chain);
-                    }}
+                    onClick={() =>
+                      inspect(`${chain.chainName} orders`, chain.orders)
+                    }
                     className="flex items-center gap-1.5 whitespace-nowrap rounded text-left enabled:hover:text-link focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   >
                     <span aria-hidden>
@@ -201,21 +201,6 @@ export function NetworkActivity({
           </tbody>
         </table>
       </div>
-      {selected && (
-        <StatusOrdersModal
-          open
-          onOpenChange={(open) => {
-            if (!open) setSelected(null);
-          }}
-          title={selected.chainName}
-          partnerName={scope}
-          orders={selected.orders}
-          onCloseAutoFocus={(event) => {
-            event.preventDefault();
-            trigger.current?.focus();
-          }}
-        />
-      )}
     </>
   );
 }

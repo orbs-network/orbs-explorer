@@ -25,6 +25,7 @@ import {
   AdapterMatchBadge,
   adapterComparisonLabels,
 } from "./adapter-match-badge";
+import { downloadDatasetCsv } from "@/lib/download-dataset";
 import { addressFormat } from "@/lib/adapter-registry";
 
 const reviewPriority = {
@@ -47,6 +48,7 @@ const displayAddress = (row: AdapterInventoryRow) =>
 function AdapterAddresses() {
   const {
     orders,
+    updatedAt,
     config,
     isConfigError,
     scope,
@@ -109,14 +111,43 @@ function AdapterAddresses() {
   return (
     <Panel
       title="Configured & observed addresses"
-      description="Catalog entries and addresses found in orders, grouped by network."
+      description="Catalog entries and addresses found in orders, grouped by network. Includes configured and observed addresses; coverage checks can use a smaller population of valid current-catalog entries."
+      action={
+        <Button
+          variant="ghost"
+          size="sm"
+          disabled={!matches.length}
+          onClick={() =>
+            downloadDatasetCsv(
+              "adapters",
+              matches.map((row) => ({
+                trading_app: appName(row),
+                network: networkName(row.chainId),
+                chain_id: row.chainId,
+                adapter: displayAddress(row),
+                configuration_match: adapterComparisonLabels[row.comparison],
+                orders: row.orders.length,
+              })),
+              {
+                snapshot_utc: updatedAt
+                  ? new Date(updatedAt).toISOString()
+                  : "unavailable",
+                exported_utc: new Date().toISOString(),
+                timezone: "UTC",
+                filter_query: scope.query,
+                search: query,
+                scope: "All matching adapters, not just the visible page",
+              },
+            )
+          }
+        >
+          Export adapters
+        </Button>
+      }
     >
       <div className="mb-4 grid items-end gap-3 sm:grid-cols-[minmax(0,1fr)_12rem]">
         <div className="space-y-1.5">
-          <label
-            htmlFor={searchId}
-            className="sr-only"
-          >
+          <label htmlFor={searchId} className="sr-only">
             Search adapters
           </label>
           <div className="relative">

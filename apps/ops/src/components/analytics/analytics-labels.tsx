@@ -27,7 +27,7 @@ export function TokenIdentity({ reference }: { reference: MarketToken }) {
       : "Unknown token");
   return (
     <span
-      className="inline-flex min-w-0 items-center gap-2"
+      className="group/token inline-flex min-w-0 items-center gap-2"
       title={reference.address}
     >
       <Avatar aria-hidden className="size-6 shrink-0">
@@ -38,7 +38,7 @@ export function TokenIdentity({ reference }: { reference: MarketToken }) {
       </Avatar>
       <span className="min-w-0">
         <span className="block truncate font-medium">{label}</span>
-        <span className="block font-mono text-[10px] font-normal text-muted-foreground">
+        <span className="sr-only group-hover/token:not-sr-only group-focus-within/token:not-sr-only group-hover/token:block group-focus-within/token:block font-mono text-[11px] font-normal text-muted-foreground">
           {reference.address === "not-provided"
             ? "Address unavailable"
             : shortenAddress(reference.address)}
@@ -57,7 +57,7 @@ export function TokenReferenceCopy({ reference }: { reference: MarketToken }) {
       type="button"
       variant="ghost"
       size="icon"
-      className="size-8 shrink-0 text-muted-foreground"
+      className="size-8 shrink-0 text-muted-foreground opacity-0 focus-visible:opacity-100 group-hover/row:opacity-100 [@media(hover:none)]:opacity-100"
       aria-label={`Copy token ${shortenAddress(reference.address)} on chain ${reference.chainId}`}
       title={`Copy chain ${reference.chainId} and token address`}
       onClick={() =>

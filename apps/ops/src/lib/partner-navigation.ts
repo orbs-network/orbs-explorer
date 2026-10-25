@@ -15,7 +15,7 @@ export const PARTNER_VIEWS = [
   },
   {
     value: "orders",
-    label: "Browse orders",
+    label: "Orders",
     description: "Search and filter this app’s order history.",
   },
   {
@@ -69,7 +69,7 @@ export const PARTNER_VIEWS = [
 export type PartnerView = (typeof PARTNER_VIEWS)[number]["value"];
 export const PARTNER_TABS = [
   { value: "overview", label: "Overview", views: ["overview"] },
-  { value: "orders", label: "Orders", views: ["orders", "lookup"] },
+  { value: "orders", label: "Orders", views: ["orders"] },
   {
     value: "execution",
     label: "Execution",

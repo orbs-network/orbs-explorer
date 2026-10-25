@@ -14,7 +14,7 @@ import {
 import { Badge } from "@orbs/ui/controls/badge";
 import { Button } from "@orbs/ui/controls/button";
 import { Network } from "@orbs/ui/controls/network";
-import { ViewTabs } from "@/components/view-tabs";
+import { getChainName } from "@orbs/domain/utils/utils";
 import {
   useSystemHealth,
   type SystemHealthService,
@@ -374,7 +374,9 @@ function ListenerDetails({ services }: { services: SystemHealthService[] }) {
                     <td>
                       <Network
                         chainId={row.chainId}
-                        data={{ name: row.chainName }}
+                        data={{
+                          name: getChainName(row.chainId) ?? row.chainName,
+                        }}
                         variant="inline"
                         showChainId={false}
                       />
@@ -383,6 +385,13 @@ function ListenerDetails({ services }: { services: SystemHealthService[] }) {
                           ({row.chainId})
                         </span>
                       )}
+                      {row.chainId === 295 &&
+                        /hemi/i.test(row.chainName ?? "") && (
+                          <p className="mt-1 text-xs text-amber-700 dark:text-amber-400">
+                            Service label: {row.chainName} · identity mismatch;
+                            verify service configuration
+                          </p>
+                        )}
                     </td>
                     <td>
                       <SignalBadge state={row.state} cached={service.isError} />
@@ -398,7 +407,10 @@ function ListenerDetails({ services }: { services: SystemHealthService[] }) {
                       {formatHealthAge(row.ageMs)}
                     </td>
                     <td>
-                      {isLoading ? (
+                      {row.chainId === 295 &&
+                      /hemi/i.test(row.chainName ?? "") ? (
+                        "Identity needs review"
+                      ) : isLoading ? (
                         "Loading orders…"
                       ) : isError ? (
                         "Orders unavailable"
@@ -716,56 +728,43 @@ export function SystemHealth({
               view === "monitoring" ? undefined : "border-t border-border pt-3"
             }
           >
-            <ViewTabs
-              label="API and service details"
-              param="health_view"
-              tabs={[
-                {
-                  value: "services",
-                  label: "API details",
-                  content: (
-                    <div className="space-y-3">
-                      <details className="text-xs text-muted-foreground">
-                        <summary className="w-fit cursor-pointer rounded hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-                          Health check thresholds
-                        </summary>
-                        <p className="mt-2 max-w-3xl text-[11px] leading-relaxed">
-                          Rules: API probe timeout 10s; service report and
-                          listener update stale after 3m; taker heartbeat
-                          overdue after max(60s, 3× reported average). Order
-                          deadlines are the reported contract deadlines, not a
-                          processing SLA. Missing telemetry stays unknown.
-                        </p>
-                      </details>
-                      <div className="grid min-w-0 gap-2 sm:grid-cols-2">
-                        {services.map((service) => (
-                          <ServiceSummary key={service.id} service={service} />
-                        ))}
-                      </div>
-                    </div>
-                  ),
-                },
-                {
-                  value: "listeners",
-                  label: "Listeners",
-                  content: <ListenerDetails services={services} />,
-                },
-                {
-                  value: "takers",
-                  label: "Takers",
-                  content: <TakerDetails services={services} />,
-                },
-                ...(view === "monitoring"
-                  ? [
-                      {
-                        value: "orders",
-                        label: "Order exposure",
-                        content: <ServiceOrderImpact services={services} />,
-                      },
-                    ]
-                  : []),
-              ]}
-            />
+            <div className="space-y-5">
+              <div className="grid min-w-0 gap-3 sm:grid-cols-2">
+                {services.map((service) => (
+                  <ServiceSummary key={service.id} service={service} />
+                ))}
+              </div>
+              <section>
+                <h3 className="mb-3 font-semibold">Network listeners</h3>
+                <p className="mb-3 text-xs text-muted-foreground">
+                  Listeners watch each network for order events. Missing
+                  telemetry stays unknown.
+                </p>
+                <ListenerDetails services={services} />
+              </section>
+              <section>
+                <h3 className="mb-3 font-semibold">Execution workers</h3>
+                <p className="mb-3 text-xs text-muted-foreground">
+                  Taker heartbeats report whether execution workers are checking
+                  for orders.
+                </p>
+                <TakerDetails services={services} />
+              </section>
+              <details className="text-sm">
+                <summary className="cursor-pointer rounded-sm font-medium focus-visible:ring-2 focus-visible:ring-ring">
+                  Health thresholds and order exposure
+                </summary>
+                <p className="my-3 text-xs text-muted-foreground">
+                  API probes time out after 10 seconds. Reports and listeners
+                  become stale after 3 minutes. Worker heartbeats are overdue
+                  after the greater of 60 seconds or 3× their reported interval.
+                  Reported deadlines are not a processing SLA.
+                </p>
+                {view === "monitoring" && (
+                  <ServiceOrderImpact services={services} />
+                )}
+              </details>
+            </div>
           </div>
         )}
       </div>

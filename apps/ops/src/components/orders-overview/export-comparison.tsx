@@ -63,10 +63,10 @@ export function ExportComparison({
           size="sm"
           disabled={!rows.length}
           className="h-9 text-xs"
-          aria-label="Export comparison"
+          aria-label="Export trading apps"
         >
           <Download aria-hidden className="size-3.5" />
-          <span className="hidden sm:inline">Export comparison</span>
+          <span className="hidden sm:inline">Export trading apps</span>
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent
@@ -75,7 +75,7 @@ export function ExportComparison({
         className="w-72 max-w-[calc(100vw-1rem)]"
       >
         <DropdownMenuLabel className="whitespace-normal text-xs leading-relaxed">
-          {rows.length} comparison rows · includes scope & definitions
+          {rows.length} matching trading apps · all rows, scope & definitions
         </DropdownMenuLabel>
         <DropdownMenuItem onSelect={() => download("csv")}>
           Comparison CSV

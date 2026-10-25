@@ -15,18 +15,21 @@ export function ViewTabs({
   param,
   tabs,
   defaultValue,
+  aliases,
   className,
 }: {
   label: string;
   param: string;
   tabs: { value: string; label: string; content: ReactNode }[];
   defaultValue?: string;
+  aliases?: Record<string, string>;
   className?: string;
 }) {
   const pathname = usePathname();
   const search = useSearchParams();
   const router = useRouter();
-  const requested = search.get(param);
+  const raw = search.get(param);
+  const requested = (raw && aliases?.[raw]) || raw;
   const fallback = tabs.find((tab) => tab.value === defaultValue) ?? tabs[0];
   const active = tabs.find((tab) => tab.value === requested) ?? fallback;
   if (!active) return null;

@@ -5,6 +5,7 @@ export default function AdaptersPage() {
   return (
     <OperationsView
       title="Adapters"
+      exportAction={null}
       description="Review adapter addresses and their order activity."
     >
       <AdaptersView />

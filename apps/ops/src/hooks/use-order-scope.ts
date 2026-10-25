@@ -22,6 +22,7 @@ export function useOrderScope() {
   const [query, setQuery] = useQueryParams(
     {
       period: StringParam,
+      table_page_order_investigation_results: StringParam,
       chain_id: ArrayParam,
       partner_id: ArrayParam,
       ...INVESTIGATION_QUERY_PARAMS,
@@ -61,6 +62,7 @@ export function useOrderScope() {
     ) =>
       setQuery({
         ...extra,
+        table_page_order_investigation_results: undefined,
         period: values.period,
         chain_id: values.chainIds.length ? values.chainIds : undefined,
         partner_id: values.partnerIds.length ? values.partnerIds : undefined,

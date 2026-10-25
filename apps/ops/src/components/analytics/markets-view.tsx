@@ -293,7 +293,7 @@ function MarketConcentration() {
   };
   return (
     <Panel
-      title="Route concentration"
+      title="Route concentration · share of placed value (USD)"
       description="Cumulative share of reported placed USD across the largest directional routes. Unreported values contribute no dollars."
     >
       {data.summary.value > 0 ? (

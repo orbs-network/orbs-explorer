@@ -31,7 +31,8 @@ const linkClass =
   "inline-flex min-h-8 items-center rounded text-link hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
 
 export function PartnerNetworks({ partnerId }: { partnerId: string }) {
-  const { partnerCards, networkActivity, updatedAt } = useOperationsData();
+  const { partnerCards, networkActivity, updatedAt, scope } =
+    useOperationsData();
   const search = useSearchParams().toString();
   const partnerName =
     partnerCards.find((card) => card.partnerId === partnerId)?.partnerName ??
@@ -87,7 +88,7 @@ export function PartnerNetworks({ partnerId }: { partnerId: string }) {
 
   return (
     <Panel
-      title="Network breakdown"
+      title={`Network breakdown · orders placed in ${scope.period === "all" ? "all history" : `the last ${scope.period} days`}`}
       description={`${activeNetworks} ${activeNetworks === 1 ? "network has" : "networks have"} orders in this placement cohort${unattributedOrders ? `; ${unattributedOrders} orders without a reported network` : ""}. Failure rate is currently failed / all placed orders. Latest attempt error counts orders, not attempts, and can overlap any current outcome.`}
     >
       {visibleRows.length ? (

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useMemo } from "react";
 import type { ListOrder } from "@orbs/domain/twap/types";
 import type {
   PartnerCard,
@@ -19,7 +19,8 @@ import {
   InvestigationSelect,
   InvestigationSelectItem,
 } from "@/components/investigation/investigation-controls";
-import { StatusOrdersModal } from "@/components/orders-overview/status-order-modal";
+import { useOrderDrilldown } from "@/hooks/use-order-drilldown";
+import { useOrderScope } from "@/hooks/use-order-scope";
 import { ChartFrame } from "./chart-frame";
 import { RankedChart, type RankingMetric } from "./ranked-chart";
 import { TimelineCharts } from "./timeline-charts";
@@ -135,18 +136,8 @@ export default function OrderCharts({
     () => buildOrderCharts(orders, snapshot, days, interval),
     [orders, snapshot, days, interval],
   );
-  const [selection, setSelection] = useState<{
-    label: string;
-    orders: ListOrder[];
-  } | null>(null);
-  const previousFocus = useRef<HTMLElement | null>(null);
-  const select = (label: string, selected: ListOrder[]) => {
-    previousFocus.current =
-      document.activeElement instanceof HTMLElement
-        ? document.activeElement
-        : null;
-    setSelection({ label, orders: selected });
-  };
+  const scope = useOrderScope();
+  const select = useOrderDrilldown(scope, snapshot);
   const partners = useMemo(
     () =>
       partnerCards.map((card) => {
@@ -207,22 +198,6 @@ export default function OrderCharts({
           },
         ]}
       />
-      {selection && (
-        <StatusOrdersModal
-          open
-          onOpenChange={(open) => {
-            if (!open) setSelection(null);
-          }}
-          title={selection.label}
-          partnerName="Charts · current filters"
-          orders={selection.orders}
-          description="Orders represented by this chart selection. Totals and details use the current filter scope."
-          onCloseAutoFocus={(event) => {
-            event.preventDefault();
-            previousFocus.current?.focus();
-          }}
-        />
-      )}
     </div>
   );
 }

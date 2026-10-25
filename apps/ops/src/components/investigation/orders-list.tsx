@@ -1,16 +1,12 @@
 "use client";
 
-import { useDeferredValue, useId, useMemo } from "react";
+import { useDeferredValue, useId, useMemo, useSyncExternalStore } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Search, Settings2 } from "lucide-react";
+import Link from "next/link";
+import { readOrderSelection, selectionOrders } from "@/lib/order-selection";
+import { Search } from "lucide-react";
 import { Button } from "@orbs/ui/controls/button";
 import { Input } from "@orbs/ui/controls/input";
-import {
-  DropdownMenu,
-  DropdownMenuTrigger,
-  DropdownMenuContent,
-  DropdownMenuCheckboxItem,
-} from "@orbs/ui/controls/dropdown-menu";
 import {
   Select,
   SelectTrigger,
@@ -22,7 +18,10 @@ import { OrderFilters } from "@/components/order-filters";
 import { useOperationsData } from "@/components/operations/operations-view";
 import { EmptyState } from "@/components/operations/primitives";
 import { ExportOrders } from "@/components/orders-overview/export-orders";
-import { formatOrderUsd } from "@/components/orders-overview/overview-display";
+import {
+  formatOrderUsd,
+  formatOrderDate,
+} from "@/components/orders-overview/overview-display";
 import { useOrderSearchLabels } from "@/hooks/use-order-search-labels";
 import { useInvestigationFilters } from "@/hooks/use-investigation-filters";
 import {
@@ -66,7 +65,9 @@ function RowsSkeleton() {
   );
 }
 
-export function OrdersList({ showRawFields }: { showRawFields: boolean }) {
+const subscribeSelection = () => () => {};
+
+export function OrdersList({ embedded = false }: { embedded?: boolean } = {}) {
   const {
     orders,
     partnerCards,
@@ -101,15 +102,52 @@ export function OrdersList({ showRawFields }: { showRawFields: boolean }) {
       ),
     [partnerCards],
   );
+  const selectionId = search.get("order_set");
+  const selectionState = useSyncExternalStore(
+    subscribeSelection,
+    () => {
+      if (!selectionId) return "none";
+      try {
+        return (
+          sessionStorage.getItem(`orbs-ops-order-set:${selectionId}`) ??
+          "missing"
+        );
+      } catch {
+        return "missing";
+      }
+    },
+    () => (selectionId ? "loading" : "none"),
+  );
+  const selection = useMemo(
+    () =>
+      selectionId && selectionState !== "loading"
+        ? readOrderSelection(selectionId)
+        : null,
+    [selectionId, selectionState],
+  );
+  const selectedOrders = useMemo(
+    () =>
+      selectionId
+        ? selection
+          ? selectionOrders(orders, selection)
+          : []
+        : orders,
+    [orders, selectionId, selection],
+  );
+  const clearSelection = () => {
+    const next = new URLSearchParams(search.toString());
+    next.delete("order_set");
+    router.replace(`${pathname}?${next}`, { scroll: false });
+  };
   const labels = useOrderSearchLabels(orders, names);
   const effective = useMemo(() => ({ ...filters, query }), [filters, query]);
   const results = useMemo(
-    () => investigateOrders(orders, effective, labels, updatedAt),
-    [orders, effective, labels, updatedAt],
+    () => investigateOrders(selectedOrders, effective, labels, updatedAt),
+    [selectedOrders, effective, labels, updatedAt],
   );
   const facets = useMemo(
-    () => buildOrderFacets(orders, effective, labels, updatedAt),
-    [orders, effective, labels, updatedAt],
+    () => buildOrderFacets(selectedOrders, effective, labels, updatedAt),
+    [selectedOrders, effective, labels, updatedAt],
   );
   const value = useMemo(
     () =>
@@ -131,25 +169,66 @@ export function OrdersList({ showRawFields }: { showRawFields: boolean }) {
   const quickView = matchingOrderQuickView(filters);
   return (
     <div className="min-w-0 space-y-3">
+      {selectionId && (
+        <section
+          className="flex flex-wrap items-center justify-between gap-3 rounded-lg bg-primary/5 p-4 text-sm"
+          aria-label="Selected order set"
+        >
+          <div>
+            <p className="font-medium">
+              {selection?.label ??
+                (selectionState === "loading"
+                  ? "Opening selected orders…"
+                  : "Selection unavailable in this browser session")}
+            </p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              {selection
+                ? `${selection.keys.length} selected orders · snapshot ${formatOrderDate(selection.snapshot)} · records reflect their latest reported state.`
+                : "Return to the analysis and select the count again, or clear the selection."}
+            </p>
+            {selection && (
+              <Link
+                href={selection.origin}
+                className="mt-2 inline-block rounded-sm text-xs text-link hover:underline"
+              >
+                Back to analysis
+              </Link>
+            )}
+          </div>
+          <Button variant="outline" size="sm" onClick={clearSelection}>
+            Clear selection
+          </Button>
+        </section>
+      )}
+      {selection &&
+        !waitingForScope &&
+        selectedOrders.length < selection.keys.length && (
+          <p role="status" className="rounded-lg bg-amber-500/10 p-3 text-xs">
+            {selection.keys.length - selectedOrders.length} selected records are
+            absent from the latest scoped history. The totals below include only
+            available records.
+          </p>
+        )}
       <div className="space-y-3 border-b border-border bg-background py-3 shadow-[0_1px_0_var(--border)]">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <OrderFilters
-            applicationMode="immediate"
-            omitStatus
-            scope={scope}
-            networkOptions={networkOptions}
-            partnerOptions={partnerOptions}
-            orderTypes={[
-              ...new Set(
-                orders.map(
-                  (order) => order.metadata.orderType?.trim() || "unreported",
+          {!embedded && (
+            <OrderFilters
+              omitStatus
+              scope={scope}
+              networkOptions={networkOptions}
+              partnerOptions={partnerOptions}
+              orderTypes={[
+                ...new Set(
+                  orders.map(
+                    (order) => order.metadata.orderType?.trim() || "unreported",
+                  ),
                 ),
-              ),
-            ].sort()}
-          />
+              ].sort()}
+            />
+          )}
           <div className="flex items-center gap-2 text-xs">
             <label htmlFor={`${id}-view`} className="text-muted-foreground">
-              View
+              Quick filters
             </label>
             <Select
               value={quickView}
@@ -203,66 +282,6 @@ export function OrdersList({ showRawFields }: { showRawFields: boolean }) {
               className="h-9 pl-9"
             />
           </div>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                size="sm"
-                aria-label="Order display options"
-              >
-                <Settings2 aria-hidden className="size-3.5" />
-                Display
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuCheckboxItem
-                checked={showRawFields}
-                onCheckedChange={(checked) => {
-                  const next = new URLSearchParams(search.toString());
-                  next.delete("orders_view");
-                  if (checked) next.set("order_raw", "1");
-                  else next.delete("order_raw");
-                  router.replace(`${pathname}${next.size ? `?${next}` : ""}`, {
-                    scroll: false,
-                  });
-                }}
-              >
-                Show raw fields
-              </DropdownMenuCheckboxItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-          <div className={showRawFields ? undefined : "lg:hidden"}>
-            <Select
-              value={filters.sort}
-              onValueChange={(sort) =>
-                setFilters((previous) => ({
-                  ...previous,
-                  sort: sort as InvestigationSort,
-                }))
-              }
-            >
-              <SelectTrigger
-                aria-label="Sort orders"
-                className="h-9 w-40 text-xs"
-              >
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {[
-                  ["newest", "Newest placed first"],
-                  ["oldest", "Oldest placed first"],
-                  ["value-desc", "Largest placed value"],
-                  ["value-asc", "Smallest placed value"],
-                  ["errors-desc", "Most failed chunks"],
-                  ["errors-asc", "Fewest failed chunks"],
-                ].map(([key, label]) => (
-                  <SelectItem key={key} value={key}>
-                    {label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
           <ExportOrders orders={results} context="matching" />
         </div>
         {!waitingForScope && !isError && (
@@ -280,7 +299,7 @@ export function OrdersList({ showRawFields }: { showRawFields: boolean }) {
           }
           className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground tabular-nums"
         >
-          {waitingForScope ? (
+          {waitingForScope || selectionState === "loading" ? (
             <span>
               {isHistoryLoading
                 ? "Loading matching orders…"
@@ -326,7 +345,7 @@ export function OrdersList({ showRawFields }: { showRawFields: boolean }) {
           {rangeError} Open Filters to correct the range.
         </p>
       )}
-      {waitingForScope ? (
+      {waitingForScope || selectionState === "loading" ? (
         <RowsSkeleton />
       ) : isError ? (
         <div role="alert" className="rounded-lg bg-destructive/10 p-5">
@@ -343,26 +362,62 @@ export function OrdersList({ showRawFields }: { showRawFields: boolean }) {
         <OrdersTable
           orders={results}
           partners={names}
-          showRawFields={showRawFields}
           sort={filters.sort}
           onSort={(sort) => setFilters((previous) => ({ ...previous, sort }))}
         />
       ) : (
-        <EmptyState
-          title={
-            rangeError
-              ? "Check the USD range"
-              : resolvingSearchLabels
-                ? "Resolving token names…"
-                : "No matching orders"
-          }
-          description={
-            rangeError ??
-            (resolvingSearchLabels
-              ? "Address and raw-field results are available; token-name results may update as metadata loads."
-              : "Change the status chips, search, quick view, or page filters.")
-          }
-        />
+        <div>
+          <EmptyState
+            title={
+              rangeError
+                ? "Check the USD range"
+                : resolvingSearchLabels
+                  ? "Resolving token names…"
+                  : "No matching orders"
+            }
+            description={
+              rangeError ??
+              (resolvingSearchLabels
+                ? "Address and raw-field results are available; token-name results may update as metadata loads."
+                : "Change the status chips, search, quick filters, or page filters.")
+            }
+          />
+          <div className="mt-3 flex justify-center gap-2">
+            {filters.query && (
+              <Button
+                variant="outline"
+                onClick={() =>
+                  setFilters((previous) => ({ ...previous, query: "" }))
+                }
+              >
+                Clear search
+              </Button>
+            )}
+            <Button
+              variant="outline"
+              onClick={() => {
+                applyFilters({
+                  ...filters,
+                  query: "",
+                  status: "all",
+                  type: "all",
+                  errors: "all",
+                  token: "",
+                  adapter: "",
+                  activeAge: "all",
+                  deadline: "all",
+                  source: "all",
+                  minUsd: "",
+                  maxUsd: "",
+                  placedSince: "",
+                  placedUntil: "",
+                });
+              }}
+            >
+              Reset order filters
+            </Button>
+          </div>
+        </div>
       )}
     </div>
   );

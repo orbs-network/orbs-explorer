@@ -17,7 +17,7 @@ import {
 const errors = {
   all: "Any error history",
   any: "Has execution errors",
-  latest: "Latest chunk failed",
+  latest: "Latest attempt failed",
   recovered: "Completed after errors",
   none: "Zero reported errors",
   unreported: "Error count not provided",
@@ -101,6 +101,52 @@ export function InvestigationFilterFields({
   return (
     <fieldset className="space-y-4 border-t border-border pt-4">
       <legend className="px-1 text-sm font-medium">Order details</legend>
+      <details className="rounded-md bg-muted/40 p-3" open>
+        <summary className="cursor-pointer text-xs font-medium">
+          Placement range (UTC)
+        </summary>
+        <p className="mt-2 text-[11px] text-muted-foreground">
+          Dates are interpreted in UTC and override the rolling placement
+          period.
+        </p>
+        <div className="mt-3 space-y-3">
+          {(["placedSince", "placedUntil"] as const).map((key) => (
+            <label key={key} className="block space-y-1.5 text-xs">
+              <span>
+                {key === "placedSince"
+                  ? "Placed at or after"
+                  : "Placed at or before"}
+              </span>
+              <Input
+                type="datetime-local"
+                step="1"
+                name={key === "placedSince" ? "order_since" : "order_until"}
+                value={value[key] ? value[key].slice(0, 19) : ""}
+                placeholder="2026-10-22T12:00:00Z"
+                autoComplete="off"
+                spellCheck={false}
+                onChange={(event) => {
+                  const input = event.target.value;
+                  if (!input) update(key, "");
+                  else {
+                    const time = Date.parse(`${input}Z`);
+                    if (Number.isFinite(time))
+                      update(key, new Date(time).toISOString());
+                  }
+                }}
+                aria-invalid={Boolean(
+                  validation.error &&
+                  getPlacementRangeError(value.placedSince, value.placedUntil),
+                )}
+                aria-describedby={
+                  validation.error ? validation.errorId : undefined
+                }
+                className="text-xs"
+              />
+            </label>
+          ))}
+        </div>
+      </details>
       {!omitStatus && (
         <InvestigationSelect
           label="Order status"
@@ -189,46 +235,7 @@ export function InvestigationFilterFields({
               </InvestigationSelectItem>
             ))}
           </InvestigationSelect>
-          <details
-            className="rounded-md bg-muted/40 p-3"
-            open={Boolean(value.placedSince || value.placedUntil) || undefined}
-          >
-            <summary className="cursor-pointer text-xs font-medium">
-              Placement range (UTC)
-            </summary>
-            <p className="mt-2 text-[11px] text-muted-foreground">
-              Clear both dates to use the selected period.
-            </p>
-            <div className="mt-3 space-y-3">
-              {(["placedSince", "placedUntil"] as const).map((key) => (
-                <label key={key} className="block space-y-1.5 text-xs">
-                  <span>
-                    {key === "placedSince"
-                      ? "Placed at or after"
-                      : "Placed at or before"}
-                  </span>
-                  <Input
-                    value={value[key]}
-                    placeholder="2026-10-22T12:00:00Z"
-                    autoComplete="off"
-                    spellCheck={false}
-                    onChange={(event) => update(key, event.target.value)}
-                    aria-invalid={Boolean(
-                      validation.error &&
-                      getPlacementRangeError(
-                        value.placedSince,
-                        value.placedUntil,
-                      ),
-                    )}
-                    aria-describedby={
-                      validation.error ? validation.errorId : undefined
-                    }
-                    className="text-xs"
-                  />
-                </label>
-              ))}
-            </div>
-          </details>
+
           {(["adapter", "token"] as const).map((key) => (
             <div key={key} className="min-w-0 space-y-1.5">
               <label

@@ -64,7 +64,7 @@ function FieldChecks() {
         ) : (
           <p role="status" className="flex items-center gap-2">
             <CheckCircle2 aria-hidden className="size-4 text-success" />
-            All reported fields are valid
+            Required fields valid
           </p>
         )}
         {consistencyOrders.length > 0 && (
@@ -72,8 +72,8 @@ function FieldChecks() {
             href={`?${consistencySearch}`}
             className="inline-flex min-h-9 items-center gap-1 rounded text-xs text-link hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
-            {consistencyOrders.length.toLocaleString()} orders have consistency
-            flags
+            {consistencyOrders.length.toLocaleString()} orders need consistency
+            review
             <ChevronRight aria-hidden className="size-3.5" />
           </Link>
         )}

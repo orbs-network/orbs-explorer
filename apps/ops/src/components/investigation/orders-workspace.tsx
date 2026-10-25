@@ -54,17 +54,9 @@ export function OrdersWorkspace() {
 
 function OrdersDataWorkspace() {
   const scope = useOrderScope();
-  const search = useSearchParams();
-  const showRawFields =
-    search.get("order_raw") === "1" ||
-    search.get("orders_view") === "technical";
-  const data = useSpotOverview({
-    ...scope,
-    loadTokenMetadata:
-      !showRawFields || Boolean(search.get("order_search")?.trim()),
-  });
+  const data = useSpotOverview({ ...scope, loadTokenMetadata: true });
   return (
-    <Page className="max-w-[1800px]">
+    <Page>
       <OperationsDataProvider data={data} scope={scope}>
         <div className="space-y-4">
           <header className="flex flex-wrap items-center justify-between gap-3">
@@ -103,7 +95,7 @@ function OrdersDataWorkspace() {
               {warning}
             </p>
           ))}
-          <OrdersList showRawFields={showRawFields} />
+          <OrdersList />
         </div>
       </OperationsDataProvider>
     </Page>

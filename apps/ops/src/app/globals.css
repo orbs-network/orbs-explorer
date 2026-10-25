@@ -161,3 +161,29 @@
     transition: none;
   }
 }
+
+/* One table rhythm across record lists, analytics, and monitoring. */
+.ops-data-table {
+  width: 100%;
+  text-align: left;
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+}
+.ops-data-table th,
+.ops-data-table td {
+  padding: 12px 16px;
+  vertical-align: middle;
+}
+.ops-data-table th {
+  color: var(--muted-foreground);
+  background: var(--control-background);
+  font-size: 12px;
+  font-weight: 500;
+}
+.ops-data-table tbody tr + tr {
+  border-top: 1px solid var(--border);
+}
+.ops-data-table tbody tr:hover,
+.ops-data-table tbody tr:focus-within {
+  background: var(--control-background);
+}

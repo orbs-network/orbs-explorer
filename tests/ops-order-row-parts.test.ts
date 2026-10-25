@@ -7,6 +7,8 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { ListOrder } from "../packages/domain/src/twap/types";
 import {
   OrderRowPair,
+  OrderIdentityCell,
+  OrderRowProgress,
   OrderRowErrors,
   OrderRowStatus,
 } from "../apps/ops/src/components/investigation/order-row-parts";
@@ -65,9 +67,10 @@ test("current errors have an explicit state, semantic error tone, and singular/p
       href: `/orders/${record.hash}`,
     }),
   );
-  assert.match(status, /Active · erroring/);
+  assert.match(status, /Active · latest attempt failed/);
   assert.match(status, /text-destructive/);
-  assert.match(status, /TakerError reverted/);
+  assert.match(status, /Transaction reverted/);
+  assert.doesNotMatch(status, /TakerError reverted/);
   assert.match(
     renderToStaticMarkup(createElement(OrderRowErrors, { order: record })),
     />1 error</,
@@ -76,5 +79,43 @@ test("current errors have an explicit state, semantic error tone, and singular/p
   assert.match(
     renderToStaticMarkup(createElement(OrderRowErrors, { order: record })),
     />2 errors</,
+  );
+});
+
+test("linked order identities have one real details link and no nested copy controls", () => {
+  const client = new QueryClient();
+  try {
+    const record = order();
+    const markup = renderToStaticMarkup(
+      createElement(
+        QueryClientProvider,
+        { client },
+        createElement(OrderIdentityCell, {
+          order: record,
+          partner: "Trading app",
+          scope: { period: "7" },
+        }),
+      ),
+    );
+    assert.equal((markup.match(/<a\b/g) || []).length, 1);
+    assert.doesNotMatch(markup, /<button\b/);
+    assert.match(markup, /aria-label="Open order/);
+    assert.match(markup, /Trading app/);
+  } finally {
+    client.clear();
+  }
+});
+test("trade progress distinguishes reported zero from missing counts", () => {
+  const record = order();
+  record.metadata.expectedChunks = 2;
+  record.metadata.chunkSummary.success = 0;
+  assert.match(
+    renderToStaticMarkup(createElement(OrderRowProgress, { order: record })),
+    /0 of 2 trades/,
+  );
+  record.metadata.chunkSummary.success = undefined as unknown as number;
+  assert.match(
+    renderToStaticMarkup(createElement(OrderRowProgress, { order: record })),
+    /Completed count unavailable/,
   );
 });

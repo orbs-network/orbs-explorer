@@ -13,18 +13,16 @@ import {
   resolvePartnerId,
 } from "../apps/ops/src/lib/partner-navigation";
 
-test("five partner tabs expose every existing view exactly once", () => {
+test("five partner tabs expose each browsing view once without a duplicate lookup", () => {
   assert.deepEqual(
     PARTNER_TABS.map((tab) => tab.value),
     ["overview", "orders", "execution", "activity", "markets"],
   );
   const views = PARTNER_TABS.flatMap((tab) => [...tab.views]);
-  assert.equal(views.length, PARTNER_VIEWS.length);
+  const visible = PARTNER_VIEWS.filter((view) => view.value !== "lookup");
+  assert.equal(views.length, visible.length);
   assert.equal(new Set(views).size, views.length);
-  assert.deepEqual(
-    new Set(views),
-    new Set(PARTNER_VIEWS.map((view) => view.value)),
-  );
+  assert.deepEqual(new Set(views), new Set(visible.map((view) => view.value)));
   assert.equal(PARTNER_TABS[0].views[0], "overview");
   for (const tab of PARTNER_TABS) {
     for (const view of tab.views) {

@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Info, Link as LinkIcon, RefreshCw } from "lucide-react";
@@ -154,17 +155,19 @@ export function OrderDetail({
             <span className="sm:hidden">Refresh</span>
             <span className="hidden sm:inline">Refresh order</span>
           </Button>
-          <OrderSourceOptions
-            value={source ?? "all"}
-            onChange={(value) =>
-              router.push(
-                detailHrefForSource(
-                  value === "all" ? undefined : (value as "v1" | "v2"),
-                ),
-                { scroll: false },
-              )
-            }
-          />
+          {!full && valid && (
+            <OrderSourceOptions
+              value={source ?? "all"}
+              onChange={(value) =>
+                router.push(
+                  detailHrefForSource(
+                    value === "all" ? undefined : (value as "v1" | "v2"),
+                  ),
+                  { scroll: false },
+                )
+              }
+            />
+          )}
         </div>
       </header>
       {query.isError && full && (
@@ -216,6 +219,7 @@ export function OrderDetail({
           <ViewTabs
             label="Order detail views"
             param="order_view"
+            aliases={{ logs: "addresses", payload: "addresses" }}
             tabs={[
               {
                 value: "summary",
@@ -240,36 +244,39 @@ export function OrderDetail({
               },
               {
                 value: "addresses",
-                label: "Technical details",
+                label: "Technical",
                 content: (
-                  <OrderTerms
-                    full={full}
-                    appName={app.partnerName}
-                    requestedSource={source}
-                    updatedAt={query.dataUpdatedAt}
-                    adapterOrdersHref={adapterOrdersHref}
-                  />
-                ),
-              },
-              {
-                value: "logs",
-                label: "Client logs",
-                content: (
-                  <Panel
-                    title="Client logs"
-                    description="Client-reported events for this hash. Coverage and retention vary; these events are separate from execution records."
-                  >
-                    <OrderClientLogs hash={hash} />
-                  </Panel>
-                ),
-              },
-              {
-                value: "payload",
-                label: "Service payload",
-                content: (
-                  <Panel title="Full service payload">
-                    <OrderPayload full={full} />
-                  </Panel>
+                  <div className="space-y-4">
+                    <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg bg-card p-4">
+                      <p className="text-sm font-medium">Order source</p>
+                      <OrderSourceOptions
+                        value={source ?? "all"}
+                        onChange={(value) =>
+                          router.push(
+                            detailHrefForSource(
+                              value === "all"
+                                ? undefined
+                                : (value as "v1" | "v2"),
+                            ),
+                            { scroll: false },
+                          )
+                        }
+                      />
+                    </div>
+                    <OrderTerms
+                      full={full}
+                      appName={app.partnerName}
+                      requestedSource={source}
+                      updatedAt={query.dataUpdatedAt}
+                      adapterOrdersHref={adapterOrdersHref}
+                    />
+                    <TechnicalEvidence
+                      key={hash}
+                      hash={hash}
+                      full={full}
+                      initial={searchParams.get("order_view")}
+                    />
+                  </div>
                 ),
               },
             ]}
@@ -284,6 +291,51 @@ export function OrderDetail({
           />
         </Panel>
       )}
+    </div>
+  );
+}
+
+function TechnicalEvidence({
+  hash,
+  full,
+  initial,
+}: {
+  hash: string;
+  initial: string | null;
+  full: Parameters<typeof OrderPayload>[0]["full"];
+}) {
+  const [logs, setLogs] = useState(initial === "logs"),
+    [payload, setPayload] = useState(initial === "payload");
+  return (
+    <div className="space-y-4">
+      <details
+        className="rounded-xl bg-card p-4"
+        open={logs}
+        onToggle={(event) => setLogs(event.currentTarget.open)}
+      >
+        <summary className="cursor-pointer rounded-sm text-sm font-medium focus-visible:ring-2 focus-visible:ring-ring">
+          Client logs
+        </summary>
+        {logs && (
+          <div className="mt-4">
+            <OrderClientLogs hash={hash} />
+          </div>
+        )}
+      </details>
+      <details
+        className="rounded-xl bg-card p-4"
+        open={payload}
+        onToggle={(event) => setPayload(event.currentTarget.open)}
+      >
+        <summary className="cursor-pointer rounded-sm text-sm font-medium focus-visible:ring-2 focus-visible:ring-ring">
+          Raw service data (JSON)
+        </summary>
+        {payload && (
+          <div className="mt-4">
+            <OrderPayload full={full} />
+          </div>
+        )}
+      </details>
     </div>
   );
 }

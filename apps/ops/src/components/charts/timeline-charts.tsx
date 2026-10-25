@@ -183,10 +183,10 @@ export function TimelineCharts({
         }
         title={
           metric === "value"
-            ? "Placed order value"
+            ? "Placed order value · UTC"
             : metric === "errors"
-              ? "Orders with error history"
-              : "Orders placed"
+              ? "Orders with error history · UTC"
+              : "Orders placed · UTC"
         }
         description={
           metric === "value"

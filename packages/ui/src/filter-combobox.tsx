@@ -21,6 +21,7 @@ export function FilterCombobox({
   onChange,
   mode = "single",
   placeholder,
+  emptyLabel = "No selection",
 }: {
   label: string;
   options: FilterOption[];
@@ -28,6 +29,7 @@ export function FilterCombobox({
   onChange: (value: string[]) => void;
   mode?: "single" | "multiple";
   placeholder?: string;
+  emptyLabel?: string;
 }) {
   const id = useId();
   const inputRef = useRef<HTMLInputElement>(null);
@@ -318,7 +320,7 @@ export function FilterCombobox({
       <span className="sr-only" aria-live="polite">
         {value.length
           ? `${value.length} selected: ${selectedLabels.join(", ")}`
-          : "No selection"}
+          : emptyLabel}
       </span>
     </div>
   );

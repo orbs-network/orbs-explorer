@@ -180,7 +180,7 @@ function SecurityFindings() {
                 ? "Review needed"
                 : incomplete
                   ? "Coverage incomplete"
-                  : "Checks passed"}
+                  : `No issues found in these ${review.findings.length} checks`}
           </h2>
           {review.flagged.length > 0 && (
             <p className="text-xs leading-relaxed text-muted-foreground">
@@ -317,7 +317,7 @@ function SecurityCoverage({
           {
             label: "Adapter configuration",
             value: review.currentRegistrySize
-              ? `${review.currentRegistrySize.toLocaleString()} adapter/network entries · retrieved ${formatOrderDate(configUpdatedAt)}${isConfigError ? " · refresh failed, may be cached" : ""}`
+              ? `${review.currentRegistrySize.toLocaleString()} valid current-catalog adapter/network entries; excludes legacy, invalid, and observed-only addresses · retrieved ${formatOrderDate(configUpdatedAt)}${isConfigError ? " · refresh failed, may be cached" : ""}`
               : "Unavailable",
             warn: !review.currentRegistrySize || isConfigError,
           },

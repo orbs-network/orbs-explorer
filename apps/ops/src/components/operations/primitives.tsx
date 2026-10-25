@@ -11,17 +11,19 @@ export function Panel({
   description,
   children,
   action,
+  className = "",
 }: {
   title: string;
   description?: string;
   children: ReactNode;
   action?: ReactNode;
+  className?: string;
 }) {
   const id = useId();
   return (
     <section
       aria-labelledby={id}
-      className="min-w-0 rounded-xl bg-card p-4 sm:p-5"
+      className={`min-w-0 rounded-xl bg-card p-4 sm:p-5 ${className}`}
     >
       <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
         <div className="flex items-center gap-1.5">
@@ -109,7 +111,7 @@ export function TableFrame({
       tabIndex={0}
       className="min-w-0 overflow-x-auto rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
     >
-      <table className="w-full text-left text-[13px] tabular-nums [&_th]:whitespace-nowrap [&_th]:px-3 [&_th]:py-3 [&_th]:font-medium [&_td]:px-3 [&_td]:py-3 [&_thead]:sticky [&_thead]:top-0 [&_thead]:z-10 [&_thead]:bg-card [&_thead]:text-muted-foreground [&_tbody_tr]:border-t [&_tbody_tr]:border-border [&_tbody_tr]:align-top">
+      <table aria-label={label} className="ops-data-table">
         {children}
       </table>
     </div>

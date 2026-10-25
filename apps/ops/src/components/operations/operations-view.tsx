@@ -1,18 +1,11 @@
 "use client";
 
-import {
-  createContext,
-  use,
-  useCallback,
-  useRef,
-  useState,
-  type ReactNode,
-} from "react";
+import { createContext, use, type ReactNode } from "react";
 import { RefreshCw } from "lucide-react";
 import { Page } from "@/components/page";
 import { OrderFilters } from "@/components/order-filters";
 import { ExportOrders } from "@/components/orders-overview/export-orders";
-import { StatusOrdersModal } from "@/components/orders-overview/status-order-modal";
+import { useOrderDrilldown } from "@/hooks/use-order-drilldown";
 import { useOrderScope } from "@/hooks/use-order-scope";
 import { useSpotOverview } from "@/hooks/use-spot-overview";
 import { Button } from "@orbs/ui/controls/button";
@@ -43,7 +36,7 @@ export function useOperationsData() {
 export function OperationsDataProvider({
   data,
   scope,
-  scopeLabel = "Current period, networks, and trading apps",
+  scopeLabel: _scopeLabel,
   children,
 }: {
   data: ReturnType<typeof useSpotOverview>;
@@ -51,46 +44,10 @@ export function OperationsDataProvider({
   scopeLabel?: string;
   children: ReactNode;
 }) {
-  const [selection, setSelection] = useState<{
-    title: string;
-    orders: ListOrder[];
-    description?: string;
-  } | null>(null);
-  const previousFocus = useRef<HTMLElement | null>(null);
-  const inspectOrders = useCallback(
-    (title: string, orders: ListOrder[], description?: string) => {
-      if (!orders.length) return;
-      previousFocus.current =
-        document.activeElement instanceof HTMLElement
-          ? document.activeElement
-          : null;
-      setSelection({ title, orders, description });
-    },
-    [],
-  );
+  const inspectOrders = useOrderDrilldown(scope, data.updatedAt);
   return (
     <OperationsContext value={{ ...data, scope, inspectOrders }}>
       {children}
-      {selection && (
-        <StatusOrdersModal
-          open
-          onOpenChange={(open) => {
-            if (!open) setSelection(null);
-          }}
-          title={selection.title}
-          partnerName={scopeLabel}
-          orders={selection.orders}
-          navigationScope={scope}
-          description={
-            selection.description ??
-            "Matching orders from this view. Each row shows its latest reported status."
-          }
-          onCloseAutoFocus={(event) => {
-            event.preventDefault();
-            previousFocus.current?.focus();
-          }}
-        />
-      )}
     </OperationsContext>
   );
 }
@@ -105,6 +62,7 @@ export function OperationsView({
   showContentDuringHistoryLoad = false,
   timeBasis = "placement",
   dataContext = "orders",
+  exportAction,
 }: {
   title: string;
   description: string;
@@ -115,6 +73,7 @@ export function OperationsView({
   showContentDuringHistoryLoad?: boolean;
   timeBasis?: "placement" | "current";
   dataContext?: "orders" | "services";
+  exportAction?: ReactNode;
 }) {
   const scope = useOrderScope();
   const data = useSpotOverview({ ...scope, loadTokenMetadata });
@@ -183,9 +142,13 @@ export function OperationsView({
                 failed={data.isRefreshError}
               />
             )}
-            {dataContext === "orders" && filterFields !== "orders" && (
-              <ExportOrders orders={viewData.orders} />
-            )}
+            {dataContext === "orders" &&
+              filterFields !== "orders" &&
+              (exportAction === undefined ? (
+                <ExportOrders orders={viewData.orders} />
+              ) : (
+                exportAction
+              ))}
             {dataContext === "orders" && (
               <Button
                 variant="outline"
@@ -208,7 +171,7 @@ export function OperationsView({
             periodLabel={
               timeBasis === "current" && operational.placement === "all"
                 ? null
-                : "Placed in"
+                : "Order placement period"
             }
             scope={scope}
             networkOptions={data.networkOptions}

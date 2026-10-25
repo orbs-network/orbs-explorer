@@ -18,7 +18,7 @@ export function orderListMessage(order: ListOrder): {
 export function orderRowStatus(order: ListOrder): string {
   const status = getOverviewOrderStatus(order);
   if (status !== "active") return OVERVIEW_STATUSES[status].label;
-  if (hasLastExecutionError(order)) return "Active · erroring";
+  if (hasLastExecutionError(order)) return "Active · latest attempt failed";
   const metadata = order.metadata;
   const states = [
     metadata.status,
@@ -46,10 +46,11 @@ export function compactOrderType(value: string | undefined): string {
   if (!raw) return "—";
   const normalized = raw.toLowerCase().replace(/[_-]/g, " ");
   if (/twap/.test(normalized)) {
-    if (/take\s*profit|\btp\b/.test(normalized)) return "TWAP TP";
-    if (/stop\s*loss|\bsl\b/.test(normalized)) return "TWAP SL";
+    if (/take\s*profit|\btp\b/.test(normalized)) return "TWAP · take profit";
+    if (/stop\s*loss|\bsl\b/.test(normalized)) return "TWAP · stop loss";
     return "TWAP";
   }
+  if (/^market(?: order)?$/.test(normalized)) return "Market";
   if (/limit/.test(normalized)) return "Limit";
   if (/take\s*profit/.test(normalized)) return "Take profit";
   if (/stop\s*loss/.test(normalized)) return "Stop loss";
@@ -66,15 +67,8 @@ export function compactOrderNetwork(chainId: number | undefined): {
       chainId === undefined ? "Chain unreported" : `Unlisted chain ${chainId}`;
     return { label, title: label };
   }
-  const shortNames: Record<string, string> = {
-    "Arbitrum One": "Arbitrum",
-    "BNB Smart Chain": "BNB Chain",
-    "OP Mainnet": "Optimism",
-    "Avalanche C-Chain": "Avalanche",
-    "ZKsync Era": "ZKsync",
-  };
   return {
-    label: shortNames[name] ?? name.replace(/\s+Mainnet$/i, ""),
+    label: name,
     title: `${name} · Chain ${chainId}`,
   };
 }
@@ -166,6 +160,25 @@ export function conciseOrderMessage(message: string): string {
     return `Trading condition not met: expected ${condition[1]}, currently ${condition[2]}.`;
   const readable = firstLine.replace(/\s*\(\d{16,}\s+vs\.?\s+\d{16,}\)/g, "");
   return readable.length > 240 ? `${readable.slice(0, 237)}…` : readable;
+}
+
+/** Plain-language row summary; the untouched report remains in Technical details. */
+export function orderReasonSummary(message: string): string {
+  if (/price.*(?:condition|target)|trigger price not met/i.test(message))
+    return /deadline|expired/i.test(message)
+      ? "Expired before target price"
+      : "Waiting for target price";
+  if (/revert(?:ed|ing)?/i.test(message)) return "Transaction reverted";
+  if (/\brpc\b|network error|connection (?:refused|reset)/i.test(message))
+    return "Network request failed";
+  if (/insufficient.*(?:funds|balance|allowance)/i.test(message))
+    return "Insufficient funds or allowance reported";
+  if (/deadline|expired/i.test(message)) return "Deadline reached";
+  if (/cancel/i.test(message)) return "Order cancelled";
+  if (/chunk executed successfully|all chunks successful/i.test(message))
+    return "Trade completed successfully";
+  const text = conciseOrderMessage(message);
+  return text.length > 120 ? `${text.slice(0, 117)}…` : text;
 }
 
 export function isZeroOutputLimit(value: unknown): boolean {
