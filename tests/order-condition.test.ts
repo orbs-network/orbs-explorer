@@ -3,8 +3,8 @@ import { test } from "node:test";
 import {
   getOrderConditionComparison,
   getOrderCheckTiming,
-} from "../src/lib/activity/order-condition";
-import { SpotOrderType } from "../src/lib/twap/types";
+} from "../packages/domain/src/activity/order-condition";
+import { SpotOrderType } from "../packages/domain/src/twap/types";
 
 const limit = (expected: string, current: string) =>
   `Price can't meet condition: expected ${expected}, got ${current} (1 vs. 2) - 99.0%`;

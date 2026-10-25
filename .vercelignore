@@ -19,3 +19,10 @@ coverage
 .telegram-seen-errors.json
 /scripts/*
 !/scripts/deploy-vercel.sh
+
+**/node_modules
+**/.next
+**/.env*
+**/.vercel
+**/*.tsbuildinfo
+.yarn

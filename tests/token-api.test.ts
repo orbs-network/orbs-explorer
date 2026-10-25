@@ -7,7 +7,7 @@ import {
   multicall3Abi,
 } from "viem";
 import { mainnet } from "viem/chains";
-import { POST } from "../src/app/api/tokens/route";
+import { POST } from "../apps/explorer/src/app/api/tokens/route";
 
 function mockRpc(
   t: TestContext,

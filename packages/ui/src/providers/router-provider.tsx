@@ -1,0 +1,55 @@
+"use client";
+
+import { Suspense } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import {
+  QueryParamAdapter,
+  QueryParamAdapterComponent,
+  QueryParamProvider,
+} from "use-query-params";
+
+function NextAdapterComponent({
+  children,
+}: {
+  children: (adapter: QueryParamAdapter) => React.ReactNode;
+}) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
+  const adapter: QueryParamAdapter = {
+    replace(location) {
+      const search = location.search || "";
+      router.replace(`${pathname}${search}`, { scroll: false });
+    },
+    push(location) {
+      const search = location.search || "";
+      router.push(`${pathname}${search}`, { scroll: false });
+    },
+    get location() {
+      return {
+        search: searchParams.toString() ? `?${searchParams.toString()}` : "",
+      };
+    },
+  };
+
+  return <>{children(adapter)}</>;
+}
+
+function RouterProviderInner({ children }: { children: React.ReactNode }) {
+  return (
+    <QueryParamProvider
+      adapter={NextAdapterComponent as QueryParamAdapterComponent}
+    >
+      {children}
+    </QueryParamProvider>
+  );
+}
+
+export function RouterProvider({ children }: { children: React.ReactNode }) {
+  return (
+    <Suspense fallback={null}>
+      <RouterProviderInner>{children}</RouterProviderInner>
+    </Suspense>
+  );
+}

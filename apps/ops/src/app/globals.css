@@ -1,0 +1,163 @@
+@import "@orbs/ui/styles.css";
+@source "../../../../packages/ui/src";
+@source "../../../../packages/domain/src";
+@source "../";
+
+@layer base {
+  button:enabled {
+    cursor: pointer;
+  }
+}
+
+/* Orbs.com palette: neutral surfaces, indigo interaction, and restrained
+   cyan/lilac/coral data accents. Keep these overrides local to Operations. */
+:root {
+  --radius: 0.5rem;
+  --background: var(--orbs-light);
+  --background-secondary: #eeeeef;
+  --foreground: var(--orbs-dark);
+  --card: #ffffff;
+  --card-foreground: var(--orbs-dark);
+  --popover: #ffffff;
+  --popover-foreground: var(--orbs-dark);
+  --primary: var(--orbs-indigo);
+  --primary-foreground: #ffffff;
+  --link: var(--orbs-indigo);
+  --secondary: #eeeeef;
+  --secondary-foreground: var(--orbs-dark);
+  --muted: #e2e2e2;
+  --muted-foreground: #59595a;
+  --accent: #ebedfc;
+  --accent-foreground: #1a2379;
+  --destructive: #664344;
+  --destructive-foreground: #ffffff;
+  --border: #e2e2e2;
+  --input: transparent;
+  --navigation: var(--orbs-light);
+  --control-border: transparent;
+  --control-background: rgb(18 18 20 / 4%);
+  --control-hover: rgb(18 18 20 / 8%);
+  --action-gradient: none;
+  --action-foreground: #ffffff;
+  --panel-shadow: 0 8px 28px rgb(18 18 20 / 4%);
+  --ring: var(--orbs-indigo);
+  --chart-1: var(--orbs-indigo);
+  --chart-2: #017d86;
+  --chart-3: #8165c7;
+  --chart-4: #a153a6;
+  --chart-5: #664344;
+  --status-success: #017d86;
+}
+.dark {
+  --background: var(--orbs-dark);
+  --background-secondary: #1e1e20;
+  --foreground: var(--orbs-light);
+  --card: #1e1e20;
+  --card-foreground: var(--orbs-light);
+  --popover: #29292b;
+  --popover-foreground: var(--orbs-light);
+  --primary: var(--orbs-periwinkle);
+  --primary-foreground: var(--orbs-dark);
+  --link: #95a1ed;
+  --secondary: #29292b;
+  --secondary-foreground: var(--orbs-light);
+  --muted: #29292b;
+  --muted-foreground: #c5c5c5;
+  --accent: #292d43;
+  --accent-foreground: #cad0f6;
+  --destructive: var(--orbs-coral);
+  --destructive-foreground: var(--orbs-dark);
+  --border: #414142;
+  --input: transparent;
+  --navigation: var(--orbs-dark);
+  --control-border: transparent;
+  --control-background: rgb(255 255 255 / 6%);
+  --control-hover: rgb(255 255 255 / 10%);
+  --action-gradient: none;
+  --action-foreground: var(--orbs-dark);
+  --panel-shadow: 0 8px 28px rgb(0 0 0 / 16%);
+  --ring: var(--orbs-periwinkle);
+  --chart-1: var(--orbs-periwinkle);
+  --chart-2: var(--orbs-cyan);
+  --chart-3: var(--orbs-lilac);
+  --chart-4: var(--orbs-pink);
+  --chart-5: var(--orbs-coral);
+  --status-success: #67e9f4;
+}
+
+@theme inline {
+  --color-success: var(--status-success);
+}
+[data-slot="card"],
+[data-slot="input"],
+[data-slot="select-trigger"],
+:is(button, a)[data-variant="outline"] {
+  border-color: transparent;
+}
+:is(button, a)[data-variant="outline"]:hover {
+  border-color: transparent;
+}
+/* Radix triggers replace data-slot, and bg-action supersedes bg-primary in
+   merged classes. Supply the solid brand fill independently of either slot. */
+:is(button, a)[data-variant="default"] {
+  background-color: var(--primary);
+}
+[data-slot="select-trigger"] {
+  background-color: var(--control-background);
+  box-shadow: none;
+}
+[data-slot="select-trigger"]:hover {
+  background-color: var(--control-hover);
+}
+[data-slot="input"]:focus-visible,
+[data-slot="select-trigger"]:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 1px;
+}
+/* In the base layer so badges that set their own fill keep it. */
+@layer base {
+  [data-slot="badge"][data-variant="outline"] {
+    border-color: transparent;
+    background-color: var(--control-background);
+  }
+}
+[data-slot="tooltip-content"] {
+  border-color: transparent;
+  box-shadow: 0 8px 24px rgb(18 18 20 / 14%);
+}
+
+[data-slot="dialog-content"],
+[data-slot="drawer-content"],
+[data-slot="dropdown-menu-content"],
+[data-slot="dropdown-menu-sub-content"] {
+  border-width: 0;
+}
+
+[data-slot="input"]:focus:not(:focus-visible),
+[data-slot="select-trigger"]:focus:not(:focus-visible) {
+  box-shadow: none;
+  outline: none;
+}
+
+@media (pointer: coarse) {
+  :is(button, a)[data-variant] {
+    min-width: 44px;
+  }
+  :is(button, a)[data-variant],
+  [data-slot="input"],
+  [data-slot="select-trigger"],
+  [data-slot="tabs-trigger"],
+  [data-slot="dropdown-menu-item"],
+  [data-slot="dropdown-menu-radio-item"],
+  [data-slot="dropdown-menu-checkbox-item"] {
+    min-height: 44px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-slot="button"],
+  [data-slot="input"],
+  [data-slot="tabs-trigger"] {
+    transition: none;
+  }
+}

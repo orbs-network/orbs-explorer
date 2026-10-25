@@ -1,5 +1,0 @@
-{
-  "crons": [
-    { "path": "/api/cron/telegram-error-alerts", "schedule": "40 14 * * *" }
-  ]
-}

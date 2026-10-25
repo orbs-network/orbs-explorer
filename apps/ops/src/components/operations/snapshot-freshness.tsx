@@ -1,0 +1,40 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { snapshotFreshness } from "@/lib/overview-freshness";
+
+export function SnapshotFreshness({
+  updatedAt,
+  refreshing = false,
+  failed = false,
+}: {
+  updatedAt: number;
+  refreshing?: boolean;
+  failed?: boolean;
+}) {
+  const [now, setNow] = useState(Date.now);
+  useEffect(() => {
+    const update = () => {
+      if (document.visibilityState !== "hidden") setNow(Date.now());
+    };
+    const timer = window.setInterval(update, 15_000);
+    document.addEventListener("visibilitychange", update);
+    return () => {
+      window.clearInterval(timer);
+      document.removeEventListener("visibilitychange", update);
+    };
+  }, []);
+  const status = snapshotFreshness({ updatedAt, now, refreshing, failed });
+  return (
+    <span
+      className={`inline-flex flex-wrap items-center gap-x-1.5 gap-y-1 text-xs tabular-nums ${status.stale ? "text-amber-700 dark:text-amber-400" : "text-muted-foreground"}`}
+      title={`${Number.isFinite(updatedAt) && updatedAt > 0 ? `Order snapshot: ${new Date(updatedAt).toISOString()}. ` : ""}Refreshes every minute while this tab is visible; failed requests retry every five minutes.`}
+    >
+      <span
+        aria-hidden
+        className={`size-1.5 shrink-0 rounded-full ${status.stale ? "bg-amber-500" : "bg-emerald-500"}`}
+      />
+      <span className="whitespace-nowrap">{status.label}</span>
+    </span>
+  );
+}

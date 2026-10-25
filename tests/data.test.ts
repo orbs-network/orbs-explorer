@@ -8,17 +8,23 @@ import {
   getAllOrdersForExchangeAndChain,
   CURRENT_SINK_API_URL,
   SINK_API_URLS,
-} from "../src/lib/twap/api";
+  SPOT_CONFIG_URL,
+} from "../packages/domain/src/twap/api";
+import { getSpotPartnerIdentity } from "../packages/domain/src/twap/partner-catalog";
 import {
   getMinAmountPerChunk,
   getSpotOrderType,
   getSpotOrderTriggerPricePerChunk,
   getOrderStatus,
-} from "../src/lib/twap/utils";
-import type { ListOrder, Order } from "../src/lib/twap/types";
-import { SpotOrderType, Status } from "../src/lib/twap/types";
-import { availableResults } from "../src/lib/perpetual-hub/available-results";
-import { appendPerpetualHubScope } from "../src/lib/perpetual-hub/query-scope";
+} from "../packages/domain/src/twap/utils";
+import type {
+  ListOrder,
+  Order,
+  SpotConfig,
+} from "../packages/domain/src/twap/types";
+import { SpotOrderType, Status } from "../packages/domain/src/twap/types";
+import { availableResults } from "../packages/domain/src/perpetual-hub/available-results";
+import { appendPerpetualHubScope } from "../packages/domain/src/perpetual-hub/query-scope";
 
 const hash = `0x${"a".repeat(64)}`;
 const listOrder = (chainId = 137): ListOrder =>
@@ -200,20 +206,230 @@ test("perpetual navigation preserves deployment scope while clearing unrelated f
 });
 
 test("partner configuration inherits universal adapters without replacing chain-specific adapters", async (t) => {
-  t.mock.method(axios, "get", async () => ({
-    data: {
-      "*": {
-        dex: {
-          agent: { adapter: "0xshared", fee: "0xfee", type: "universal" },
-        },
-      },
-      "137": {
-        dex: { agent: { adapter: "0xpolygon", fee: "0xfee", type: "default" } },
-      },
-      "8453": { dex: {} },
-    },
+  const sharedAdapter = `0x${"1".repeat(40)}`;
+  const polygonAdapter = `0x${"2".repeat(40)}`;
+  t.mock.method(axios, "get", async (url: string) => ({
+    data:
+      url === SPOT_CONFIG_URL
+        ? {
+            "*": {
+              dex: {
+                agent: {
+                  adapter: sharedAdapter,
+                  fee: "0xfee",
+                  type: "universal",
+                },
+              },
+            },
+            "137": {
+              dex: {
+                agent: {
+                  adapter: polygonAdapter,
+                  fee: "0xfee",
+                  type: "default",
+                },
+              },
+            },
+            "8453": { dex: {} },
+          }
+        : {
+            chains: [
+              {
+                chainId: 137,
+                exchanges: [{ name: "Agent-old-1", address: sharedAdapter }],
+              },
+              {
+                chainId: 8453,
+                exchanges: [
+                  { name: "Conflicting app", address: sharedAdapter },
+                ],
+              },
+            ],
+          },
   }));
   const config = await getSpotConfig();
-  assert.equal(config["137"].dex?.agent.adapter, "0xpolygon");
-  assert.equal(config["8453"].dex?.agent.adapter, "0xshared");
+  assert.equal(config["137"].dex?.agent.adapter, polygonAdapter);
+  assert.equal(config["8453"].dex?.agent.adapter, sharedAdapter);
+  assert.deepEqual(
+    config["137"].partnerAdapters?.map((item) => item.partnerId),
+    ["agent"],
+  );
+  assert.equal(config["8453"].partnerAdapters, undefined);
+});
+
+const blackholeAdapter = "0xccdF1D6ce95FeC0F842197470CE8969A678B0A04";
+const oldBlackholeAdapter = "0x426ec4bc0d58B80959CDE77576a1942dd40592Fa";
+const reusedAdapter = "0x023fD6848234f2655818705237F77F02215FEfe5";
+const configuredSpot = (): SpotConfig => ({
+  "*": { dex: {} },
+  "43114": {
+    dex: {
+      blackhole: { adapter: blackholeAdapter, fee: "0xfee", type: "default" },
+    },
+  },
+});
+const statusCatalog = (
+  exchanges = [{ name: "Blackhole-old-1", address: oldBlackholeAdapter }],
+  chainId = 43114,
+) => ({ chains: [{ chainId, chainName: "network", exchanges }] });
+
+test("partner configuration loads current and historical app identities without changing active protocol adapters", async (t) => {
+  const requests: string[] = [];
+  t.mock.method(
+    axios,
+    "get",
+    async (url: string, options: { timeout: number }) => {
+      requests.push(url);
+      assert.equal(options.timeout, 20_000);
+      return {
+        data: url === SPOT_CONFIG_URL ? configuredSpot() : statusCatalog(),
+      };
+    },
+  );
+  const config = await getSpotConfig();
+  assert.deepEqual(requests, [
+    SPOT_CONFIG_URL,
+    `${CURRENT_SINK_API_URL}/status`,
+    `${SINK_API_URLS.prod}/status`,
+  ]);
+  assert.equal(config["43114"].dex?.blackhole.adapter, blackholeAdapter);
+  assert.deepEqual(config["43114"].partnerAdapters, [
+    {
+      partnerId: "blackhole",
+      partnerName: "Blackhole",
+      adapter: oldBlackholeAdapter,
+    },
+  ]);
+  assert.equal("fee" in config["43114"].partnerAdapters![0], false);
+});
+
+test("historical identities remain network-specific and normalize known app aliases", async (t) => {
+  t.mock.method(axios, "get", async (url: string) => ({
+    data:
+      url === SPOT_CONFIG_URL
+        ? { "*": { dex: {} } }
+        : {
+            chains: [
+              {
+                chainId: 137,
+                exchanges: [{ name: "Quick-old-1", address: reusedAdapter }],
+              },
+              {
+                chainId: 42161,
+                exchanges: [{ name: "Ramses-old-1", address: reusedAdapter }],
+              },
+            ],
+          },
+  }));
+  const config = await getSpotConfig();
+  assert.equal(config["137"].partnerAdapters?.[0].partnerId, "quickswap");
+  assert.equal(config["137"].partnerAdapters?.[0].partnerName, "Quickswap");
+  assert.equal(config["42161"].partnerAdapters?.[0].partnerId, "ramses");
+  assert.equal(config["42161"].partnerAdapters?.[0].partnerName, "Ramses");
+  assert.deepEqual(getSpotPartnerIdentity("Dragon-old-2"), {
+    partnerId: "dragonswap",
+    partnerName: "DragonSwap",
+  });
+  assert.equal(getSpotPartnerIdentity("Spooky").partnerId, "spookyswap");
+});
+
+test("historical identity matches configured custom IDs without changing their route casing", async (t) => {
+  t.mock.method(axios, "get", async (url: string) => ({
+    data:
+      url === SPOT_CONFIG_URL
+        ? {
+            "*": { dex: {} },
+            "43114": {
+              dex: {
+                CustomDex: {
+                  adapter: blackholeAdapter,
+                  type: "default",
+                  fee: "0xfee",
+                },
+              },
+            },
+          }
+        : statusCatalog([
+            { name: "customdex-old-1", address: oldBlackholeAdapter },
+          ]),
+  }));
+  const config = await getSpotConfig();
+  assert.equal(config["43114"].partnerAdapters?.[0].partnerId, "CustomDex");
+});
+
+test("ambiguous historical adapters are excluded while exact current mappings take precedence", async (t) => {
+  const conflictCatalog = statusCatalog([
+    { name: "Arbidex", address: reusedAdapter },
+    { name: "Chronos-old-1", address: reusedAdapter.toLowerCase() },
+    { name: "Pangolin", address: blackholeAdapter },
+    { name: "Blackhole", address: oldBlackholeAdapter },
+  ]);
+  t.mock.method(axios, "get", async (url: string) => ({
+    data: url === SPOT_CONFIG_URL ? configuredSpot() : conflictCatalog,
+  }));
+  const config = await getSpotConfig();
+  assert.equal(config["43114"].dex?.blackhole.adapter, blackholeAdapter);
+  assert.deepEqual(
+    config["43114"].partnerAdapters?.map((item) => item.adapter),
+    [oldBlackholeAdapter],
+  );
+});
+
+test("available identity sources survive a failed current config or one order service", async (t) => {
+  t.mock.method(axios, "get", async (url: string) => {
+    if (url !== `${SINK_API_URLS.prod}/status`) throw new Error("offline");
+    return { data: statusCatalog() };
+  });
+  const config = await getSpotConfig();
+  assert.equal(config["43114"].partnerAdapters?.[0].partnerName, "Blackhole");
+  assert.equal(config["43114"].dex, undefined);
+});
+
+test("current config survives unavailable or malformed identity catalogs", async (t) => {
+  t.mock.method(axios, "get", async (url: string) => {
+    if (url === SPOT_CONFIG_URL) return { data: configuredSpot() };
+    if (url.startsWith(CURRENT_SINK_API_URL)) return { data: { chains: [] } };
+    throw new Error("offline");
+  });
+  const config = await getSpotConfig();
+  assert.equal(config["43114"].dex?.blackhole.adapter, blackholeAdapter);
+  assert.equal(config["43114"].partnerAdapters, undefined);
+});
+
+test("total configuration outage and wholly malformed sources remain errors", async (t) => {
+  t.mock.method(axios, "get", async () => {
+    throw new Error("offline");
+  });
+  await assert.rejects(getSpotConfig(), /offline/);
+  t.mock.restoreAll();
+  t.mock.method(axios, "get", async () => ({
+    data: { chains: [{ chainId: "43114", exchanges: [] }] },
+  }));
+  await assert.rejects(getSpotConfig(), /Invalid Spot configuration/);
+});
+
+test("configuration cancellation is never converted to a partial successful catalog", async (t) => {
+  const before = new AbortController();
+  before.abort(new Error("cancelled before loading"));
+  await assert.rejects(
+    getSpotConfig(before.signal),
+    /cancelled before loading/,
+  );
+  const during = new AbortController();
+  t.mock.method(
+    axios,
+    "get",
+    async (url: string, options: { signal: AbortSignal }) => {
+      assert.equal(options.signal, during.signal);
+      if (url !== SPOT_CONFIG_URL)
+        during.abort(new Error("cancelled during loading"));
+      return {
+        data: url === SPOT_CONFIG_URL ? configuredSpot() : statusCatalog(),
+      };
+    },
+  );
+  await assert.rejects(
+    getSpotConfig(during.signal),
+    /cancelled during loading/,
+  );
 });

@@ -55,3 +55,9 @@ next-env.d.ts
 /.screenshots/
 # Browser audit output
 /.playwright-cli/
+
+# Workspace build artifacts
+**/node_modules/
+**/.next/
+**/out/
+!**/.env.example

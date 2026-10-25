@@ -1,10 +1,10 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { URL_QUERY_KEYS } from "../src/lib/consts";
+import { URL_QUERY_KEYS } from "../packages/domain/src/consts";
 import {
   filterQueryValue,
   splitFilterValues,
-} from "../src/lib/query-filter-values";
+} from "../packages/domain/src/query-filter-values";
 
 test("single-value filters retain the scalar shape expected by the API", () => {
   for (const key of [

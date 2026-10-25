@@ -4,23 +4,23 @@ import axios from "axios";
 import {
   getOrderStory,
   explainOrderReason,
-} from "../src/lib/activity/order-story";
-import { findEvent } from "../src/lib/perpetual-hub/find-event";
-import { getPerpetualStory } from "../src/lib/activity/perpetual-story";
-import { getSwapStory } from "../src/lib/activity/swap-story";
+} from "../packages/domain/src/activity/order-story";
+import { findEvent } from "../packages/domain/src/perpetual-hub/find-event";
+import { getPerpetualStory } from "../packages/domain/src/activity/perpetual-story";
+import { getSwapStory } from "../packages/domain/src/activity/swap-story";
 import {
   getSettlementStory,
   isSettlementConfirmed,
-} from "../src/lib/activity/settlement-story";
-import { parseOrderChunks } from "../src/lib/twap/hooks/use-spot-order-chunks";
-import { getLiquidityHubTx } from "../src/lib/liquidity-hub/api";
-import type { Order, OrderChunk } from "../src/lib/twap/types";
-import { Status } from "../src/lib/twap/types";
-import type { LiquidityHubSwap } from "../src/lib/liquidity-hub/types";
+} from "../packages/domain/src/activity/settlement-story";
+import { parseOrderChunks } from "../packages/domain/src/twap/hooks/use-spot-order-chunks";
+import { getLiquidityHubTx } from "../packages/domain/src/liquidity-hub/api";
+import type { Order, OrderChunk } from "../packages/domain/src/twap/types";
+import { Status } from "../packages/domain/src/twap/types";
+import type { LiquidityHubSwap } from "../packages/domain/src/liquidity-hub/types";
 import type {
   PerpetualHubOperation,
   PerpetualHubRollup,
-} from "../src/lib/perpetual-hub/types";
+} from "../packages/domain/src/perpetual-hub/types";
 
 const now = Date.parse("2026-10-13T12:00:00Z");
 const chunk = (status: string, index: number, description = ""): OrderChunk =>

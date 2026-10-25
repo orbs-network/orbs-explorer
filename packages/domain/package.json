@@ -1,0 +1,35 @@
+{
+  "name": "@orbs/domain",
+  "version": "0.1.0",
+  "private": true,
+  "exports": {
+    ".": "./src/index.ts",
+    "./*": "./src/*.ts",
+    "./liquidity-hub": "./src/liquidity-hub/index.ts",
+    "./liquidity-hub/elastic-queries": "./src/liquidity-hub/elastic-queries/index.ts",
+    "./perpetual-hub": "./src/perpetual-hub/index.ts",
+    "./utils": "./src/utils/index.ts",
+    "./twap": "./src/twap/index.ts",
+    "./twap/utils": "./src/twap/utils/index.ts",
+    "./twap/hooks": "./src/twap/hooks/index.ts",
+    "./api": "./src/api/index.ts",
+    "./liquidity-hub/elastic-queries/get-quotes-by-id": "./src/liquidity-hub/elastic-queries/get-quotes-by-id.tsx"
+  },
+  "dependencies": {
+    "@tanstack/react-query": "^5.85.5",
+    "axios": "^1.11.0",
+    "bignumber.js": "^9.3.1",
+    "clsx": "^2.1.1",
+    "lodash": "^4.17.21",
+    "moment": "^2.30.1",
+    "react-number-format": "^5.4.4",
+    "tailwind-merge": "^3.3.1",
+    "use-query-params": "^2.2.1",
+    "viem": "^2.34.0",
+    "sonner": "^2.0.7"
+  },
+  "peerDependencies": {
+    "next": "^16.1.3",
+    "react": "19.1.0"
+  }
+}

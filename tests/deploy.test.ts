@@ -27,11 +27,11 @@ const path = require('node:path');
 const command = path.basename(process.argv[1]);
 const args = process.argv.slice(2);
 fs.appendFileSync(process.env.DEPLOY_TEST_LOG, JSON.stringify({command, args, cwd:process.cwd(), token:process.env.VERCEL_TOKEN, authToken:process.env.VERCEL_AUTH_TOKEN})+'\\n');
-if (command === 'npm' && args.includes(process.env.DEPLOY_TEST_FAIL)) process.exit(9);
+if (command === 'pnpm' && args.includes(process.env.DEPLOY_TEST_FAIL)) process.exit(9);
 if (command === 'npx' && args.includes('logout')) { console.log('Logged out!'); process.exit(Number(process.env.DEPLOY_TEST_LOGOUT_EXIT || 0)); }
-if (command === 'npx') { if (process.env.DEPLOY_TEST_SIGNAL) process.kill(process.ppid, process.env.DEPLOY_TEST_SIGNAL); console.log('https://example.vercel.app'); process.exit(Number(process.env.DEPLOY_TEST_CLI_EXIT || 0)); }
+if (command === 'npx' && args.includes('deploy')) { if (process.env.DEPLOY_TEST_SIGNAL) process.kill(process.ppid, process.env.DEPLOY_TEST_SIGNAL); console.log('https://example.vercel.app'); process.exit(Number(process.env.DEPLOY_TEST_CLI_EXIT || 0)); }
 `;
-  for (const command of ["npm", "npx"])
+  for (const command of ["pnpm", "npx"])
     writeFileSync(join(bin, command), stub, { mode: 0o755 });
   const env = {
     ...process.env,
@@ -41,6 +41,7 @@ if (command === 'npx') { if (process.env.DEPLOY_TEST_SIGNAL) process.kill(proces
     VERCEL_AUTH_TOKEN: "test-auth-token-never-print",
     VERCEL_PROJECT_ID: "prj_wrong_from_environment",
     VERCEL_SCOPE: "team-with-spaces",
+    OPS_VERCEL_PROJECT_ID: "prj_OpsTest456",
   };
   return {
     run: (args: string[] = [], extra: Record<string, string> = {}) =>
@@ -82,7 +83,7 @@ test("deployment runs checks first and explicitly selects the requested project 
     commands.slice(0, 3).map((c) => c.args),
     [["run", "lint"], ["run", "typecheck"], ["test"]],
   );
-  const deployment = commands[3];
+  const deployment = commands[4];
   assert.equal(deployment.command, "npx");
   assert.deepEqual(deployment.args, [
     "--yes",
@@ -103,9 +104,14 @@ test("deployment runs checks first and explicitly selects the requested project 
   assert.equal(deployment.token, "test-token-never-print");
   assert.ok(!deployment.args.some((a) => a.includes("test-token")));
   assert.ok(!`${result.stdout}${result.stderr}`.includes("test-token"));
-  assert.equal(commands.length, 5);
-  const logout = commands[4];
-  assert.deepEqual(logout.args, ["--yes", "vercel@58.9.0", "logout", "--non-interactive"]);
+  assert.equal(commands.length, 6);
+  const logout = commands[5];
+  assert.deepEqual(logout.args, [
+    "--yes",
+    "vercel@58.9.0",
+    "logout",
+    "--non-interactive",
+  ]);
   assert.equal(logout.token, undefined);
   assert.equal(logout.authToken, undefined);
   assert.ok(!result.stdout.includes("Logged out!"));
@@ -117,7 +123,7 @@ test("production must be requested explicitly and does not require a scope flag"
   t.after(f.cleanup);
   const result = f.run(["--prod"], { VERCEL_SCOPE: "" });
   assert.equal(result.status, 0, result.stderr);
-  const args = f.commands()[3].args;
+  const args = f.commands()[4].args;
   assert.equal(args[args.indexOf("--target") + 1], "production");
   assert.ok(!args.includes("--scope"));
 });
@@ -145,13 +151,13 @@ test("failed checks and deployments still log out and preserve their exit status
   assert.equal(result.status, 9);
   assert.deepEqual(
     failure.commands().map((c) => c.command),
-    ["npm", "npm", "npx"],
+    ["pnpm", "pnpm", "npx"],
   );
   assert.ok(failure.commands()[2].args.includes("logout"));
   const cli = fixture();
   t.after(cli.cleanup);
   assert.equal(cli.run([], { DEPLOY_TEST_CLI_EXIT: "7" }).status, 7);
-  assert.ok(cli.commands()[4].args.includes("logout"));
+  assert.ok(cli.commands()[5].args.includes("logout"));
 });
 
 test("logout failure is reported without hiding an earlier deployment failure", (t) => {
@@ -171,11 +177,39 @@ test("logout failure is reported without hiding an earlier deployment failure", 
 });
 
 test("interrupted deployments log out once and return the interruption status", (t) => {
-  for (const [signal, status] of [["SIGINT", 130], ["SIGTERM", 143]] as const) {
+  for (const [signal, status] of [
+    ["SIGINT", 130],
+    ["SIGTERM", 143],
+  ] as const) {
     const f = fixture();
     t.after(f.cleanup);
     const result = f.run([], { DEPLOY_TEST_SIGNAL: signal });
     assert.equal(result.status, status, result.stderr);
-    assert.equal(f.commands().filter((c) => c.args.includes("logout")).length, 1);
+    assert.equal(
+      f.commands().filter((c) => c.args.includes("logout")).length,
+      1,
+    );
   }
+});
+
+test("ops deployment configures its own project root and cannot target the explorer project", (t) => {
+  const f = fixture();
+  t.after(f.cleanup);
+  assert.equal(f.run(["--app", "ops"]).status, 0);
+  const commands = f.commands();
+  assert.ok(commands[3].args.includes("/v9/projects/prj_OpsTest456"));
+  assert.ok(
+    commands[3].args.includes(join(root, "apps/ops/vercel-project.json")),
+  );
+  const deploy = commands[4].args;
+  assert.equal(deploy[deploy.indexOf("--project") + 1], "prj_OpsTest456");
+  assert.equal(
+    f.run(["--app", "ops"], { OPS_VERCEL_PROJECT_ID: "" }).status,
+    2,
+  );
+  assert.equal(
+    f.run(["--app", "ops"], { OPS_VERCEL_PROJECT_ID: projectId }).status,
+    2,
+  );
+  assert.equal(f.run(["--app", "unknown"]).status, 2);
 });

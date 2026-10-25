@@ -6,10 +6,10 @@ import {
   preloadTokenMetadata,
   tokenQueryKey,
   TOKEN_FAILURE_STALE_TIME,
-} from "../src/lib/token-metadata";
-import { getTwapTokenReferences } from "../src/lib/twap/token-metadata";
-import type { Token } from "../src/lib/types";
-import type { ListOrder, Order } from "../src/lib/twap/types";
+} from "../packages/domain/src/token-metadata";
+import { getTwapTokenReferences } from "../packages/domain/src/twap/token-metadata";
+import type { Token } from "../packages/domain/src/types";
+import type { ListOrder, Order } from "../packages/domain/src/twap/types";
 
 const a = `0x${"a".repeat(40)}`;
 const b = `0x${"b".repeat(40)}`;
@@ -268,5 +268,108 @@ test("a concurrent failed preload cannot replace metadata loaded successfully el
   cache.setQueryData(tokenQueryKey(a, 1), token(a));
   release();
   await preload;
+  assert.equal(read(cache, a, 1)?.symbol, "USDC");
+});
+
+test("concurrent scopes and individual token lookups share one bounded network batch", async (t) => {
+  const cache = client();
+  const requests: string[][] = [];
+  let release!: () => void;
+  const pending = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  t.mock.method(
+    globalThis,
+    "fetch",
+    async (_url: string, init: RequestInit) => {
+      const { addresses } = JSON.parse(init.body as string);
+      requests.push(addresses);
+      await pending;
+      return Response.json(addresses.map((address: string) => token(address)));
+    },
+  );
+  const first = preloadTokenMetadata(cache, [{ address: a, chainId: 1 }]);
+  const second = preloadTokenMetadata(cache, [
+    { address: a, chainId: 1 },
+    { address: b, chainId: 1 },
+  ]);
+  await tick();
+  const mountedRow = preloadTokenMetadata(cache, [{ address: b, chainId: 1 }]);
+  assert.deepEqual(requests, [[a, b]]);
+  release();
+  await Promise.all([first, second, mountedRow]);
+  assert.equal(read(cache, a, 1)?.symbol, "USDC");
+  assert.equal(read(cache, b, 1)?.symbol, "USDC");
+  assert.equal(requests.length, 1);
+});
+
+test("leaving one scope does not cancel metadata still needed by another mounted consumer", async (t) => {
+  const cache = client();
+  const leaving = new AbortController();
+  let requestSignal: AbortSignal | undefined;
+  let release!: () => void;
+  const pending = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  t.mock.method(
+    globalThis,
+    "fetch",
+    async (_url: string, init: RequestInit) => {
+      requestSignal = init.signal ?? undefined;
+      await pending;
+      return Response.json([token(a)]);
+    },
+  );
+  const first = preloadTokenMetadata(
+    cache,
+    [{ address: a, chainId: 1 }],
+    leaving.signal,
+  );
+  const second = preloadTokenMetadata(cache, [{ address: a, chainId: 1 }]);
+  await tick();
+  leaving.abort(new Error("Scope changed"));
+  await assert.rejects(first, /Scope changed/);
+  assert.equal(requestSignal?.aborted, false);
+  assert.equal(
+    read(cache, a, 1),
+    undefined,
+    "cancelled caller publishes nothing",
+  );
+  release();
+  await second;
+  assert.equal(read(cache, a, 1)?.symbol, "USDC");
+});
+
+test("an abandoned request is aborted and a later scope can retry immediately", async (t) => {
+  const cache = client();
+  const leaving = new AbortController();
+  let requests = 0;
+  t.mock.method(
+    globalThis,
+    "fetch",
+    async (_url: string, init: RequestInit) => {
+      requests++;
+      if (requests > 1) return Response.json([token(a)]);
+      return new Promise<Response>((_resolve, reject) => {
+        init.signal?.addEventListener(
+          "abort",
+          () => reject(init.signal?.reason),
+          {
+            once: true,
+          },
+        );
+      });
+    },
+  );
+  const first = preloadTokenMetadata(
+    cache,
+    [{ address: a, chainId: 1 }],
+    leaving.signal,
+  );
+  await tick();
+  leaving.abort(new Error("Scope changed"));
+  await assert.rejects(first, /Scope changed/);
+  await preloadTokenMetadata(cache, [{ address: a, chainId: 1 }]);
+  assert.equal(requests, 2);
   assert.equal(read(cache, a, 1)?.symbol, "USDC");
 });

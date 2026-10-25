@@ -1,0 +1,362 @@
+"use client";
+
+import { ActivitySummary, ActivityTime } from "@/components/activity-summary";
+import Link from "next/link";
+import { useSearchParams } from "next/navigation";
+import {
+  ArrowLeft,
+  BarChart3,
+  CircleDollarSign,
+  Database,
+  Gauge,
+  Users,
+} from "lucide-react";
+import { usePerpetualHubState } from "@orbs/domain/perpetual-hub";
+import { appendPerpetualHubScope } from "@orbs/domain/perpetual-hub/query-scope";
+import { ROUTES } from "@/routes";
+import { Badge } from "@orbs/ui/controls/badge";
+import { Button } from "@orbs/ui/controls/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@orbs/ui/controls/card";
+import { Spinner } from "@orbs/ui/controls/spinner";
+import { formatDecimals, shortenAddress } from "@orbs/domain/utils/utils";
+
+function groupThousands(value: string) {
+  const sign = value.startsWith("-") ? "-" : "";
+  const unsigned = sign ? value.slice(1) : value;
+  const [integer, decimal] = unsigned.split(".");
+  const grouped = integer.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  return `${sign}${grouped}${decimal ? `.${decimal}` : ""}`;
+}
+
+function formatNumber(value?: number, decimals = 0) {
+  const n = Number(value ?? 0);
+  if (!Number.isFinite(n)) return "0";
+  return groupThousands(formatDecimals(String(n), decimals) || "0");
+}
+
+function formatCompact(value?: number, decimals = 2) {
+  const n = Number(value ?? 0);
+  if (!Number.isFinite(n)) return "0";
+  const sign = n < 0 ? "-" : "";
+  const abs = Math.abs(n);
+  if (abs >= 1e9) return `${sign}${formatNumber(abs / 1e9, decimals)}B`;
+  if (abs >= 1e6) return `${sign}${formatNumber(abs / 1e6, decimals)}M`;
+  if (abs >= 1e3) return `${sign}${formatNumber(abs / 1e3, decimals)}K`;
+  return `${sign}${formatNumber(abs, decimals)}`;
+}
+
+function formatUsd(value?: number) {
+  return `$${formatCompact(value, 2)}`;
+}
+
+function truncate(value?: string, chars = 6) {
+  if (!value) return "-";
+  if (value.startsWith("0x") && value.length > 14)
+    return shortenAddress(value, chars);
+  if (value.length <= chars * 2 + 3) return value;
+  return `${value.slice(0, chars)}...${value.slice(-chars)}`;
+}
+
+function MetricCard({
+  label,
+  value,
+  icon: Icon,
+}: {
+  label: string;
+  value: string | number;
+  icon: React.ComponentType<{ className?: string }>;
+}) {
+  return (
+    <Card className="rounded-lg py-4">
+      <CardContent className="px-4">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-xs text-muted-foreground">{label}</p>
+            <p className="mt-1 text-2xl font-semibold tabular-nums">{value}</p>
+          </div>
+          <div className="rounded-md bg-muted p-2 text-muted-foreground">
+            <Icon className="h-4 w-4" />
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+export function PerpetualHubStateView({ seq }: { seq: string }) {
+  const searchParams = useSearchParams();
+  const scopedHref = (href: string) =>
+    appendPerpetualHubScope(href, searchParams);
+  const {
+    data,
+    isLoading,
+    isError,
+    error,
+    refetch,
+    isFetching,
+    dataUpdatedAt,
+  } = usePerpetualHubState(seq);
+
+  if (isLoading) {
+    return (
+      <div className="flex min-h-[420px] flex-col items-center justify-center gap-3">
+        <Spinner size={28} className="text-primary" />
+        <p className="text-sm text-muted-foreground">Loading sequence state</p>
+      </div>
+    );
+  }
+
+  if (isError || !data) {
+    return (
+      <div className="mx-auto max-w-xl rounded-lg border border-destructive/40 bg-destructive/5 p-6 text-destructive">
+        <p className="font-semibold">Failed to load sequence state</p>
+        <p className="mt-2 text-sm opacity-90">
+          {error instanceof Error ? error.message : "Unknown error"}
+        </p>
+        <Button
+          variant="outline"
+          size="sm"
+          className="mt-3"
+          onClick={() => refetch()}
+        >
+          Retry
+        </Button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mx-auto flex max-w-[1440px] px-4 sm:px-6 flex-col gap-6 py-4 pb-16">
+      <div className="flex flex-col gap-3 border-b pb-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <div className="flex flex-wrap items-center gap-2">
+            <h1 className="text-2xl font-semibold tracking-tight">
+              Account change #{formatNumber(data.sequenceNumber)}
+            </h1>
+            <Badge variant="outline" className="gap-1.5">
+              <Database className="h-3.5 w-3.5" />
+              {data.source || "state"}
+            </Badge>
+          </div>
+          <details className="mt-2 text-xs text-muted-foreground">
+            <summary className="cursor-pointer font-medium">
+              Technical verification ID
+            </summary>
+            <p className="mt-2 break-all font-mono">
+              {data.merkleRoot || "Not reported"}
+            </p>
+          </details>
+        </div>
+        <Button variant="outline" size="sm" asChild>
+          <Link href={scopedHref(ROUTES.PERPETUAL_HUB.ROOT)}>
+            <ArrowLeft className="h-4 w-4" />
+            Back
+          </Link>
+        </Button>
+      </div>
+
+      <ActivitySummary
+        title="Balances at that time"
+        explanation={`These balances, positions, and waiting orders were saved after change #${data.sequenceNumber}. They may have changed since then. Open an account below for its current balance and positions.`}
+        onRefresh={() => refetch()}
+        refreshing={isFetching}
+        facts={[
+          {
+            label: "Applied at",
+            value: <ActivityTime value={data.transition?.createdAt} />,
+          },
+          {
+            label: "Last updated",
+            value: <ActivityTime value={dataUpdatedAt} />,
+          },
+        ]}
+      />
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <MetricCard
+          label="Accounts"
+          value={formatNumber(data.metrics.users)}
+          icon={Users}
+        />
+        <MetricCard
+          label="Open Positions"
+          value={formatNumber(data.metrics.openPositions)}
+          icon={BarChart3}
+        />
+        <MetricCard
+          label="Pending Orders"
+          value={formatNumber(data.metrics.pendingOrders)}
+          icon={Gauge}
+        />
+        <MetricCard
+          label="Open Interest"
+          value={formatUsd(data.metrics.openInterest)}
+          icon={CircleDollarSign}
+        />
+        <MetricCard
+          label="User Balance"
+          value={formatUsd(data.metrics.totalUserBalance)}
+          icon={CircleDollarSign}
+        />
+        <MetricCard
+          label="Platform Fees"
+          value={formatUsd(data.metrics.platformFeesCollected)}
+          icon={CircleDollarSign}
+        />
+        <MetricCard
+          label="Hedging deposits"
+          value={formatUsd(data.metrics.hedgerTotalDeposits)}
+          icon={CircleDollarSign}
+        />
+        <MetricCard
+          label="Hedging profit / loss"
+          value={formatUsd(data.metrics.hedgerRealizedPnl)}
+          icon={Gauge}
+        />
+      </div>
+
+      <div className="grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
+        <Card className="rounded-lg">
+          <CardHeader>
+            <CardTitle className="text-sm">Transition</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3 text-sm">
+            <div className="grid gap-1">
+              <span className="text-muted-foreground">Operation</span>
+              <span className="font-medium">
+                {data.transition?.opType || "-"}
+              </span>
+            </div>
+            <div className="grid gap-1">
+              <span className="text-muted-foreground">Rollup</span>
+              <span className="font-mono">
+                {data.transition?.rollupId
+                  ? `#${data.transition.rollupId}`
+                  : "-"}
+              </span>
+            </div>
+            <div className="grid gap-1">
+              <span className="text-muted-foreground">Previous root</span>
+              <span className="break-all font-mono">
+                {data.transition?.prevRoot || "-"}
+              </span>
+            </div>
+            <div className="grid gap-1">
+              <span className="text-muted-foreground">New root</span>
+              <span className="break-all font-mono">
+                {data.transition?.newRoot || data.merkleRoot || "-"}
+              </span>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="overflow-hidden rounded-lg py-0">
+          <div
+            tabIndex={0}
+            role="region"
+            aria-label="Market exposure table"
+            className="overflow-x-auto"
+          >
+            <table className="w-full text-sm">
+              <thead className="border-b bg-muted/30 text-xs text-muted-foreground">
+                <tr>
+                  <th className="px-4 py-3 text-left font-medium">Symbol</th>
+                  <th className="px-4 py-3 text-right font-medium">
+                    Long positions value
+                  </th>
+                  <th className="px-4 py-3 text-right font-medium">
+                    Short positions value
+                  </th>
+                  <th className="px-4 py-3 text-right font-medium">
+                    Net quantity
+                  </th>
+                  <th className="px-4 py-3 text-right font-medium">
+                    Positions
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {data.exposureBySymbol.slice(0, 12).map((row) => (
+                  <tr key={row.symbol} className="border-b last:border-b-0">
+                    <td className="px-4 py-3 font-medium">{row.symbol}</td>
+                    <td className="px-4 py-3 text-right font-mono text-emerald-700 dark:text-emerald-400">
+                      {formatUsd(row.longNotional)}
+                    </td>
+                    <td className="px-4 py-3 text-right font-mono text-destructive">
+                      {formatUsd(row.shortNotional)}
+                    </td>
+                    <td className="px-4 py-3 text-right font-mono">
+                      {formatCompact(row.netQuantity, 4)}
+                    </td>
+                    <td className="px-4 py-3 text-right font-mono">
+                      {row.positions}
+                    </td>
+                  </tr>
+                ))}
+                {!data.exposureBySymbol.length && (
+                  <tr>
+                    <td
+                      className="px-4 py-8 text-center text-muted-foreground"
+                      colSpan={5}
+                    >
+                      No open exposure
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+      </div>
+
+      <Card className="overflow-hidden rounded-lg py-0">
+        <div
+          tabIndex={0}
+          role="region"
+          aria-label="Accounts at this sequence"
+          className="overflow-x-auto"
+        >
+          <table className="w-full text-sm">
+            <thead className="border-b bg-muted/30 text-xs text-muted-foreground">
+              <tr>
+                <th className="px-4 py-3 text-left font-medium">Account</th>
+                <th className="px-4 py-3 text-right font-medium">Balance</th>
+                <th className="px-4 py-3 text-right font-medium">Positions</th>
+                <th className="px-4 py-3 text-right font-medium">
+                  Pending Orders
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.users.map((user) => (
+                <tr key={user.address} className="border-b last:border-b-0">
+                  <td className="px-4 py-3 font-mono text-primary">
+                    {truncate(user.address)}
+                  </td>
+                  <td className="px-4 py-3 text-right font-mono">
+                    {formatUsd(user.balance)}
+                  </td>
+                  <td className="px-4 py-3 text-right font-mono">
+                    {user.positions}
+                  </td>
+                  <td className="px-4 py-3 text-right font-mono">
+                    {user.pendingOrders}
+                  </td>
+                </tr>
+              ))}
+              {!data.users.length && (
+                <tr>
+                  <td
+                    className="px-4 py-8 text-center text-muted-foreground"
+                    colSpan={4}
+                  >
+                    No users in this state
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </Card>
+    </div>
+  );
+}

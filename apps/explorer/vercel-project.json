@@ -1,0 +1,9 @@
+{
+  "framework": "nextjs",
+  "rootDirectory": "apps/explorer",
+  "sourceFilesOutsideRootDirectory": true,
+  "nodeVersion": "22.x",
+  "buildCommand": null,
+  "installCommand": null,
+  "outputDirectory": null
+}
