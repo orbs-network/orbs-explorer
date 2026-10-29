@@ -381,9 +381,8 @@ Redis, and cron credentials belong only to ops.
 Use **two Vercel projects connected to this same Git repository**:
 
 1. Keep the existing explorer project (`prj_iCIuRd8iUPHYmu2bePAcTj6fRNUD`).
-2. Create a separate ops project, for example `orbs-ops`. Import the same Git repo
-   with Root Directory `apps/ops`, or create it with
-   `npx vercel@58.9.0 project add orbs-ops`.
+2. Use the separate ops project (`prj_WsmkqUUi6kJu5MdRPN69ALiofXpM`) with Root
+   Directory `apps/ops`.
 3. Set each project's Root Directory from the table above and enable **Include
    source files outside of the Root Directory in the Build Step**. Both apps
    reference shared workspace packages. Use Node.js 22 and the app's checked-in
@@ -391,13 +390,13 @@ Use **two Vercel projects connected to this same Git repository**:
 4. Configure each project's environment variables independently. Move operational
    credentials from the explorer project to ops. Authorize the ops origin in
    Google before signing in.
-5. Set `OPS_VERCEL_PROJECT_ID` to the new project's ID (`prj_...`) in your shell/CI. Find it in Project Settings or
-   `npx vercel@58.9.0 project inspect orbs-ops`.
+5. The deployment script already selects the configured Ops project. Set
+   `OPS_VERCEL_PROJECT_ID` in your shell/CI only to override it with another Ops project.
 
 The deployment script applies the selected app's `vercel-project.json` settings
 before uploading the repository root, ensuring both the app and its workspace
 packages reach Vercel. Explorer explicitly selects its existing project, ignoring
-stale local `.vercel` links. Ops requires its own project identifier.
+stale local `.vercel` links. Ops defaults to its separate configured project.
 
 ```bash
 npx vercel@58.9.0 login
@@ -405,7 +404,6 @@ pnpm deploy:explorer              # Explorer preview
 pnpm deploy:explorer --prod       # Explorer production
 
 npx vercel@58.9.0 login
-export OPS_VERCEL_PROJECT_ID=prj_REPLACE_WITH_OPS_PROJECT_ID
 pnpm deploy:ops                   # Ops preview
 pnpm deploy:ops --prod            # Ops production
 pnpm deploy:ops --dry-run         # Inspect commands without executing them

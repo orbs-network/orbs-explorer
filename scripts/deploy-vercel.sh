@@ -2,6 +2,7 @@
 set -euo pipefail
 
 EXPLORER_PROJECT_ID="prj_iCIuRd8iUPHYmu2bePAcTj6fRNUD"
+OPS_PROJECT_ID="prj_WsmkqUUi6kJu5MdRPN69ALiofXpM"
 APP="explorer"
 VERCEL_CLI_VERSION="58.9.0"
 REPO_ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -20,7 +21,7 @@ The default target is preview. --prod deploys to production.
 
 Authenticate with `vercel login`, or set VERCEL_TOKEN for CI.
 Optional: set VERCEL_SCOPE to the team slug that owns the project.
-Ops requires OPS_VERCEL_PROJECT_ID (the ID of a separate existing project).
+Optional: set OPS_VERCEL_PROJECT_ID to override the configured Ops project.
 HELP
 }
 
@@ -37,7 +38,7 @@ while [[ $# -gt 0 ]]; do
 done
 case "$APP" in
   explorer) PROJECT_ID="$EXPLORER_PROJECT_ID" ;;
-  ops) PROJECT_ID="${OPS_VERCEL_PROJECT_ID:-}"
+  ops) PROJECT_ID="${OPS_VERCEL_PROJECT_ID:-$OPS_PROJECT_ID}"
     if [[ ! "$PROJECT_ID" =~ ^prj_[a-zA-Z0-9]+$ || "$PROJECT_ID" == "$EXPLORER_PROJECT_ID" ]]; then
       printf '%s\n' 'Set OPS_VERCEL_PROJECT_ID to a separate existing Vercel project ID.' >&2
       exit 2

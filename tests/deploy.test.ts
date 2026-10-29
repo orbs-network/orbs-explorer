@@ -204,7 +204,7 @@ test("ops deployment configures its own project root and cannot target the explo
   const deploy = commands[4].args;
   assert.equal(deploy[deploy.indexOf("--project") + 1], "prj_OpsTest456");
   assert.equal(
-    f.run(["--app", "ops"], { OPS_VERCEL_PROJECT_ID: "" }).status,
+    f.run(["--app", "ops"], { OPS_VERCEL_PROJECT_ID: "invalid" }).status,
     2,
   );
   assert.equal(
@@ -212,4 +212,16 @@ test("ops deployment configures its own project root and cannot target the explo
     2,
   );
   assert.equal(f.run(["--app", "unknown"]).status, 2);
+});
+
+test("ops defaults to its configured project without an environment override", (t) => {
+  const f = fixture();
+  t.after(f.cleanup);
+  const opsProjectId = "prj_WsmkqUUi6kJu5MdRPN69ALiofXpM";
+  const result = f.run(["--app", "ops"], { OPS_VERCEL_PROJECT_ID: "" });
+  assert.equal(result.status, 0, result.stderr);
+  const commands = f.commands();
+  assert.ok(commands[3].args.includes(`/v9/projects/${opsProjectId}`));
+  const deploy = commands[4].args;
+  assert.equal(deploy[deploy.indexOf("--project") + 1], opsProjectId);
 });
