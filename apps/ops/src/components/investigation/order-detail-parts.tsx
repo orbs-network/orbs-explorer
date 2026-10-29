@@ -52,6 +52,8 @@ import {
   tokenUnits,
   conciseOrderMessage,
   isZeroOutputLimit,
+  parseOutputShortfall,
+  type OutputShortfall,
 } from "./order-presentation";
 import {
   chunkReason,
@@ -193,6 +195,83 @@ function TokenAmount({
   );
 }
 
+function OutputShortfallAmounts({
+  amounts,
+  address,
+  chainId,
+}: {
+  amounts: OutputShortfall;
+  address: string;
+  chainId?: number;
+}) {
+  const token = { address, chainId };
+  const { data, isLoading } = useToken(address, chainId);
+  return (
+    <section
+      aria-label="Output shortfall"
+      className="space-y-3 rounded-lg bg-background/40 p-4 text-sm text-foreground"
+    >
+      <p className="font-medium">Swap output is below the required minimum</p>
+      {isLoading ? (
+        <InlineSkeleton
+          label="Loading output amounts"
+          className="h-16 w-full"
+        />
+      ) : tokenUnits(amounts.balance, data?.decimals) === undefined ? (
+        <p className="text-sm text-muted-foreground">
+          Token details are unavailable. Original amounts are available in the
+          reason details.
+        </p>
+      ) : (
+        <>
+          <dl className="grid gap-x-6 gap-y-4 sm:grid-cols-3 [&_dd]:text-base">
+            <TokenAmount
+              {...token}
+              raw={amounts.executionMinimum}
+              label="Minimum to receive"
+            />
+            <TokenAmount
+              {...token}
+              raw={amounts.availableAfterFees}
+              label="Available after fees"
+            />
+            <TokenAmount
+              {...token}
+              raw={amounts.shortfall}
+              label="Shortfall incl. fees"
+            />
+          </dl>
+          <dl className="grid gap-x-6 gap-y-3 border-t border-border/60 pt-3 sm:grid-cols-3">
+            <TokenAmount
+              {...token}
+              raw={amounts.balance}
+              label="Swap output before fees"
+            />
+            <TokenAmount {...token} raw={amounts.fees} label="Execution fees" />
+            <TokenAmount
+              {...token}
+              raw={amounts.required}
+              label="Total required incl. fees"
+            />
+            {BigInt(amounts.executionMinimum) >
+              BigInt(amounts.orderMinimum) && (
+              <TokenAmount
+                {...token}
+                raw={amounts.orderMinimum}
+                label="Order minimum before execution adjustment"
+              />
+            )}
+          </dl>
+          <p className="text-xs leading-relaxed text-muted-foreground">
+            Available output is the reported swap balance minus fees, not an
+            amount received.
+          </p>
+        </>
+      )}
+    </section>
+  );
+}
+
 export function OrderIdentity({
   full,
   list,
@@ -274,6 +353,7 @@ export function OrderSummary({
   const primary = observations[0];
   const fallback = orderListMessage(list);
   const message = primary?.text || fallback.text;
+  const outputShortfall = parseOutputShortfall(message);
   const cachedMessage = cachedList ? orderListMessage(cachedList) : undefined;
   const differingListMessage =
     cachedMessage?.text &&
@@ -353,9 +433,19 @@ export function OrderSummary({
                     Boolean(primary?.error || fallback.error),
                   )}
                 </h3>
-                <p className="mt-1 whitespace-pre-wrap break-words [overflow-wrap:anywhere]">
-                  {conciseOrderMessage(message || summary || "")}
-                </p>
+                {outputShortfall ? (
+                  <div className="mt-3">
+                    <OutputShortfallAmounts
+                      amounts={outputShortfall}
+                      address={witness.output.token}
+                      chainId={chainId}
+                    />
+                  </div>
+                ) : (
+                  <p className="mt-1 whitespace-pre-wrap break-words [overflow-wrap:anywhere]">
+                    {conciseOrderMessage(message || summary || "")}
+                  </p>
+                )}
                 {primary?.timestamp && (
                   <p className="mt-2 text-xs text-muted-foreground">
                     {primary?.timestamp
@@ -782,6 +872,7 @@ function ChunkRecord({ chunk, full }: { chunk: OrderChunk; full: Order }) {
   const failed = isExecutionErrorChunk(chunk);
   const succeeded = /^success$/i.test(chunk.status);
   const message = chunkReason(chunk);
+  const outputShortfall = parseOutputShortfall(message ?? "");
   const readableMessage = message ? conciseOrderMessage(message) : undefined;
   const rawReason = chunk.extraTitle?.trim() || message;
   return (
@@ -818,7 +909,13 @@ function ChunkRecord({ chunk, full }: { chunk: OrderChunk; full: Order }) {
         </div>
       </CardHeader>
       <CardContent className="space-y-4 p-0">
-        {message && (
+        {outputShortfall ? (
+          <OutputShortfallAmounts
+            amounts={outputShortfall}
+            address={chunk.outToken || full.order.witness.output.token}
+            chainId={chainId}
+          />
+        ) : message ? (
           <p
             className={`flex items-start gap-2 whitespace-pre-wrap break-words text-xs leading-relaxed [overflow-wrap:anywhere] ${failed ? "text-destructive" : "text-muted-foreground"}`}
           >
@@ -827,7 +924,7 @@ function ChunkRecord({ chunk, full }: { chunk: OrderChunk; full: Order }) {
             )}
             <span className="min-w-0">{readableMessage}</span>
           </p>
-        )}
+        ) : null}
         <dl className="grid gap-x-6 gap-y-3 text-xs sm:grid-cols-3">
           <div>
             <dt className="text-muted-foreground">Reported due time</dt>

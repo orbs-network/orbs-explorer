@@ -185,8 +185,51 @@ export function compactTokenAmount(amount: string): string {
   return `${grouped}${short ? `.${short}` : ""}`;
 }
 
+export interface OutputShortfall {
+  balance: string;
+  orderMinimum: string;
+  fees: string;
+  required: string;
+  executionMinimum: string;
+  availableAfterFees: string;
+  shortfall: string;
+}
+
+/** Contract output-token units; required includes fees and the higher order/execution minimum. */
+export function parseOutputShortfall(
+  message: string,
+): OutputShortfall | undefined {
+  const match = message.match(
+    /Swap output insufficient:\s*balance=(\d+),\s*resolved=(\d+),\s*fees=(\d+),\s*required=(\d+)(?![\w.])/i,
+  );
+  if (!match) return;
+  const [, balance, orderMinimum, fees, required] = match;
+  const balanceValue = BigInt(balance);
+  const feeValue = BigInt(fees);
+  const requiredValue = BigInt(required);
+  if (
+    balanceValue >= requiredValue ||
+    requiredValue < BigInt(orderMinimum) + feeValue
+  )
+    return;
+  return {
+    balance,
+    orderMinimum,
+    fees,
+    required,
+    executionMinimum: (requiredValue - feeValue).toString(),
+    availableAfterFees: (balanceValue > feeValue
+      ? balanceValue - feeValue
+      : BigInt(0)
+    ).toString(),
+    shortfall: (requiredValue - balanceValue).toString(),
+  };
+}
+
 /** Keep raw service values in the disclosure, never infer units or a cause. */
 export function conciseOrderMessage(message: string): string {
+  if (parseOutputShortfall(message))
+    return "Swap output is below the required minimum after fees.";
   const firstLine = message.split("\n")[0].trim();
   const condition = firstLine.match(
     /^Price can't meet condition: expected ([\d.,]+), got ([\d.,]+)/i,

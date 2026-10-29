@@ -21,7 +21,64 @@ import {
   isZeroOutputLimit,
   orderScheduleLabel,
   orderSummaryHeading,
+  parseOutputShortfall,
 } from "../apps/ops/src/components/investigation/order-presentation";
+
+test("output shortfalls separate the user minimum, available net output, and fee-inclusive deficit without precision loss", () => {
+  const message =
+    "Swap output insufficient: balance=16831374152465104366, resolved=16773097979398049803, fees=83975211216756561, required=16857073190614806364";
+  const result = parseOutputShortfall(message)!;
+  assert.equal(result.availableAfterFees, "16747398941248347805");
+  assert.equal(result.executionMinimum, result.orderMinimum);
+  assert.equal(result.shortfall, "25699038149701998");
+  assert.equal(
+    compactTokenAmount(tokenUnits(result.orderMinimum, 18)!),
+    "16.7731",
+  );
+  assert.equal(
+    compactTokenAmount(tokenUnits(result.availableAfterFees, 18)!),
+    "16.7474",
+  );
+  assert.equal(compactTokenAmount(tokenUnits(result.shortfall, 18)!), "0.0257");
+  assert.equal(
+    conciseOrderMessage(message),
+    "Swap output is below the required minimum after fees.",
+  );
+});
+
+test("output comparisons handle other token decimals, higher execution minimums, and balances below fees", () => {
+  const higher = parseOutputShortfall(
+    "Swap output insufficient: balance=1950000, resolved=1800000, fees=100000, required=2100000",
+  )!;
+  assert.equal(tokenUnits(higher.orderMinimum, 6), "1.8");
+  assert.equal(tokenUnits(higher.executionMinimum, 6), "2");
+  assert.equal(tokenUnits(higher.availableAfterFees, 6), "1.85");
+  assert.equal(tokenUnits(higher.shortfall, 6), "0.15");
+  const belowFees = parseOutputShortfall(
+    "Swap output insufficient: balance=1, resolved=10, fees=2, required=12",
+  )!;
+  assert.equal(belowFees.availableAfterFees, "0");
+  assert.equal(belowFees.shortfall, "11");
+  assert.equal(
+    parseOutputShortfall(
+      "Swap output insufficient: balance=9, resolved=10, fees=0, required=10",
+    )?.availableAfterFees,
+    "9",
+  );
+});
+
+test("incomplete, malformed, or inconsistent output diagnostics do not invent comparable quantities", () => {
+  for (const message of [
+    "Swap output insufficient: balance=1, resolved=2",
+    "Swap output insufficient: balance=-1, resolved=2, fees=0, required=2",
+    "Swap output insufficient: balance=1, resolved=2, fees=0, required=2.5",
+    "Swap output insufficient: balance=1, resolved=2, fees=0, required=2e18",
+    "Swap output insufficient: balance=3, resolved=2, fees=0, required=2",
+    "Swap output insufficient: balance=1, resolved=2, fees=2, required=3",
+    "Some unrelated execution error",
+  ])
+    assert.equal(parseOutputShortfall(message), undefined, message);
+});
 
 test("summary headings prioritize lifecycle over historical reasons and distinguish active failures", () => {
   const order = (status: string) => ({ metadata: { status } }) as ListOrder;
