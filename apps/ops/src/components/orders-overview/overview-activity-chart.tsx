@@ -1,12 +1,21 @@
 "use client";
 
+import {
+  Table,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
+} from "@orbs/ui/controls/table";
+
+import { Button } from "@orbs/ui/controls/button";
 import { useMemo } from "react";
 import type { EChartsOption } from "echarts";
 import type { ListOrder } from "@orbs/domain/twap/types";
 import type { ActivityBucket } from "@/lib/overview-monitoring";
 import { ChartPlot } from "@/components/charts/chart-plot";
 import { chartTooltip, useChartTheme } from "@/components/charts/chart-theme";
-import { CHART_COLORS } from "@/components/charts/chart-colors";
 
 const rate = (value?: number) =>
   value === undefined
@@ -58,17 +67,17 @@ export default function OverviewActivityChart({
                   {
                     label: "Currently completed",
                     value: bucket.completed.toLocaleString(),
-                    color: CHART_COLORS.completed,
+                    color: theme.outcomes.completed,
                   },
                   {
                     label: "Currently failed",
                     value: bucket.failed.toLocaleString(),
-                    color: CHART_COLORS.failed,
+                    color: theme.outcomes.failed,
                   },
                   {
                     label: "Other outcomes",
                     value: bucket.other.toLocaleString(),
-                    color: CHART_COLORS.unknown,
+                    color: theme.outcomes.unknown,
                   },
                   {
                     label: "Terminal failure rate",
@@ -121,7 +130,7 @@ export default function OverviewActivityChart({
                 showSymbol: true,
                 symbolSize: 5,
                 lineStyle: { width: 2 },
-                itemStyle: { color: CHART_COLORS.failed },
+                itemStyle: { color: theme.outcomes.failed },
               },
             ]
           : [
@@ -130,7 +139,7 @@ export default function OverviewActivityChart({
                 stack: "orders",
                 name: "Completed",
                 data: buckets.map((bucket) => bucket.completed),
-                itemStyle: { color: CHART_COLORS.completed },
+                itemStyle: { color: theme.outcomes.completed },
                 barMaxWidth: 24,
               },
               {
@@ -138,7 +147,7 @@ export default function OverviewActivityChart({
                 stack: "orders",
                 name: "Failed",
                 data: buckets.map((bucket) => bucket.failed),
-                itemStyle: { color: CHART_COLORS.failed },
+                itemStyle: { color: theme.outcomes.failed },
                 barMaxWidth: 24,
               },
               {
@@ -146,7 +155,7 @@ export default function OverviewActivityChart({
                 stack: "orders",
                 name: "Other outcomes",
                 data: buckets.map((bucket) => bucket.other),
-                itemStyle: { color: CHART_COLORS.unknown },
+                itemStyle: { color: theme.outcomes.unknown },
                 barMaxWidth: 24,
               },
             ],
@@ -177,7 +186,7 @@ export default function OverviewActivityChart({
               <span
                 aria-hidden
                 className="size-2 rounded-sm"
-                style={{ background: CHART_COLORS[key] }}
+                style={{ background: theme.outcomes[key] }}
               />
               {key === "unknown"
                 ? "Other outcomes"
@@ -193,39 +202,47 @@ export default function OverviewActivityChart({
           Chart data & order lists
         </summary>
         <div className="mt-2 max-h-52 overflow-auto rounded">
-          <table className="w-full text-left text-[11px] tabular-nums">
-            <thead className="sticky top-0 bg-card text-muted-foreground">
-              <tr>
-                <th scope="col" className="p-2">
+          <Table
+            containerProps={{ className: "overflow-visible" }}
+            className="w-full text-left text-[11px] tabular-nums"
+          >
+            <TableHeader className="sticky top-0 bg-card text-muted-foreground">
+              <TableRow>
+                <TableHead scope="col" className="p-2">
                   Interval (UTC)
-                </th>
-                <th scope="col">Placed</th>
-                <th scope="col">Completed</th>
-                <th scope="col">Failed</th>
-                <th scope="col">Fail %</th>
-              </tr>
-            </thead>
-            <tbody>
+                </TableHead>
+                <TableHead scope="col">Placed</TableHead>
+                <TableHead scope="col">Completed</TableHead>
+                <TableHead scope="col">Failed</TableHead>
+                <TableHead scope="col">Fail %</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               {buckets.map((bucket, index) => (
-                <tr key={bucket.timestamp} className="border-t border-border">
-                  <th scope="row" className="p-2 text-left font-normal">
-                    <button
+                <TableRow
+                  key={bucket.timestamp}
+                  className="border-t border-border"
+                >
+                  <TableHead scope="row" className="p-2 text-left font-normal">
+                    <Button
+                      variant="ghost"
+                      size="content"
                       type="button"
                       disabled={!bucket.orders.length}
                       className="rounded text-left enabled:text-link enabled:hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:text-muted-foreground"
                       onClick={() => select(index)}
                     >
                       {range(bucket)}
-                    </button>
-                  </th>
-                  <td>{bucket.orders.length}</td>
-                  <td>{bucket.completed}</td>
-                  <td>{bucket.failed}</td>
-                  <td>{rate(bucket.failureRate)}</td>
-                </tr>
+                    </Button>
+                  </TableHead>
+                  <TableCell>{bucket.orders.length}</TableCell>
+                  <TableCell>{bucket.completed}</TableCell>
+                  <TableCell>{bucket.failed}</TableCell>
+                  <TableCell>{rate(bucket.failureRate)}</TableCell>
+                </TableRow>
               ))}
-            </tbody>
-          </table>
+            </TableBody>
+          </Table>
         </div>
       </details>
     </div>

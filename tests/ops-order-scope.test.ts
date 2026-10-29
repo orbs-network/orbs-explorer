@@ -54,6 +54,16 @@ function captureScope(search: string) {
   return { scope, updates };
 }
 
+test("24-hour scope resolves to one rolling day and survives filter updates", () => {
+  const { scope, updates } = captureScope("?period=1&partner_id=sushiswap");
+  assert.equal(scope.period, "1");
+  assert.equal(scope.days, 1);
+  scope.setChains(["137"]);
+  const params = new URLSearchParams(updates[0]);
+  assert.equal(params.get("period"), "1");
+  assert.equal(params.get("partner_id"), "sushiswap");
+});
+
 test("scope reset clears all global filters with one navigation and preserves unrelated repeated params", () => {
   const { scope, updates } = captureScope(
     "?period=all&chain_id=137&chain_id=42161&partner_id=quickswap&tag=one&tag=two",
@@ -118,7 +128,7 @@ test("unrestricted drawer scope uses all history and removes network and app sel
 
 test("quick-view replacement clears old list facets in one update while retaining global scope and raw-column preference", () => {
   const { scope, updates } = captureScope(
-    "?period=30&chain_id=137&chain_id=8453&partner_id=sushiswap&order_search=gas&order_adapter=old-adapter&order_token=old-token&order_status=failed&order_type=Market&order_source=v1&order_errors=any&min_usd=10&max_usd=50&order_sort=value-asc&order_raw=1&tag=one&tag=two",
+    "?period=30&chain_id=137&chain_id=8453&partner_id=sushiswap&order_search=gas&order_adapter=old-adapter&order_token=old-token&order_swapper=old-wallet&order_status=failed&order_type=Market&order_source=v1&order_errors=any&min_usd=10&max_usd=50&order_sort=value-asc&order_raw=1&tag=one&tag=two",
   );
   scope.applyFilters(
     {
@@ -142,6 +152,7 @@ test("quick-view replacement clears old list facets in one update while retainin
     "order_search",
     "order_adapter",
     "order_token",
+    "order_swapper",
     "order_type",
     "order_source",
     "order_errors",

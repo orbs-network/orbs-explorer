@@ -40,7 +40,7 @@ export function AdapterMatchBadge({
     unknown || comparison === "catalog"
       ? "text-muted-foreground"
       : needsReview
-        ? "border-transparent bg-amber-500/10 text-amber-700 dark:text-amber-400"
+        ? "border-transparent bg-warning-surface text-warning"
         : // The expected state stays quiet so exceptions stand out in long lists.
           "border-transparent bg-transparent px-0 text-success";
   return (

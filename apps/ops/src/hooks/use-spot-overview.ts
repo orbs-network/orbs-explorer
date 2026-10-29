@@ -7,7 +7,10 @@ import { buildSpotOverview } from "@/lib/overview-data";
 import {
   spotOverviewOrdersQueryOptions,
   spotOverviewTokensQueryOptions,
+  normalizeSpotHistoryScope,
+  type SpotHistoryQueryScope,
 } from "@/lib/spot-overview-queries";
+import { historyExchangeForPartners } from "@/lib/spot-history-scope";
 import { useOverviewErrorToasts } from "./use-overview-error-toasts";
 
 const EMPTY_SELECTION: string[] = [];
@@ -16,15 +19,39 @@ export function useSpotOverview({
   chainIds = EMPTY_SELECTION,
   partnerIds = EMPTY_SELECTION,
   loadTokenMetadata = true,
+  enabled = true,
+  includePreviousPeriod = false,
+  filters,
 }: {
   days?: number;
   chainIds?: string[];
   partnerIds?: string[];
   loadTokenMetadata?: boolean;
+  enabled?: boolean;
+  includePreviousPeriod?: boolean;
+  filters?: Pick<
+    SpotHistoryQueryScope,
+    "swapper" | "source" | "placedSince" | "placedUntil"
+  >;
 } = {}) {
   const queryClient = useQueryClient();
   const configQuery = useSpotConfig();
-  const ordersQuery = useQuery(spotOverviewOrdersQueryOptions());
+  const historyScope = {
+    days: days && includePreviousPeriod ? days * 2 : days,
+    chainIds,
+    exchange: historyExchangeForPartners(
+      configQuery.data ?? null,
+      partnerIds,
+      chainIds,
+    ),
+    ...filters,
+  };
+  const queryEnabled =
+    enabled && (!partnerIds.length || !configQuery.isPending);
+  const ordersQuery = useQuery({
+    ...spotOverviewOrdersQueryOptions(historyScope),
+    enabled: queryEnabled,
+  });
   useOverviewErrorToasts({ orders: ordersQuery, config: configQuery });
   const overview = useMemo(
     () =>
@@ -50,9 +77,15 @@ export function useSpotOverview({
       spotOverviewTokensQueryOptions(
         queryClient,
         overview.orders,
-        loadTokenMetadata && !configQuery.isPending,
+        enabled && loadTokenMetadata && !configQuery.isPending,
       ),
-    [queryClient, overview.orders, loadTokenMetadata, configQuery.isPending],
+    [
+      queryClient,
+      overview.orders,
+      loadTokenMetadata,
+      configQuery.isPending,
+      enabled,
+    ],
   );
   const tokensQuery = useQuery(tokenOptions);
   // Search and market builders read token data from the shared cache. Update
@@ -64,7 +97,7 @@ export function useSpotOverview({
   const refresh = () => {
     void Promise.allSettled([
       configQuery.refetch(),
-      ordersQuery.refetch(),
+      ...(enabled ? [ordersQuery.refetch()] : []),
       ...(tokenOptions.enabled ? [tokensQuery.refetch()] : []),
     ]);
   };
@@ -72,11 +105,12 @@ export function useSpotOverview({
     ...overview,
     orders,
     allOrders: ordersQuery.data ?? [],
+    historyScope: normalizeSpotHistoryScope(historyScope),
     config: configQuery.data ?? null,
     configUpdatedAt: configQuery.dataUpdatedAt,
     isConfigError: configQuery.isError,
-    isLoading: configQuery.isPending || ordersQuery.isPending,
-    isHistoryLoading: ordersQuery.isPending,
+    isLoading: enabled && (configQuery.isPending || ordersQuery.isPending),
+    isHistoryLoading: enabled && ordersQuery.isPending,
     isCatalogLoading: configQuery.isPending,
     isError: ordersQuery.isError && !ordersQuery.data,
     isRefreshError: ordersQuery.isError,

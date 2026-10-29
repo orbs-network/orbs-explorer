@@ -45,49 +45,62 @@ require opening the separate public explorer app.
 
 ## Operations views
 
-Staff navigation starts with four choices: **Overview**, **Orders**,
-**Analytics**, and **Monitoring**. Main sections use links; pages within the
+Staff navigation starts with three choices: **Overview**, **Orders**, and
+**Analytics**. Main sections use links; pages within the
 selected section use shadcn tabs with keyboard navigation. Inner analysis views
 also use URL-backed tabs and mount only the active panel. Navigation keeps the
-current period, network, and app scope. Orders includes
-history, active orders, and failures. Analytics includes trends, token pairs,
-and comparisons. Monitoring contains security checks, adapters, and data checks.
+current period, network, and app scope. All orders uses filters for
+active orders, failed outcomes, and execution error history. Analytics includes trends, token pairs,
+and comparisons. The Monitoring section and Overview service checks have been removed.
 
-| Page                                  | Purpose                                                                                                                                                                                                                                              |
-| ------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `/` — Overview                        | Live service checks, outcome totals linking to Orders with the current period, networks, and trading apps, and a sortable trading-app comparison table with network logos, all outcomes, failure rates, and placed value. Apps without activity are hidden by default. |
-| `/health` — Active orders          | Active order age, deadline windows, waiting states, reported chunk progress, and review queues.                                                                                                                                                      |
-| `/failures` — Errors & failures                | Terminal failures, latest attempt errors, active retries, recovered orders, searchable failure reasons, and affected apps/networks.                                                                                                                  |
-| `/orders` — All orders                    | Searchable, sortable, continuous order investigation with outcome, service, type, execution-error, and placed-USD filters. Matching results can be exported.                                                                                          |
-| `/partners/<partnerId>` — Partner     | A compact partner overview and separate activity, outcomes, networks, active-order, execution-progress, failure-reason, token-route, token, order-history, and lookup views. Open it from a partner name or **Partner details** on an overview card. |
-| `/charts` — Activity                    | Interactive placement timelines and outcome, error, partner, network, type, and service breakdowns.                                                                                                                                                  |
-| `/markets` — Tokens & pairs                  | Directional route rankings, network-specific token involvement, input/output demand, route concentration, and USD coverage.                                                                                                                          |
-| `/performance` — Order outcomes   | Partner/network/source/type outcome comparisons, order-size distributions, mean/median/P90 sizes, and a UTC weekday/hour placement heatmap.                                                                                                          |
-| `/data-quality` — Data checks         | Field coverage, malformed or inconsistent records, source attribution, duplicate checks, and snapshot coverage. |
-| `/security` — Security checks        | Review address format issues, adapter/network mismatches, unusual placement bursts, and concentrated failures. |
-| `/adapters` — Adapters               | One searchable, virtualized list of configured and observed addresses, catalog comparison, and scoped order counts. Includes the address-check form. |
+| Page | Purpose |
+| --- | --- |
+| `/` — Overview | Placement comparisons, outcome totals, and a sortable trading-app table. Apps without activity are hidden by default. |
+| `/orders` — All orders | Search, status and execution filters, trade progress, deadlines, continuous scrolling, and exports in one order table. |
+| `/partners/<partnerId>` — Partner | Overview and Orders tabs scoped to one trading app. Old partner Markets links return to Overview with their reporting scope. |
+| `/charts` — Activity | Placement timelines and UTC weekday/hour placement patterns. |
+| `/markets` — Tokens & pairs | Directional pair rankings, token involvement with input/output counts, and route concentration. |
+| `/performance` — Order outcomes | App, network, and order-type comparisons plus order-size distributions. |
+
+`/health` bookmarks open the active-order filters in Orders. `/failures` bookmarks
+open the Failed status filter in All orders; old app/network comparisons open Analytics.
+Retired Monitoring
+URLs (`/security`, `/adapters`, `/data-quality`, and `/run-telegram-alerts`) return
+to Overview, retaining the reporting period, networks, and trading apps.
 
 Data views share the overview's period, multi-network, and trading-app filters.
 Ops uses the shared `packages/ui/src/filter-drawer.tsx` component for filtering:
 the **Filters** button opens a side drawer, and applied selections appear in
 removable badges at the top of the page. Changes stay in a draft until
 **Apply filters**; **Cancel**, Escape, or closing the drawer discards them.
-The period selector stays visible without duplicating its value in a badge.
-Partner pages use the page heading for app identity. **Clear filters** resets the
-draft and **Clear all** applies the default seven-day scope with all networks/apps.
+The period selector stays separate with an accessible label and no visible caption
+or default network-scope text beside the Filters button.
+Partner pages use the page heading for app identity, with activity details beside the app name,
+and share one desktop row for tabs and filter controls. Matching totals and
+filtered export share another row, wrapping on smaller screens.
+**Clear filters** preserves
+the selected date: inside the drawer it clears the draft; in the toolbar it
+clears applied filters immediately. Counts represent applied filter categories,
+so selecting several networks or trading apps counts once per category.
 CSV and JSON downloads share one **Export** menu.
 
-All orders uses status chips with faceted counts, a live matching/value strip,
-and one virtualized list. Other filters apply immediately in the shared drawer;
-invalid USD edits stay local until corrected. Other pages keep draft Apply/Cancel
-behavior. The period is shown only in the toolbar. Search and quick views sit
-beside the raw-fields toggle; desktop value/error/date headers sort the list,
-with a shadcn sort selector for mobile cards.
+All orders places filtered Export beside Refresh in the page header, leaving the
+full toolbar row for filters. A live matching/value strip sits above
+one Virtuoso table with continuous page scrolling. Predefined **Presets**, search, order status, and execution history are configured in
+the shared Filters drawer on both global and partner order pages. Changes stay
+in a draft until Apply filters; selected conditions appear as removable badges.
+Invalid USD edits stay local until corrected. The period remains in the toolbar,
+and value/error/date column headers sort the table.
 Selections are encoded in the URL and survive reload. Order history and the
-review queue use continuous virtualized lists. USD bounds are validated before applying. Filtered exports remain
+embedded order lists render only visible rows, without pagination or page-size controls. Small screens retain horizontal scrolling.
+USD bounds are validated before applying. Filtered exports remain
 with the matching results, avoiding an unfiltered header export on order pages.
-Advanced constraints are grouped under **More filters**, which opens when a
-constraint is active. Partner execution and market cohorts use direct dropdowns;
+Presets sit at the top of the drawer and update its draft only; Apply filters commits
+the selected combination, while Cancel discards it. Below Presets are Status,
+Networks, Trading apps, Order type, and Search orders. Search
+fields appear inside opened network/app dropdowns. Execution error history and
+other advanced constraints are grouped under **Advanced filters**, which starts
+collapsed unless an advanced constraint is active. Partner market cohorts use direct dropdowns;
 their selections remain URL-backed. The comparison toolbar groups row spacing
 and empty-app visibility under **Display**. Exact update times remain available
 on hover; each page shows one compact update status.
@@ -110,16 +123,28 @@ only when requested in the detail view. CSV/JSON exports contain list records
 for the selected scope; the Orders view also exports its narrower matching set.
 
 All orders uses a wider, fitting desktop table and page scrolling with virtualized
-rows. Smaller screens use order cards. **Show raw fields** uses wrapping cards on
+rows. Smaller screens scroll the same columns horizontally. **Show raw fields** uses wrapping cards on
 all screen sizes, with the same rows, filters, and shared history. Existing `/orders?orders_view=technical` links enable it. It shows full order hashes,
 service provenance, numeric chain IDs, adapters, input/output token addresses,
 raw/display statuses, and chunk reports with copy controls. Exact adapter and
 token-address filters join the common drawer; a token matches either side of
-the order. No detail record is requested per row. Open a hash for the internal
+the order. **Swapper address (exact)** is available in Advanced filters on global
+and partner order pages. It uses the services' paginated address lookup because
+history list rows omit the swapper. Matches retain date, network, app, and order
+filters, share through `order_swapper`, and remain in scope for exports and detail
+navigation. Lookup failure never appears as a successful empty result.
+No detail record is requested per row. Open a hash for the internal
 detail page with **Summary**, **Execution history**, **Technical details**,
 **Client logs**, and **Service payload**. Technical details include original
 raw units and witness fields, while known-token amounts remain formatted in
 the summary. Single-order links in the review queues open this full page.
+The Summary uses the full page width, with trades and scheduling above the
+amounts. It shows planned/completed/unfilled trades, recorded chunk errors,
+trade interval, slippage, deadlines, input per trade, maximum input, minimum
+output per trade, reported successful input/output, and remaining input.
+Missing amounts stay unreported; totals use only successful, matching-token
+chunks with complete reported amounts. Execution history includes each reported
+trade's minimum output and solver output; raw payloads remain in JSON modals.
 Detail links and service changes preserve list filters; service changes also
 retain the selected detail tab. The shared **Back** control follows app navigation
 history and restores the previous page’s filters and scroll position. Directly
@@ -249,17 +274,29 @@ Read the analytics with these limits in mind:
 
 ## Data loading
 
-Operations routes and local filters share a complete history snapshot with a
-60-second freshness window and 30-minute cache retention. Both history sources
-load in parallel, with three later pages per source fetched concurrently after
-the first response. Pages are consumed in numeric order; failures reject the
-complete snapshot rather than exposing partial totals. Explicit refresh retrieves
-both sources and refreshes configuration.
-Configuration stays cached for an hour. Scope and tab changes do not create new
-history query keys. History polls every minute in the foreground, backs off to
-five minutes after a failure, and retains the last successful snapshot with a
-visible freshness state. Aggregate history still requires all service pages;
-the services do not currently expose a supported time-range filter.
+Order history loads on demand for the selected period, networks, partner adapters,
+source, swapper, and custom placement bounds. Each normalized scope has its own
+60-second freshness window and 30-minute cache retention; equivalent scopes and
+inner tabs reuse their snapshot. Changing scope cancels requests no longer in use.
+Both services return newest-first pages but ignore date-range parameters, so
+bounded requests use 100-record pages and stop each source independently after
+crossing the requested start time. One boundary page may include older records;
+those records are excluded from the snapshot. Invalid or unsorted timestamps
+disable early stopping rather than silently hiding matching records. A page
+failure rejects the scoped totals instead of presenting a partial result.
+
+Overview additionally loads the preceding equal period for its comparisons.
+Order lists, charts, and partner pages load only their requested period. Active
+order checks follow that period by default; selecting **All placement dates**
+loads all-date exposure explicitly. Selecting **All time** retrieves complete
+history, using bounded parallel paging. Direct order details request the order
+itself and reuse any matching list record already cached. Exports contain every
+matching record in the selected scope, with that scope's snapshot timestamp.
+
+Configuration stays cached for an hour. History polls every minute in the
+foreground, backs off to five minutes after a failure, and retains the last
+successful snapshot with a visible freshness state. Refresh retrieves the current
+scope and configuration; it does not load previously visited scopes.
 
 Overview's live service checks query both `/status` endpoints independently of
 history and reuse the catalog's status cache. They report API reachability,

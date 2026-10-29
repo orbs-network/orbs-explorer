@@ -1,4 +1,5 @@
 import { resolvePartnerId } from "./partner-navigation";
+import { isOrderPeriod } from "./order-period";
 
 export const OVERVIEW_VIEWS_STORAGE_KEY = "orbs.ops.saved-filter-views.v1";
 export const MAX_SAVED_OVERVIEW_VIEWS = 10;
@@ -30,7 +31,7 @@ export function canonicalOverviewQuery(query: string): string {
   const current = new URLSearchParams(query);
   const next = new URLSearchParams();
   const period = current.get("period");
-  if (period === "30" || period === "all") next.set("period", period);
+  if (isOrderPeriod(period) && period !== "7") next.set("period", period);
   const chains = [
     ...new Set(
       current.getAll("chain_id").flatMap((value) => {

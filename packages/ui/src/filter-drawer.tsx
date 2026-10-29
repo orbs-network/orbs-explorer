@@ -19,6 +19,7 @@ import {
 
 export type FilterBadge = {
   key: string;
+  category?: string;
   label: string;
   icon?: ReactNode;
   onRemove?: () => void;
@@ -69,7 +70,11 @@ export function FilterDrawer<Value extends object>({
   const validationMessage = useRef<HTMLParagraphElement>(null);
   const errorId = useId();
   const errorToastId = `filter-validation-${errorId}`;
-  const count = badges.filter((badge) => badge.onRemove).length;
+  const count = new Set(
+    badges
+      .filter((badge) => badge.onRemove)
+      .map((badge) => badge.category ?? badge.key),
+  ).size;
   const immediate = applicationMode === "immediate";
   const clearValidation = () => {
     setError(undefined);
@@ -125,9 +130,10 @@ export function FilterDrawer<Value extends object>({
             onEscapeKeyDown={(event) => {
               const target = event.target;
               if (
-                target instanceof HTMLElement &&
-                target.getAttribute("role") === "combobox" &&
-                target.getAttribute("aria-expanded") === "true"
+                target instanceof Element &&
+                ((target.getAttribute("role") === "combobox" &&
+                  target.getAttribute("aria-expanded") === "true") ||
+                  target.closest('[data-slot="filter-options"]'))
               )
                 event.preventDefault();
             }}
@@ -254,7 +260,9 @@ export function FilterDrawer<Value extends object>({
                   {badge.label}
                 </span>
                 {badge.onRemove && (
-                  <button
+                  <Button
+                    variant="ghost"
+                    size="content"
                     type="button"
                     aria-label={`Remove ${badge.label}`}
                     onClick={() => {
@@ -264,14 +272,14 @@ export function FilterDrawer<Value extends object>({
                     className="grid size-6 shrink-0 place-items-center rounded text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   >
                     <X aria-hidden className="size-3" />
-                  </button>
+                  </Button>
                 )}
               </Badge>
             ))}
           </div>
-        ) : (
+        ) : emptyLabel ? (
           <p className="text-xs text-muted-foreground">{emptyLabel}</p>
-        )}
+        ) : null}
         {count > 0 && (
           <Button
             type="button"
@@ -284,7 +292,7 @@ export function FilterDrawer<Value extends object>({
               trigger.current?.focus();
             }}
           >
-            Clear all
+            Clear filters
           </Button>
         )}
       </div>

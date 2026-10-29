@@ -19,13 +19,29 @@ export function chunkReason(chunk: OrderChunk | undefined): string | undefined {
   );
 }
 
+/** The sink stores its contract-cancellation event with a legacy error status. */
+export function isContractCancellation(reason: string | undefined): boolean {
+  return /^cancel(?:led|ed) by contract[.!]?$/i.test(reason?.trim() ?? "");
+}
+
+export function isCancellationChunk(chunk: OrderChunk | undefined): boolean {
+  return (
+    /^cancel(?:led|ed)$/i.test(chunk?.status?.trim() ?? "") ||
+    isContractCancellation(chunkReason(chunk))
+  );
+}
+
+export function isExecutionErrorChunk(chunk: OrderChunk | undefined): boolean {
+  return isErrorStatus(chunk?.status) && !isCancellationChunk(chunk);
+}
+
 export function listOrderMessage(order: ListOrder): {
   text: string;
   error: boolean;
 } {
-  const latestError = isErrorStatus(
-    order.metadata.chunkSummary?.lastChunkStatus,
-  );
+  const latestError =
+    isErrorStatus(order.metadata.chunkSummary?.lastChunkStatus) &&
+    !isContractCancellation(order.metadata.chunkSummary?.lastChunkDescription);
   const error = latestError || getOverviewOrderStatus(order) === "failed";
   const serviceReason =
     order.metadata.displayOnlyStatusDescription?.trim() ||
@@ -179,7 +195,7 @@ export function detailReasonObservations(
     observations.push(observation);
   };
   const latest = chunks[0];
-  const currentError = isErrorStatus(latest?.status);
+  const currentError = isExecutionErrorChunk(latest);
   const lifecycleFailed = getOverviewOrderStatus(list) === "failed";
   if (!currentError && lifecycleFailed) {
     if (full.metadata.displayOnlyStatusDescription?.trim())
@@ -239,7 +255,7 @@ export function detailReasonObservations(
       error: lifecycleFailed,
     });
   const historical = chunks.find(
-    (chunk) => isErrorStatus(chunk.status) && chunkReason(chunk),
+    (chunk) => isExecutionErrorChunk(chunk) && chunkReason(chunk),
   );
   if (historical && historical !== latest)
     add({
@@ -255,6 +271,17 @@ export function detailReasonObservations(
 
 /** Raw quantities only; never estimate execution from chunk counts or prices. */
 export function reportedExecutionInput(full: Order): string | undefined {
+  return reportedExecutionAmount(full, "input");
+}
+
+export function reportedExecutionOutput(full: Order): string | undefined {
+  return reportedExecutionAmount(full, "output");
+}
+
+function reportedExecutionAmount(
+  full: Order,
+  side: "input" | "output",
+): string | undefined {
   const chunks = full.metadata.chunks ?? [];
   const successes = chunks.filter((chunk) =>
     /^(success|completed|succeeded)$/i.test(chunk.status),
@@ -264,17 +291,19 @@ export function reportedExecutionInput(full: Order): string | undefined {
     new Set(chunks.map((chunk) => chunk.index)).size !== chunks.length
   )
     return;
-  const input = full.order.witness.input?.token?.toLowerCase();
-  if (!input) return;
+  const token = full.order.witness[side]?.token?.toLowerCase();
+  if (!token) return;
+  const amountKey = side === "input" ? "inAmount" : "outAmount";
+  const tokenKey = side === "input" ? "inToken" : "outToken";
   if (
     successes.some(
       (chunk) =>
-        !/^\d+$/.test(chunk.inAmount?.trim() ?? "") ||
-        (chunk.inToken && chunk.inToken.toLowerCase() !== input),
+        !/^\d+$/.test(chunk[amountKey]?.trim() ?? "") ||
+        (chunk[tokenKey] && chunk[tokenKey].toLowerCase() !== token),
     )
   )
     return;
   return successes
-    .reduce((total, chunk) => total + BigInt(chunk.inAmount!), BigInt(0))
+    .reduce((total, chunk) => total + BigInt(chunk[amountKey]!), BigInt(0))
     .toString();
 }

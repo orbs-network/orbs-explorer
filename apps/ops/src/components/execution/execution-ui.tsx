@@ -1,5 +1,6 @@
 "use client";
 
+import { Button } from "@orbs/ui/controls/button";
 import type { ListOrder } from "@orbs/domain/twap/types";
 import { useOperationsData } from "@/components/operations/operations-view";
 export const inspectClass =
@@ -14,7 +15,9 @@ export function InspectCount({
 }) {
   const { inspectOrders } = useOperationsData();
   return (
-    <button
+    <Button
+      variant="ghost"
+      size="content"
       type="button"
       disabled={!orders.length}
       onClick={() => inspectOrders(label, orders)}
@@ -22,6 +25,6 @@ export function InspectCount({
       className={inspectClass}
     >
       {orders.length.toLocaleString()}
-    </button>
+    </Button>
   );
 }

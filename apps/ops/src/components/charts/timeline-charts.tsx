@@ -6,7 +6,6 @@ import type { OrderChartData } from "@/lib/order-charts";
 import { ChartFrame } from "./chart-frame";
 import { ChartPlot } from "./chart-plot";
 import { useChartTheme } from "./chart-theme";
-import { CHART_COLORS } from "./chart-colors";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   InvestigationSelect,
@@ -62,7 +61,8 @@ export function TimelineCharts({
       ...axes,
       tooltip: {
         ...axes.tooltip,
-        formatter: (params: unknown) => timelineTooltip(data, params, "value"),
+        formatter: (params: unknown) =>
+          timelineTooltip(data, params, "value", theme.outcomes),
       },
       series: [
         {
@@ -101,7 +101,8 @@ export function TimelineCharts({
       ...axes,
       tooltip: {
         ...axes.tooltip,
-        formatter: (params: unknown) => timelineTooltip(data, params, "errors"),
+        formatter: (params: unknown) =>
+          timelineTooltip(data, params, "errors", theme.outcomes),
       },
       series: [
         {
@@ -111,8 +112,8 @@ export function TimelineCharts({
           symbol: "circle",
           symbolSize: 6,
           showSymbol: data.buckets.length < 10,
-          itemStyle: { color: CHART_COLORS.partial },
-          lineStyle: { color: CHART_COLORS.partial, width: 2.5 },
+          itemStyle: { color: theme.outcomes.partial },
+          lineStyle: { color: theme.outcomes.partial, width: 2.5 },
           emphasis: { scale: 1.6 },
         },
         {
@@ -122,9 +123,9 @@ export function TimelineCharts({
           symbol: "circle",
           symbolSize: 6,
           showSymbol: data.buckets.length < 10,
-          itemStyle: { color: CHART_COLORS.failed },
+          itemStyle: { color: theme.outcomes.failed },
           lineStyle: {
-            color: CHART_COLORS.failed,
+            color: theme.outcomes.failed,
             width: 2,
             type: "dashed",
           },
@@ -215,7 +216,7 @@ export function TimelineCharts({
               <span
                 aria-hidden
                 className="h-0.5 w-3"
-                style={{ background: CHART_COLORS.partial }}
+                style={{ background: theme.outcomes.partial }}
               />
               Error history
             </span>
@@ -223,7 +224,7 @@ export function TimelineCharts({
               <span
                 aria-hidden
                 className="w-3 border-t-2 border-dashed"
-                style={{ borderColor: CHART_COLORS.failed }}
+                style={{ borderColor: theme.outcomes.failed }}
               />
               Terminal failures
             </span>

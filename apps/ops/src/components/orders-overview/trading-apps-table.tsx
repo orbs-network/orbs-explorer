@@ -1,9 +1,12 @@
 "use client";
+
+import { TableRow, TableHead, TableCell } from "@orbs/ui/controls/table";
 import { useMemo, useId } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { ArrowUp, ArrowDown, ArrowUpDown } from "lucide-react";
 import { Input } from "@orbs/ui/controls/input";
 import { Button } from "@orbs/ui/controls/button";
+import { Switch } from "@orbs/ui/controls/switch";
 import type { PartnerCard } from "@orbs/domain/twap/utils/orders-overview";
 import { ContinuousTable } from "@/components/operations/continuous-table";
 import { useOrderNavigationScope } from "@/hooks/use-order-navigation-scope";
@@ -92,10 +95,10 @@ export function TradingAppsTable({
   params.delete("chain_id");
   scope.chainIds?.forEach((chain) => params.append("chain_id", chain));
   const query = params.toString();
-  const header = (sort: TradingAppSortKey, label: string, numeric = true) => (
-    <th
+  const header = (sort: TradingAppSortKey, label: string) => (
+    <TableHead
       scope="col"
-      className={numeric ? "text-right" : undefined}
+      className="text-left"
       aria-sort={
         sort === key
           ? direction === "asc"
@@ -104,7 +107,9 @@ export function TradingAppsTable({
           : undefined
       }
     >
-      <button
+      <Button
+        variant="ghost"
+        size="content"
         type="button"
         onClick={() =>
           update({
@@ -125,16 +130,22 @@ export function TradingAppsTable({
         ) : (
           <ArrowUpDown aria-hidden className="size-3" />
         )}
-      </button>
-    </th>
+      </Button>
+    </TableHead>
   );
   return (
     <section
       aria-label="Trading app comparison workspace"
       className="min-w-0 space-y-3 rounded-xl bg-card p-4"
     >
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="w-full sm:max-w-80">
+      <div className="flex flex-wrap items-center gap-3">
+        <h2 className="mr-auto w-full shrink-0 whitespace-nowrap text-lg font-semibold lg:w-auto">
+          Trading apps{" "}
+          <span className="text-sm font-normal text-muted-foreground">
+            ({partnerCards.length})
+          </span>
+        </h2>
+        <div className="w-full md:w-56 lg:w-64">
           <label htmlFor={`${id}-search`} className="sr-only">
             Search trading apps
           </label>
@@ -149,16 +160,14 @@ export function TradingAppsTable({
             onChange={(event) => update({ app_search: event.target.value })}
           />
         </div>
-        <label className="flex items-center gap-2 text-xs text-muted-foreground">
-          <input
-            type="checkbox"
+        <label className="flex shrink-0 items-center gap-2 whitespace-nowrap text-xs text-muted-foreground">
+          <Switch
             checked={search.get("show_inactive_partners") === "1"}
-            onChange={(event) =>
+            onCheckedChange={(checked) =>
               update({
-                show_inactive_partners: event.target.checked ? "1" : undefined,
+                show_inactive_partners: checked ? "1" : undefined,
               })
             }
-            className="size-4 accent-primary"
           />
           Include apps with no orders
         </label>
@@ -170,66 +179,63 @@ export function TradingAppsTable({
           search={text}
         />
       </div>
-      <p className="text-xs text-muted-foreground">
-        Orders and outcomes use this placement period. Percentages are a share
-        of each app’s placed orders.
-      </p>
       {sorted.length ? (
         <ContinuousTable
           label="Trading app comparison"
           items={sorted}
           itemKey={(row) => row.rowId}
+          rowHref={(row) => tradingAppPartnerHref(row, query)}
           minWidth={1080}
           header={
-            <tr>
-              {header("partnerName", "Trading app", false)}
+            <TableRow>
+              {header("partnerName", "Trading app")}
               {header("totalOrders", "Orders placed")}
               {header("totalUsd", "Placed value (USD)")}
               {header("completed", "Completed")}
               {header("active", "Active")}
               {header("failed", "Failed")}
               {header("lastPlaced", "Last order")}
-            </tr>
+            </TableRow>
           }
           rowContent={(row) => (
             <>
-              <td>
+              <TableCell>
                 <TradingAppIdentity
                   row={row}
                   href={tradingAppPartnerHref(row, query)}
                 />
-              </td>
-              <td className="text-right">
+              </TableCell>
+              <TableCell className="text-left">
                 <TradingAppCount row={row} query={query} />
                 {row.previousOrders !== undefined && (
                   <p className="text-xs text-muted-foreground">
                     {placementChange(row.totalOrders, row.previousOrders)} vs
-                    previous period
+                    previous period ({row.previousOrders.toLocaleString()})
                   </p>
                 )}
-              </td>
-              <td
-                className="text-right"
+              </TableCell>
+              <TableCell
+                className="text-left"
                 title={`${row.pricedOrders} of ${row.totalOrders} orders report USD`}
               >
                 {row.pricedOrders || !row.totalOrders
                   ? formatOrderUsd(row.totalUsd)
                   : "Unavailable"}
-              </td>
-              <td className="text-right">
+              </TableCell>
+              <TableCell className="text-left">
                 <TradingAppCount row={row} query={query} status="completed" />
                 <p className="text-xs text-muted-foreground">
                   {formatShare(row.groups.completed.length, row.totalOrders)} of
                   placed
                 </p>
-              </td>
-              <td className="text-right">
+              </TableCell>
+              <TableCell className="text-left">
                 <TradingAppCount row={row} query={query} status="active" />
-              </td>
-              <td className="text-right">
+              </TableCell>
+              <TableCell className="text-left">
                 <TradingAppCount row={row} query={query} status="failed" />
-              </td>
-              <td className="text-right text-xs">
+              </TableCell>
+              <TableCell className="text-left text-xs">
                 {row.lastPlaced === undefined ? (
                   "Not reported"
                 ) : (
@@ -242,7 +248,7 @@ export function TradingAppsTable({
                       : formatOrderDate(row.lastPlaced)}
                   </time>
                 )}
-              </td>
+              </TableCell>
             </>
           )}
         />

@@ -12,6 +12,7 @@ export default async function LoginPage() {
   return (
     <main
       id="main-content"
+      tabIndex={-1}
       className="grid min-h-dvh place-items-center px-5 py-12"
     >
       <div className="w-full max-w-sm space-y-7 rounded-xl bg-card p-7 text-center shadow-panel">
@@ -19,7 +20,7 @@ export default async function LoginPage() {
           <p className="text-xs font-medium uppercase tracking-widest text-primary">
             Orbs · Internal
           </p>
-          <h1 className="text-2xl font-semibold">Operations</h1>
+          <h1 className="text-2xl font-semibold">Orbs Spot</h1>
           <p className="text-sm leading-relaxed text-muted-foreground">
             Sign in with your @{getStaffDomain()} Google account to view order
             activity and operational tools.

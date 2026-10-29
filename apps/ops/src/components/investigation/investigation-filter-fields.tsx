@@ -1,14 +1,21 @@
 "use client";
 
-import { useId } from "react";
+import { useId, useState, type ReactNode } from "react";
+import { Search } from "lucide-react";
 import { OVERVIEW_STATUSES } from "@orbs/domain/twap/utils/orders-overview";
 import { Input } from "@orbs/ui/controls/input";
 import type { FilterBadge, FilterValidation } from "@orbs/ui/filter-drawer";
 import {
   getUsdRangeError,
-  getPlacementRangeError,
+  getSwapperAddressError,
   type InvestigationFilters,
 } from "@/lib/order-investigation";
+import {
+  matchingOrderQuickView,
+  orderQuickViewFilters,
+  ORDER_QUICK_VIEWS,
+  type OrderQuickView,
+} from "@/lib/order-quick-views";
 import {
   InvestigationSelect,
   InvestigationSelectItem,
@@ -37,12 +44,14 @@ export function investigationBadges(
   const add = (key: keyof InvestigationFilters, label: string, reset: string) =>
     badges.push({
       key: `order-${key}`,
+      category: key === "minUsd" || key === "maxUsd" ? "placed-value" : key,
       label,
       onRemove: () => onChange({ ...value, [key]: reset }),
     });
   if (value.query) add("query", `Search: ${value.query}`, "");
   if (value.adapter) add("adapter", `Adapter: ${value.adapter}`, "");
   if (value.token) add("token", `Token: ${value.token}`, "");
+  if (value.swapper) add("swapper", `Swapper: ${value.swapper}`, "");
   if (value.status !== "all")
     add("status", `Status: ${OVERVIEW_STATUSES[value.status].label}`, "all");
   if (value.type !== "all")
@@ -75,16 +84,18 @@ export function InvestigationFilterFields({
   onChange,
   types,
   validation,
-  omitStatus = false,
+  children,
 }: {
   value: InvestigationFilters;
   onChange: (value: InvestigationFilters) => void;
   types: string[];
   validation: FilterValidation;
-  omitStatus?: boolean;
+  children?: ReactNode;
 }) {
   const id = useId();
+  const quickView = matchingOrderQuickView(value);
   const minError = getUsdRangeError(value.minUsd, "");
+  const swapperError = getSwapperAddressError(value.swapper);
   const maxError = getUsdRangeError("", value.maxUsd);
   const rangeError =
     !minError && !maxError && getUsdRangeError(value.minUsd, value.maxUsd);
@@ -92,81 +103,49 @@ export function InvestigationFilterFields({
     key: Key,
     next: InvestigationFilters[Key],
   ) => onChange({ ...value, [key]: next });
-  const moreFiltersCount = [
+  const advancedFiltersCount = [
+    value.errors !== "all",
     value.activeAge !== "all",
     value.deadline !== "all",
-    Boolean(value.placedSince || value.placedUntil),
     Boolean(value.adapter),
     Boolean(value.token),
+    Boolean(value.swapper),
     Boolean(value.minUsd || value.maxUsd),
   ].filter(Boolean).length;
+  const [advancedOpen, setAdvancedOpen] = useState(advancedFiltersCount > 0);
   return (
-    <fieldset className="space-y-4 border-t border-border pt-4">
-      <legend className="px-1 text-sm font-medium">Order details</legend>
-      <details className="rounded-md bg-muted/40 p-3" open>
-        <summary className="cursor-pointer text-xs font-medium">
-          Placement range (UTC)
-        </summary>
-        <p className="mt-2 text-[11px] text-muted-foreground">
-          Dates are interpreted in UTC and override the rolling placement
-          period.
-        </p>
-        <div className="mt-3 space-y-3">
-          {(["placedSince", "placedUntil"] as const).map((key) => (
-            <label key={key} className="block space-y-1.5 text-xs">
-              <span>
-                {key === "placedSince"
-                  ? "Placed at or after"
-                  : "Placed at or before"}
-              </span>
-              <Input
-                type="datetime-local"
-                step="1"
-                name={key === "placedSince" ? "order_since" : "order_until"}
-                value={value[key] ? value[key].slice(0, 19) : ""}
-                placeholder="2026-10-22T12:00:00Z"
-                autoComplete="off"
-                spellCheck={false}
-                onChange={(event) => {
-                  const input = event.target.value;
-                  if (!input) update(key, "");
-                  else {
-                    const time = Date.parse(`${input}Z`);
-                    if (Number.isFinite(time))
-                      update(key, new Date(time).toISOString());
-                  }
-                }}
-                aria-invalid={Boolean(
-                  validation.error &&
-                  getPlacementRangeError(value.placedSince, value.placedUntil),
-                )}
-                aria-describedby={
-                  validation.error ? validation.errorId : undefined
-                }
-                className="text-xs"
-              />
-            </label>
-          ))}
-        </div>
-      </details>
-      {!omitStatus && (
-        <InvestigationSelect
-          label="Order status"
-          value={value.status}
-          onChange={(next) =>
-            update("status", next as InvestigationFilters["status"])
-          }
-        >
-          <InvestigationSelectItem value="all">
-            All statuses
+    <div className="space-y-4">
+      <InvestigationSelect
+        label="Presets"
+        value={quickView === "custom" || quickView === "all" ? "" : quickView}
+        placeholder="Select preset"
+        onChange={(next) =>
+          onChange(orderQuickViewFilters(next as OrderQuickView))
+        }
+      >
+        {ORDER_QUICK_VIEWS.map((view) => (
+          <InvestigationSelectItem key={view.value} value={view.value}>
+            {view.label}
           </InvestigationSelectItem>
-          {Object.entries(OVERVIEW_STATUSES).map(([key, status]) => (
-            <InvestigationSelectItem key={key} value={key}>
-              {status.label}
-            </InvestigationSelectItem>
-          ))}
-        </InvestigationSelect>
-      )}
+        ))}
+      </InvestigationSelect>
+      <InvestigationSelect
+        label="Status"
+        value={value.status}
+        onChange={(next) =>
+          update("status", next as InvestigationFilters["status"])
+        }
+      >
+        <InvestigationSelectItem value="all">
+          All statuses
+        </InvestigationSelectItem>
+        {Object.entries(OVERVIEW_STATUSES).map(([key, status]) => (
+          <InvestigationSelectItem key={key} value={key}>
+            {status.label}
+          </InvestigationSelectItem>
+        ))}
+      </InvestigationSelect>
+      {children}
       <InvestigationSelect
         label="Order type"
         value={value.type}
@@ -181,27 +160,55 @@ export function InvestigationFilterFields({
           </InvestigationSelectItem>
         ))}
       </InvestigationSelect>
-      <InvestigationSelect
-        label="Execution error history"
-        value={value.errors}
-        onChange={(next) =>
-          update("errors", next as InvestigationFilters["errors"])
-        }
-      >
-        {Object.entries(errors).map(([key, label]) => (
-          <InvestigationSelectItem key={key} value={key}>
-            {label}
-          </InvestigationSelectItem>
-        ))}
-      </InvestigationSelect>
+      <div className="space-y-1.5">
+        <label
+          htmlFor={`${id}-search`}
+          className="block text-xs font-medium text-muted-foreground"
+        >
+          Search orders
+        </label>
+        <div className="relative">
+          <Search
+            aria-hidden
+            className="pointer-events-none absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground"
+          />
+          <Input
+            id={`${id}-search`}
+            name="order_search"
+            type="search"
+            autoComplete="off"
+            autoCapitalize="none"
+            spellCheck={false}
+            value={value.query}
+            onChange={(event) => update("query", event.target.value)}
+            placeholder="Order ID, app, token, address, or error…"
+            className="pl-9 text-sm"
+          />
+        </div>
+      </div>
       <details
         className="border-t border-border pt-3"
-        open={moreFiltersCount > 0 || Boolean(validation.error) || undefined}
+        open={advancedOpen || Boolean(validation.error)}
+        onToggle={(event) => setAdvancedOpen(event.currentTarget.open)}
       >
         <summary className="cursor-pointer rounded text-xs font-medium hover:text-link focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-          More filters{moreFiltersCount > 0 ? ` (${moreFiltersCount})` : ""}
+          Advanced filters
+          {advancedFiltersCount > 0 ? ` (${advancedFiltersCount})` : ""}
         </summary>
         <div className="mt-4 space-y-4">
+          <InvestigationSelect
+            label="Execution error history"
+            value={value.errors}
+            onChange={(next) =>
+              update("errors", next as InvestigationFilters["errors"])
+            }
+          >
+            {Object.entries(errors).map(([key, label]) => (
+              <InvestigationSelectItem key={key} value={key}>
+                {label}
+              </InvestigationSelectItem>
+            ))}
+          </InvestigationSelect>
           <InvestigationSelect
             label="Active order age"
             value={value.activeAge}
@@ -238,15 +245,17 @@ export function InvestigationFilterFields({
             ))}
           </InvestigationSelect>
 
-          {(["adapter", "token"] as const).map((key) => (
+          {(["swapper", "adapter", "token"] as const).map((key) => (
             <div key={key} className="min-w-0 space-y-1.5">
               <label
                 htmlFor={`${id}-${key}`}
                 className="block text-xs font-medium text-muted-foreground"
               >
-                {key === "adapter"
-                  ? "Adapter address (exact)"
-                  : "Token address (either side, exact)"}
+                {key === "swapper"
+                  ? "Swapper address (exact)"
+                  : key === "adapter"
+                    ? "Adapter address (exact)"
+                    : "Token address (either side, exact)"}
               </label>
               <Input
                 id={`${id}-${key}`}
@@ -257,6 +266,14 @@ export function InvestigationFilterFields({
                 autoComplete="off"
                 autoCapitalize="none"
                 spellCheck={false}
+                aria-invalid={Boolean(
+                  key === "swapper" && validation.error && swapperError,
+                )}
+                aria-describedby={
+                  key === "swapper" && validation.error && swapperError
+                    ? validation.errorId
+                    : undefined
+                }
                 className="font-mono text-xs"
               />
             </div>
@@ -292,6 +309,6 @@ export function InvestigationFilterFields({
           </div>
         </div>
       </details>
-    </fieldset>
+    </div>
   );
 }

@@ -2,7 +2,7 @@ import type { OverviewOrderStatus } from "@orbs/domain/twap/utils/orders-overvie
 
 export const STATUS_COLORS: Record<OverviewOrderStatus, string> = {
   completed: "text-success",
-  partial: "text-amber-700 dark:text-amber-400",
+  partial: "text-warning",
   active: "text-link",
   cancelled: "text-muted-foreground",
   expired: "text-muted-foreground",

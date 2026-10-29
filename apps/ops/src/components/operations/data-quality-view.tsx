@@ -1,5 +1,13 @@
 "use client";
 
+import {
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
+} from "@orbs/ui/controls/table";
+
 import { useMemo } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
@@ -83,17 +91,17 @@ function FieldChecks() {
         description="Select an issue count to review orders. Counts can overlap."
       >
         <TableFrame label="Order field coverage">
-          <thead>
-            <tr>
-              <th scope="col">Field</th>
-              <th scope="col">Valid records</th>
-              <th scope="col">Missing / invalid</th>
-            </tr>
-          </thead>
-          <tbody>
+          <TableHeader>
+            <TableRow>
+              <TableHead scope="col">Field</TableHead>
+              <TableHead scope="col">Valid records</TableHead>
+              <TableHead scope="col">Missing / invalid</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
             {quality.fields.map((field) => (
-              <tr key={field.key}>
-                <th
+              <TableRow key={field.key}>
+                <TableHead
                   scope="row"
                   className="min-w-44 font-medium text-foreground"
                 >
@@ -101,15 +109,17 @@ function FieldChecks() {
                     {field.label}
                     <InfoHint>{field.description}</InfoHint>
                   </span>
-                </th>
-                <td className="whitespace-nowrap">
+                </TableHead>
+                <TableCell className="whitespace-nowrap">
                   {field.present.toLocaleString()}{" "}
                   <span className="text-muted-foreground">
                     ({formatShare(field.present, orders.length)})
                   </span>
-                </td>
-                <td>
-                  <button
+                </TableCell>
+                <TableCell>
+                  <Button
+                    variant="ghost"
+                    size="content"
                     type="button"
                     disabled={!field.missing.length}
                     onClick={() =>
@@ -119,18 +129,18 @@ function FieldChecks() {
                         field.description,
                       )
                     }
-                    className="-mx-2 -my-1 inline-flex items-center gap-1 rounded px-2 py-1 font-medium enabled:text-amber-600 enabled:hover:bg-amber-500/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring dark:enabled:text-amber-400 disabled:cursor-default disabled:font-normal disabled:text-muted-foreground"
+                    className="-mx-2 -my-1 inline-flex items-center gap-1 rounded px-2 py-1 font-medium enabled:text-warning enabled:hover:bg-warning-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-default disabled:font-normal disabled:text-muted-foreground"
                     aria-label={`Inspect ${field.missing.length} orders with missing or invalid ${field.label.toLowerCase()}`}
                   >
                     {field.missing.length.toLocaleString()}
                     {field.missing.length > 0 && (
                       <ChevronRight aria-hidden className="size-3" />
                     )}
-                  </button>
-                </td>
-              </tr>
+                  </Button>
+                </TableCell>
+              </TableRow>
             ))}
-          </tbody>
+          </TableBody>
         </TableFrame>
       </Panel>
     </div>
@@ -164,7 +174,9 @@ function ConsistencyChecks() {
             note: "Checks the loaded list after service deduplication; multiple source copies are normally collapsed.",
           },
         ].map((item) => (
-          <button
+          <Button
+            variant="ghost"
+            size="content"
             key={item.label}
             type="button"
             disabled={!item.orders.length}
@@ -177,7 +189,7 @@ function ConsistencyChecks() {
             >
               {item.orders.length.toLocaleString()}
             </strong>
-          </button>
+          </Button>
         ))}
       </div>
     </Panel>
@@ -220,7 +232,7 @@ function SnapshotCoverage() {
           <dd className="mt-1 flex items-center gap-1.5">
             {error ? (
               <>
-                <CircleAlert aria-hidden className="size-4 text-amber-500" />
+                <CircleAlert aria-hidden className="size-4 text-warning" />
                 Failed · showing cached data
               </>
             ) : (

@@ -10,7 +10,6 @@ import {
 } from "@orbs/ui/controls/tabs";
 import {
   PARTNER_TABS,
-  PARTNER_VIEWS,
   partnerHref,
   type PartnerView,
 } from "@/lib/partner-navigation";
@@ -19,11 +18,13 @@ export function PartnerViewTabs({
   partnerId,
   search,
   view,
+  controls,
   children,
 }: {
   partnerId: string;
   search: string;
   view: PartnerView;
+  controls?: ReactNode;
   children: ReactNode;
 }) {
   const router = useRouter();
@@ -41,9 +42,9 @@ export function PartnerViewTabs({
             scroll: false,
           });
       }}
-      className="min-w-0 gap-5"
+      className="min-w-0 gap-3"
     >
-      <div className="flex min-w-0 flex-wrap items-center gap-x-8 gap-y-1">
+      <div className="flex min-w-0 flex-wrap items-center justify-between gap-x-6 gap-y-2">
         <TabsList
           aria-label="Partner sections"
           className="min-h-11 flex-nowrap gap-6 rounded-none bg-transparent p-0 sm:gap-8"
@@ -58,36 +59,7 @@ export function PartnerViewTabs({
             </TabsTrigger>
           ))}
         </TabsList>
-        {active.views.length > 1 && (
-          <label className="flex min-h-11 items-center gap-2 text-xs text-muted-foreground">
-            Show
-            <select
-              name="partner-market-view"
-              aria-label="Market view"
-              value={view}
-              onChange={(event) =>
-                router.push(
-                  partnerHref(
-                    partnerId,
-                    search,
-                    event.target.value as PartnerView,
-                  ),
-                  { scroll: false },
-                )
-              }
-              className="min-h-11 max-w-full cursor-pointer rounded-sm border-0 bg-transparent py-2 pl-1 pr-2 text-xs font-medium text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring [&_option]:bg-card [&_option]:text-foreground"
-            >
-              {active.views.map((value) => (
-                <option key={value} value={value}>
-                  {
-                    PARTNER_VIEWS.find((option) => option.value === value)
-                      ?.label
-                  }
-                </option>
-              ))}
-            </select>
-          </label>
-        )}
+        {controls && <div className="min-w-0 max-w-full">{controls}</div>}
       </div>
       <TabsContent
         value={active.value}

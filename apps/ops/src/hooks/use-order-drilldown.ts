@@ -1,6 +1,11 @@
 "use client";
 import { useCallback } from "react";
-import { useRouter, usePathname, useSearchParams } from "next/navigation";
+import {
+  useRouter,
+  usePathname,
+  useSearchParams,
+  useParams,
+} from "next/navigation";
 import { toast } from "sonner";
 import type { ListOrder } from "@orbs/domain/twap/types";
 import {
@@ -9,6 +14,7 @@ import {
   type OrderNavigationScope,
 } from "@/lib/order-investigation";
 import { orderIdentity, saveOrderSelection } from "@/lib/order-selection";
+import { partnerOrdersTabHref } from "@/lib/partner-navigation";
 
 export function useOrderDrilldown(
   scope: OrderNavigationScope,
@@ -17,6 +23,7 @@ export function useOrderDrilldown(
   const router = useRouter();
   const pathname = usePathname();
   const search = useSearchParams();
+  const { partnerId } = useParams<{ partnerId?: string }>();
   const { period, chainIds, partnerIds } = scope;
   return useCallback(
     (label: string, orders: ListOrder[], _description?: string) => {
@@ -28,18 +35,22 @@ export function useOrderDrilldown(
           snapshot: snapshot > 0 ? snapshot : Date.now(),
           origin: `${pathname}${search.size ? `?${search}` : ""}`,
         });
+        const selectionScope = {
+          period,
+          chainIds,
+          partnerIds,
+          query: `order_set=${id}`,
+        };
         router.push(
-          ordersScopeHref({
-            period,
-            chainIds,
-            partnerIds,
-            query: `order_set=${id}`,
-          }),
+          partnerId
+            ? partnerOrdersTabHref(partnerId, selectionScope)
+            : ordersScopeHref(selectionScope),
         );
       } catch {
         if (orders.length === 1)
           router.push(
             orderDetailHref(orders[0].hash, orders[0].source, {
+              partnerId,
               period,
               chainIds,
               partnerIds,
@@ -51,6 +62,15 @@ export function useOrderDrilldown(
           );
       }
     },
-    [router, pathname, search, period, chainIds, partnerIds, snapshot],
+    [
+      router,
+      pathname,
+      search,
+      period,
+      chainIds,
+      partnerIds,
+      snapshot,
+      partnerId,
+    ],
   );
 }

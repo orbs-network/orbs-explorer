@@ -12,6 +12,7 @@ test("order filter URLs retain zero bounds and all supported facets after reload
     query: "0xabc sushi",
     adapter: `0x${"a".repeat(40)}`,
     token: `0x${"b".repeat(40)}`,
+    swapper: `0x${"c".repeat(40)}`,
     status: "active" as const,
     type: "limit",
     source: "v2" as const,
@@ -30,9 +31,12 @@ test("exact address filters remove incidental whitespace from shareable URLs", (
     ...DEFAULT_INVESTIGATION_FILTERS,
     adapter: " 0xAbCd ",
     token: " 0xEf12 ",
+    swapper: ` 0x${"a".repeat(40)} `,
   });
   assert.equal(query.order_adapter, "0xAbCd");
   assert.equal(query.order_token, "0xEf12");
+  assert.equal(query.order_swapper, `0x${"a".repeat(40)}`);
+  assert.equal(readInvestigationFilters(query).swapper, `0x${"a".repeat(40)}`);
   assert.equal(readInvestigationFilters(query).adapter, "0xAbCd");
   assert.equal(readInvestigationFilters(query).token, "0xEf12");
 });

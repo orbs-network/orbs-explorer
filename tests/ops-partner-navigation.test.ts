@@ -10,14 +10,27 @@ import {
   globalScopeHref,
   partnerHref,
   partnerOrdersHref,
+  partnerOrdersTabHref,
   partnerScopeSearch,
   resolvePartnerId,
 } from "../apps/ops/src/lib/partner-navigation";
 
-test("three partner tabs expose only distinct browsing views", () => {
+test("24-hour period persists between global and partner views", () => {
+  const query = "period=1&chain_id=137";
+  for (const href of [
+    globalScopeHref("/orders", query),
+    partnerHref("sushiswap", query, "orders"),
+  ]) {
+    const url = new URL(href, "https://ops.example");
+    assert.equal(url.searchParams.get("period"), "1");
+    assert.equal(url.searchParams.get("chain_id"), "137");
+  }
+});
+
+test("partner tabs expose only Overview and Orders", () => {
   assert.deepEqual(
     PARTNER_TABS.map((tab) => tab.value),
-    ["overview", "orders", "markets"],
+    ["overview", "orders"],
   );
   const views = PARTNER_TABS.flatMap((tab) => [...tab.views]);
   const visible = PARTNER_VIEWS;
@@ -46,7 +59,7 @@ test("partner IDs resolve registered aliases without changing configured custom 
   assert.equal(resolvePartnerId(" CustomDex "), "CustomDex");
 });
 
-test("partner href keeps repeated global networks and forces the route partner", () => {
+test("partner href keeps repeated networks and uses only the path for the app", () => {
   const href = partnerHref(
     "quick",
     "?period=all&chain_id=137&chain_id=42161&partner_id=lynex&partner_id=thena&show_inactive_partners=1&source=v1&search=hash&view=failures",
@@ -59,9 +72,52 @@ test("partner href keeps repeated global networks and forces the route partner",
       ["period", "all"],
       ["chain_id", "137"],
       ["chain_id", "42161"],
-      ["partner_id", "quickswap"],
     ],
   );
+});
+
+test("partner URLs and navigation to All orders omit redundant app scope", () => {
+  const search = "period=7&partner_id=kodiak&partner_id=thena";
+  assert.equal(
+    partnerHref("kodiak", search, "orders"),
+    "/partners/kodiak?period=7&view=orders",
+  );
+  assert.equal(partnerHref("kodiak", ""), "/partners/kodiak");
+  assert.equal(
+    globalScopeHref("/orders", search, "kodiak"),
+    "/orders?period=7",
+  );
+  // Internal scope remains explicit for table filtering and detail navigation.
+  assert.deepEqual(partnerScopeSearch("kodiak", search).getAll("partner_id"), [
+    "kodiak",
+  ]);
+});
+
+test("All orders navigation clears a route partner while retaining date and networks", () => {
+  const search =
+    "period=30&chain_id=80094&chain_id=4663&partner_id=kodiak&partner_id=thena&view=orders&order_status=failed&order_hash=0xabc";
+  const destination = new URL(
+    globalScopeHref("/orders", search, "kodiak"),
+    "https://ops.example",
+  );
+  assert.equal(destination.pathname, "/orders");
+  assert.deepEqual(
+    [...destination.searchParams],
+    [
+      ["period", "30"],
+      ["chain_id", "80094"],
+      ["chain_id", "4663"],
+    ],
+  );
+  // Explicit app filters on global pages remain deliberate selections.
+  const global = new URL(
+    globalScopeHref("/orders", search),
+    "https://ops.example",
+  );
+  assert.deepEqual(global.searchParams.getAll("partner_id"), [
+    "kodiak",
+    "thena",
+  ]);
 });
 
 test("network filters normalize integers and discard duplicates and malformed IDs", () => {
@@ -79,8 +135,8 @@ test("card-local networks override the global selection including an explicit em
   const local = partnerHref("spark", search, "markets", [" 43114 ", "43114"]);
   const url = new URL(local, "https://ops.example");
   assert.deepEqual(url.searchParams.getAll("chain_id"), ["43114"]);
-  assert.equal(url.searchParams.get("view"), "routes");
-  assert.equal(url.searchParams.get("partner_id"), "sparkdex");
+  assert.equal(url.searchParams.has("view"), false);
+  assert.equal(url.searchParams.has("partner_id"), false);
   assert.deepEqual(
     partnerScopeSearch("spark", search, []).getAll("chain_id"),
     [],
@@ -96,16 +152,16 @@ test("partner Orders links preserve the displayed scope and replace hidden list 
     errors: "latest",
   });
   const url = new URL(href, "https://ops.example");
-  assert.equal(url.pathname, "/orders");
+  assert.equal(url.pathname, "/partners/quickswap");
   assert.deepEqual(
     [...url.searchParams.entries()],
     [
       ["period", "30"],
       ["chain_id", "137"],
       ["chain_id", "1"],
-      ["partner_id", "quickswap"],
       ["order_status", "active"],
       ["order_errors", "latest"],
+      ["view", "orders"],
     ],
   );
   const network = new URL(
@@ -120,7 +176,7 @@ test("partner Orders links preserve the displayed scope and replace hidden list 
       partnerOrdersHref("quick", search),
       "https://ops.example",
     ).searchParams.getAll("partner_id"),
-    ["quickswap"],
+    [],
   );
 });
 
@@ -135,7 +191,31 @@ test("partner overdue links match only the canonical active deadline cohort", ()
   assert.equal(url.searchParams.get("order_status"), "active");
   assert.equal(url.searchParams.get("order_deadline"), "past");
   assert.deepEqual(url.searchParams.getAll("chain_id"), ["42161"]);
-  assert.deepEqual(url.searchParams.getAll("partner_id"), ["sushiswap"]);
+  assert.equal(url.pathname, "/partners/sushiswap");
+  assert.equal(url.searchParams.get("view"), "orders");
+  assert.equal(url.searchParams.has("partner_id"), false);
+});
+
+test("partner review and chart selections keep their exact cohort inside the Orders tab", () => {
+  const href = partnerOrdersTabHref("QUICK", {
+    period: "all",
+    chainIds: ["137", "0"],
+    partnerIds: ["wrong-app"],
+    query:
+      "period=7&chain_id=1&partner_id=thena&order_status=active&order_deadline=past&order_set=selected-chart&order_since=2026-10-23T00%3A00%3A00Z&order_until=2026-10-24T00%3A00%3A00Z&source=v2&view=overview&unrelated=drop",
+  });
+  const url = new URL(href, "https://ops.example");
+  assert.equal(url.pathname, "/partners/quickswap");
+  assert.equal(url.searchParams.get("view"), "orders");
+  assert.equal(url.searchParams.get("period"), "all");
+  assert.deepEqual(url.searchParams.getAll("chain_id"), ["137", "0"]);
+  assert.equal(url.searchParams.get("order_status"), "active");
+  assert.equal(url.searchParams.get("order_deadline"), "past");
+  assert.equal(url.searchParams.get("order_set"), "selected-chart");
+  assert.equal(url.searchParams.get("order_since"), "2026-10-23T00:00:00Z");
+  assert.equal(url.searchParams.get("order_until"), "2026-10-24T00:00:00Z");
+  for (const key of ["partner_id", "source", "unrelated"])
+    assert.equal(url.searchParams.has(key), false);
 });
 
 test("invalid period and view values use the existing overview and seven-day defaults", () => {
@@ -144,16 +224,16 @@ test("invalid period and view values use the existing overview and seven-day def
   assert.equal(getPartnerView(null), "overview");
   assert.equal(getPartnerView("orders"), "orders");
   assert.equal(getPartnerView("charts"), "overview");
-  assert.equal(getPartnerView("markets"), "routes");
+  assert.equal(getPartnerView("markets"), "overview");
   assert.equal(partnerScopeSearch("lynex", "period=365").has("period"), false);
   assert.equal(
     partnerHref("lynex", "view=health&unrelated=value"),
-    "/partners/lynex?partner_id=lynex",
+    "/partners/lynex",
   );
 });
 
-test("focused partner views keep the same partner, period and network filters", () => {
-  for (const view of ["routes", "tokens"] as const) {
+test("retired partner market views return to Overview with the same scope", () => {
+  for (const view of ["markets", "routes", "tokens"] as const) {
     const url = new URL(
       partnerHref(
         "quick",
@@ -163,17 +243,18 @@ test("focused partner views keep the same partner, period and network filters", 
       "https://ops.example",
     );
     assert.equal(url.pathname, "/partners/quickswap");
-    assert.equal(getPartnerView(url.searchParams.get("view")), view);
+    assert.equal(getPartnerView(view), "overview");
+    assert.equal(url.searchParams.has("view"), false);
     assert.equal(url.searchParams.get("period"), "30");
     assert.deepEqual(url.searchParams.getAll("chain_id"), ["137", "1"]);
-    assert.deepEqual(url.searchParams.getAll("partner_id"), ["quickswap"]);
+    assert.equal(url.searchParams.has("partner_id"), false);
   }
 });
 
 test("unknown adapter IDs and configured custom IDs produce local encoded links", () => {
   assert.equal(
     partnerHref("ADAPTER-0xAbC", "period=30", "failures"),
-    "/partners/adapter-0xabc?period=30&partner_id=adapter-0xabc&view=orders&order_status=failed",
+    "/partners/adapter-0xabc?period=30&view=orders&order_status=failed",
   );
   const custom = "Custom / Dex?view=health#section";
   const url = new URL(partnerHref(custom, ""), "https://ops.example");
@@ -182,7 +263,7 @@ test("unknown adapter IDs and configured custom IDs produce local encoded links"
     decodeURIComponent(url.pathname.slice("/partners/".length)),
     custom,
   );
-  assert.equal(url.searchParams.get("partner_id"), custom);
+  assert.equal(url.searchParams.has("partner_id"), false);
   assert.equal(url.searchParams.has("view"), false);
   assert.equal(url.hash, "");
 });
@@ -406,7 +487,7 @@ test("retired partner execution links use Orders with explicit placement scope",
     );
     assert.equal(url.pathname, "/partners/quickswap");
     assert.equal(url.searchParams.get("view"), "orders");
-    assert.equal(url.searchParams.get("partner_id"), "quickswap");
+    assert.equal(url.searchParams.has("partner_id"), false);
     assert.equal(url.searchParams.get("chain_id"), "137");
     assert.equal(
       url.searchParams.get("period"),

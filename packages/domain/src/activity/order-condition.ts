@@ -10,6 +10,29 @@ export type OrderConditionComparison = {
   difference: string;
 };
 
+/** Signed distance relative to the target, independent of the service's ratio. */
+export function getTargetDifferenceLabel(
+  currentValue: string,
+  targetValue: string,
+): string | undefined {
+  const decimal = /^(?:\d+|\d{1,3}(?:,\d{3})+)(?:\.\d+)?$/;
+  if (!decimal.test(currentValue.trim()) || !decimal.test(targetValue.trim()))
+    return undefined;
+  const current = new BN(currentValue.replaceAll(",", ""));
+  const target = new BN(targetValue.replaceAll(",", ""));
+  if (!current.isFinite() || !target.isFinite() || !target.gt(0))
+    return undefined;
+  const difference = current.minus(target);
+  if (difference.isZero()) return "0% difference from target";
+  const percentage = difference
+    .abs()
+    .times(100)
+    .div(target)
+    .decimalPlaces(2, BN.ROUND_HALF_UP);
+  const displayed = percentage.isZero() ? "<0.01" : percentage.toFixed();
+  return `${displayed}% ${difference.isNegative() ? "below" : "above"} target`;
+}
+
 /** The service describes receive amounts for the next trade, not a live market quote. */
 export function getOrderConditionComparison(
   reason: string | undefined,

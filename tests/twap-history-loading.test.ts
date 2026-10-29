@@ -6,6 +6,7 @@ import {
   CURRENT_SINK_API_URL,
   SINK_API_URLS,
   getAllOrdersForExchange,
+  getAllOrdersForSwapper,
 } from "../packages/domain/src/twap/api";
 import type { ListOrder } from "../packages/domain/src/twap/types";
 
@@ -18,6 +19,37 @@ const order = (id: number, chainId = 137, label = String(id)): ListOrder =>
     exchangeAdapter: label,
     order: { witness: { chainId } },
   }) as ListOrder;
+
+test("swapper history retains the exact account on every service and page", async (t) => {
+  const swapper = `0x${"a".repeat(40)}`;
+  const urls: URL[] = [];
+  t.mock.method(axios, "get", async (raw: string) => {
+    const url = new URL(raw);
+    urls.push(url);
+    assert.equal(url.searchParams.get("swapper"), swapper);
+    assert.equal(url.searchParams.get("view"), "list");
+    const page = Number(url.searchParams.get("page"));
+    return {
+      data: {
+        orders:
+          url.origin === original
+            ? []
+            : page === 1
+              ? [order(1), order(2)]
+              : page === 2
+                ? [order(3)]
+                : [],
+      },
+    };
+  });
+  const rows = await getAllOrdersForSwapper({ swapper, limit: 2 });
+  assert.equal(rows.length, 3);
+  assert.deepEqual(
+    new Set(urls.map((url) => url.origin)),
+    new Set([current, original]),
+  );
+  assert.ok(urls.some((url) => url.searchParams.get("page") === "2"));
+});
 
 function deferred<T>() {
   let resolve!: (value: T) => void;

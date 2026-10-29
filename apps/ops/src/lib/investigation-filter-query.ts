@@ -8,6 +8,7 @@ export const INVESTIGATION_QUERY_PARAMS = {
   order_search: StringParam,
   order_adapter: StringParam,
   order_token: StringParam,
+  order_swapper: StringParam,
   order_status: StringParam,
   order_type: StringParam,
   order_source: StringParam,
@@ -33,6 +34,7 @@ export function readInvestigationFilters(
     query: query.order_search ?? "",
     adapter: query.order_adapter ?? "",
     token: query.order_token ?? "",
+    swapper: query.order_swapper ?? "",
     status: valid(
       query.order_status,
       [
@@ -90,6 +92,7 @@ export function investigationFilterQuery(
     order_search: value.query || undefined,
     order_adapter: value.adapter.trim() || undefined,
     order_token: value.token.trim() || undefined,
+    order_swapper: value.swapper.trim() || undefined,
     order_status: value.status === "all" ? undefined : value.status,
     order_type: value.type === "all" ? undefined : value.type,
     order_source: value.source === "all" ? undefined : value.source,

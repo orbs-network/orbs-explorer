@@ -1,5 +1,8 @@
 "use client";
 
+import { TableRow, TableHead, TableCell } from "@orbs/ui/controls/table";
+
+import { Button } from "@orbs/ui/controls/button";
 import { useDeferredValue, useId, useMemo, useState } from "react";
 import { StringParam, useQueryParams } from "use-query-params";
 import type { ListOrder } from "@orbs/domain/twap/types";
@@ -214,7 +217,9 @@ export function FailureReasons({
             placeholder="Search reasons, e.g. gas or liquidity…"
           />
         </div>
-        <button
+        <Button
+          variant="ghost"
+          size="content"
           type="button"
           disabled={!matchingOrders.length}
           className={`${inspectClass} min-h-10 text-xs`}
@@ -227,7 +232,7 @@ export function FailureReasons({
           }
         >
           Inspect matching orders ({matchingOrders.length.toLocaleString()})
-        </button>
+        </Button>
       </div>
       <p
         role="status"
@@ -244,7 +249,7 @@ export function FailureReasons({
           itemKey={(reason) => reason.reason}
           minWidth={800}
           header={
-            <tr>
+            <TableRow>
               {[
                 "Reason category",
                 "Orders",
@@ -252,16 +257,16 @@ export function FailureReasons({
                 "Placed value (USD)",
                 "Latest order placed",
               ].map((label) => (
-                <th key={label} scope="col">
+                <TableHead key={label} scope="col">
                   {label}
-                </th>
+                </TableHead>
               ))}
-            </tr>
+            </TableRow>
           }
           rowContent={(reason) => {
             return (
               <>
-                <th
+                <TableHead
                   scope="row"
                   className="min-w-72 max-w-lg whitespace-normal! font-normal"
                 >
@@ -274,7 +279,9 @@ export function FailureReasons({
                       }
                     </Badge>
                   )}
-                  <button
+                  <Button
+                    variant="ghost"
+                    size="content"
                     type="button"
                     title={reason.reason}
                     className="line-clamp-3 block w-full cursor-pointer rounded text-left text-xs leading-relaxed [overflow-wrap:anywhere] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
@@ -287,7 +294,7 @@ export function FailureReasons({
                     }
                   >
                     {reason.reason}
-                  </button>
+                  </Button>
                   <details className="mt-2 text-xs text-muted-foreground">
                     <summary className="cursor-pointer rounded-sm focus-visible:ring-2 focus-visible:ring-ring">
                       Reported messages ({reason.messages.length})
@@ -298,14 +305,14 @@ export function FailureReasons({
                       ))}
                     </ul>
                   </details>
-                </th>
-                <td>
+                </TableHead>
+                <TableCell>
                   <InspectCount
                     orders={reason.orders}
                     label="Orders with matching failure reason"
                   />
-                </td>
-                <td className="min-w-36">
+                </TableCell>
+                <TableCell className="min-w-36">
                   <div className="space-y-1 text-[11px]">
                     {[
                       { label: "Failed", orders: reason.terminal },
@@ -341,16 +348,16 @@ export function FailureReasons({
                         </div>
                       ))}
                   </div>
-                </td>
-                <td
+                </TableCell>
+                <TableCell
                   className="whitespace-nowrap"
                   title={`${reason.valueCoverage} of ${reason.orders.length} orders reporting USD`}
                 >
                   {reason.valueCoverage ? formatOrderUsd(reason.value) : "—"}
-                </td>
-                <td className="text-muted-foreground">
+                </TableCell>
+                <TableCell className="text-muted-foreground">
                   {formatOrderDate(reason.latestPlaced)}
-                </td>
+                </TableCell>
               </>
             );
           }}

@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
+import { EventListSkeleton } from "@/components/loading-skeletons";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { ChevronRight } from "lucide-react";
@@ -12,7 +13,10 @@ import { buildOrderDiagnostics } from "@/lib/order-diagnostics";
 import { buildActiveOrderAttention } from "@/lib/attention-queue";
 import { useOperationalScope } from "@/hooks/use-operational-scope";
 import { OperationalScopeControl } from "@/components/operations/operational-scope-control";
-import { globalScopeHref, partnerOrdersHref } from "@/lib/partner-navigation";
+import {
+  partnerOrdersHref,
+  partnerOrdersTabHref,
+} from "@/lib/partner-navigation";
 import { PartnerNetworks } from "./partner-networks";
 import { PartnerActivity } from "./partner-activity";
 
@@ -41,22 +45,19 @@ export function PartnerOverview({ partnerId }: { partnerId: string }) {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-baseline gap-x-5 gap-y-1.5 text-xs text-muted-foreground">
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground tabular-nums">
         <Link
           href={partnerOrdersHref(partnerId, search)}
           prefetch={false}
-          className="rounded text-foreground hover:text-link focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="rounded font-medium text-foreground hover:text-link focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
-          <strong className="text-base font-semibold tabular-nums">
-            {orders.length.toLocaleString()}
-          </strong>{" "}
-          orders in this view
+          {orders.length.toLocaleString()} orders in this view
         </Link>
         <span
           title={`${data.diagnostics.pricedOrders}/${orders.length} orders report USD. Placed sizes, not executed volume.`}
         >
           Placed value{" "}
-          <strong className="ml-1 font-semibold text-foreground tabular-nums">
+          <strong className="font-medium text-foreground">
             {data.diagnostics.pricedOrders || !orders.length
               ? formatOrderUsd(placedValue)
               : "—"}
@@ -67,15 +68,19 @@ export function PartnerOverview({ partnerId }: { partnerId: string }) {
         <EmptyState description="No orders were placed in the selected period and networks. Inactivity alone does not indicate an execution issue." />
       ) : null}
       <Panel
-        title={`Open orders to review (${attentionCount})`}
+        title={
+          operational.data.isLoading
+            ? "Open orders to review"
+            : `Open orders to review (${attentionCount})`
+        }
         description="Past deadline, failed latest attempt, or missing deadline. Each order is counted once; these signals do not confirm an outage."
         action={
           <Link
-            href={globalScopeHref("/failures", search, partnerId)}
+            href={partnerOrdersHref(partnerId, search, { errors: "any" })}
             scroll={false}
             className="inline-flex min-h-9 items-center gap-1 rounded-sm text-xs text-link hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
-            Failure diagnostics
+            Orders with errors
             <ChevronRight aria-hidden className="size-3.5" />
           </Link>
         }
@@ -84,18 +89,32 @@ export function PartnerOverview({ partnerId }: { partnerId: string }) {
           <OperationalScopeControl
             {...operational}
             period={reporting.scope.period}
+            isLoading={operational.data.isLoading}
+            isUnavailable={operational.data.isError}
           />
         </div>
-        {attentionCount === 0 && (
-          <p className="mb-2 text-xs text-muted-foreground">
-            No actionable issues detected under these rules.
+        {operational.data.isLoading && (
+          <EventListSkeleton label="Loading active orders" />
+        )}
+        {operational.data.isError && (
+          <p role="alert" className="text-xs text-destructive">
+            Active orders could not be loaded.
           </p>
         )}
+        {!operational.data.isLoading &&
+          !operational.data.isError &&
+          attentionCount === 0 && (
+            <p className="mb-2 text-xs text-muted-foreground">
+              No actionable issues detected under these rules.
+            </p>
+          )}
         <div className="divide-y divide-border/60">
           {attention.map((item) => (
             <Link
               key={item.id}
-              href={item.href}
+              href={partnerOrdersTabHref(partnerId, {
+                query: item.href.split("?")[1],
+              })}
               prefetch={false}
               className="flex min-h-14 w-full items-center justify-between gap-3 rounded-md px-1 py-2 text-left text-xs hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >

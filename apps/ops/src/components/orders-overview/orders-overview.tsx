@@ -20,6 +20,7 @@ import {
   type OrderNavigationScope,
 } from "@/lib/order-investigation";
 import { placementChange, type PlacementReport } from "@/lib/placement-report";
+import { orderPeriodDuration } from "@/lib/order-period";
 
 const hasReportedUsd = (orders: ListOrder[]) =>
   !orders.length ||
@@ -40,10 +41,6 @@ export function OrdersOverview({
     chainIds: navigationScope.chainIds,
     partnerIds: navigationScope.partnerIds,
   };
-  const periodLabel =
-    scope.period === "all"
-      ? "all available history"
-      : `the last ${scope.period ?? "7"} days`;
   const groups = useMemo(() => groupOverviewOrders(allOrders), [allOrders]);
   const statuses: OverviewOrderStatus[] = [
     "failed",
@@ -63,15 +60,7 @@ export function OrdersOverview({
       <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
         <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1">
           {report ? (
-            <div>
-              <h2 className="text-sm font-semibold">Placement activity</h2>
-              <p className="mt-1 text-xs text-muted-foreground">
-                Orders placed in {periodLabel}
-                {report.previous
-                  ? ` · changes vs previous ${report.days} days`
-                  : ""}
-              </p>
-            </div>
+            <h2 className="text-sm font-semibold">Placement activity</h2>
           ) : (
             <>
               <Link
@@ -105,7 +94,7 @@ export function OrdersOverview({
             </>
           )}
         </div>
-        <ExportOrders orders={allOrders} />
+        <ExportOrders orders={allOrders} snapshotAt={report?.end} />
       </div>
       {report && (
         <dl className="grid grid-cols-3 gap-2 sm:gap-3">
@@ -176,7 +165,7 @@ export function OrdersOverview({
                   {/* Phones keep the change; the comparison detail needs more room. */}
                   <span className="hidden sm:inline">
                     {" "}
-                    vs previous {report.days} days
+                    vs previous {orderPeriodDuration(report.days)}
                     {metric.previous ? ` (${metric.previous})` : ""}
                   </span>
                 </p>

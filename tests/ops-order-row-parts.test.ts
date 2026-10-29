@@ -67,10 +67,19 @@ test("current errors have an explicit state, semantic error tone, and singular/p
       href: `/orders/${record.hash}`,
     }),
   );
-  assert.match(status, /Active · latest attempt failed/);
+  assert.match(status, />Active</);
   assert.match(status, /text-destructive/);
   assert.match(status, /Transaction reverted/);
   assert.doesNotMatch(status, /TakerError reverted/);
+  const compact = renderToStaticMarkup(
+    createElement(OrderRowStatus, {
+      order: record,
+      href: `/orders/${record.hash}`,
+      compact: true,
+    }),
+  );
+  assert.match(compact, />Active</);
+  assert.doesNotMatch(compact, /latest attempt failed|<svg\b/);
   assert.match(
     renderToStaticMarkup(createElement(OrderRowErrors, { order: record })),
     />1 error</,

@@ -1,16 +1,32 @@
 "use client";
 
+import {
+  Table,
+  TableHeader,
+  TableBody,
+  TableRow,
+} from "@orbs/ui/controls/table";
+
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useId, useState, type ReactNode } from "react";
+import { useTableRowNavigation } from "../../hooks/use-table-row-navigation";
 import { Button } from "@orbs/ui/controls/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@orbs/ui/controls/select";
 
-/** The shared record table: native semantics, fixed spacing, and URL-backed pages. */
+/** Shared shadcn table with semantic markup and URL-backed pagination. */
 export function ContinuousTable<T>({
   label,
   items,
   header,
   rowContent,
   itemKey,
+  rowHref,
   minWidth = 720,
   viewportHeight: _viewportHeight,
   columnWidths,
@@ -20,6 +36,7 @@ export function ContinuousTable<T>({
   header: ReactNode;
   rowContent: (item: T, index: number) => ReactNode;
   itemKey: (item: T) => string;
+  rowHref?: (item: T) => string;
   minWidth?: number;
   viewportHeight?: string | number;
   columnWidths?: readonly string[];
@@ -28,6 +45,7 @@ export function ContinuousTable<T>({
     pathname = usePathname(),
     search = useSearchParams();
   const id = useId();
+  const openRow = useTableRowNavigation();
   const context = `${pathname}?${search}`;
   const [pinned, setPinned] = useState<{ context: string; items: T[] } | null>(
     null,
@@ -82,40 +100,48 @@ export function ContinuousTable<T>({
           </Button>
         </div>
       )}
-      <div
-        role="region"
+      <Table
+        containerProps={{
+          role: "region",
+          "aria-label": label,
+          tabIndex: 0,
+          className:
+            "min-w-0 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring",
+        }}
         aria-label={label}
-        tabIndex={0}
-        className="min-w-0 overflow-x-auto rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        style={{
+          minWidth: Math.max(minWidth, columnWidths ? 960 : 640),
+          tableLayout: columnWidths ? "fixed" : undefined,
+        }}
       >
-        <table
-          aria-label={label}
-          className="ops-data-table"
-          style={{
-            minWidth: Math.max(minWidth, columnWidths ? 960 : 640),
-            tableLayout: columnWidths ? "fixed" : undefined,
-          }}
-        >
-          {columnWidths && (
-            <colgroup>
-              {columnWidths.map((width, index) => (
-                <col key={index} style={{ width }} />
-              ))}
-            </colgroup>
-          )}
-          <thead>{header}</thead>
-          <tbody>
-            {visible.map((item, index) => (
-              <tr key={itemKey(item)} className="group/row">
-                {rowContent(item, start + index)}
-              </tr>
+        {columnWidths && (
+          <colgroup>
+            {columnWidths.map((width, index) => (
+              <col key={index} style={{ width }} />
             ))}
-          </tbody>
-        </table>
-      </div>
+          </colgroup>
+        )}
+        <TableHeader>{header}</TableHeader>
+        <TableBody>
+          {visible.map((item, index) => {
+            const href = rowHref?.(item);
+            return (
+              <TableRow
+                key={itemKey(item)}
+                className="group/row"
+                data-clickable={href ? true : undefined}
+                onClick={href ? (event) => openRow(event, href) : undefined}
+                onAuxClick={href ? (event) => openRow(event, href) : undefined}
+              >
+                {rowContent(item, start + index)}
+              </TableRow>
+            );
+          })}
+        </TableBody>
+      </Table>
       <nav
         aria-label={`${label} pages`}
-        className="flex flex-wrap items-center justify-between gap-3 px-1 text-xs text-muted-foreground"
+        className="flex flex-wrap items-center justify-between gap-3 px-3 pb-3 text-xs text-muted-foreground"
       >
         <p role="status" aria-live="polite" className="tabular-nums">
           {tableItems.length
@@ -126,18 +152,24 @@ export function ContinuousTable<T>({
           <div className="flex flex-wrap items-center gap-3">
             <label htmlFor={`${id}-size`} className="flex items-center gap-2">
               Rows per page
-              <select
-                id={`${id}-size`}
-                value={size}
-                onChange={(event) => update(1, Number(event.target.value))}
-                className="h-9 rounded-md bg-control-background px-2 text-foreground"
+              <Select
+                value={String(size)}
+                onValueChange={(value) => update(1, Number(value))}
               >
-                {[25, 50, 100].map((value) => (
-                  <option key={value} value={value}>
-                    {value}
-                  </option>
-                ))}
-              </select>
+                <SelectTrigger
+                  id={`${id}-size`}
+                  className="h-9 w-20 border-0 bg-control-background text-xs shadow-none"
+                >
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {[25, 50, 100].map((value) => (
+                    <SelectItem key={value} value={String(value)}>
+                      {value}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </label>
             <Button
               size="sm"

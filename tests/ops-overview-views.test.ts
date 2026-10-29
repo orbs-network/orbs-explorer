@@ -18,6 +18,16 @@ const view = (index = 1) => ({
 const stored = (views: unknown[], version: unknown = 1) =>
   JSON.stringify({ version, views });
 
+test("24-hour placement period survives saved-view round trips", () => {
+  const input = { ...view(), query: "period=1&partner_id=sushiswap" };
+  const [saved] = parseSavedOverviewViews(serializeSavedOverviewViews([input]));
+  assert.equal(saved.query, input.query);
+  assert.equal(
+    overviewViewHref(saved.query),
+    "/?period=1&partner_id=sushiswap",
+  );
+});
+
 test("overview queries save only supported filters and display, with deterministic defaults and identities", () => {
   assert.equal(
     canonicalOverviewQuery(

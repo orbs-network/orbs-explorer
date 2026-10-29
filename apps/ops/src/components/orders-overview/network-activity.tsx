@@ -1,5 +1,15 @@
 "use client";
 
+import {
+  Table,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
+} from "@orbs/ui/controls/table";
+
+import { Button } from "@orbs/ui/controls/button";
 import { useMemo, useState } from "react";
 import { ArrowDown, ArrowUp, ArrowUpDown } from "lucide-react";
 import type { PartnerChainEntry } from "@orbs/domain/twap/utils/orders-overview";
@@ -101,9 +111,12 @@ export function NetworkActivity({
         role="region"
         aria-label={`Network activity for ${scope}`}
       >
-        <table className="w-full text-left text-xs tabular-nums">
-          <thead className="sticky top-0 z-10 border-b border-border bg-card text-muted-foreground">
-            <tr>
+        <Table
+          containerProps={{ className: "overflow-visible" }}
+          className="w-full text-left text-xs tabular-nums"
+        >
+          <TableHeader className="sticky top-0 z-10 border-b border-border bg-card text-muted-foreground">
+            <TableRow>
               {columns.map(({ key, label }) => {
                 const active = sort.key === key;
                 const nextDirection =
@@ -118,13 +131,15 @@ export function NetworkActivity({
                     : ArrowDown
                   : ArrowUpDown;
                 return (
-                  <th
+                  <TableHead
                     key={key}
                     scope="col"
                     aria-sort={active ? sort.direction : undefined}
                     className="whitespace-nowrap font-medium"
                   >
-                    <button
+                    <Button
+                      variant="ghost"
+                      size="content"
                       type="button"
                       aria-label={`${label}, sort ${nextDirection}`}
                       onClick={() => setSort({ key, direction: nextDirection })}
@@ -135,20 +150,22 @@ export function NetworkActivity({
                         aria-hidden
                         className={`size-3 shrink-0 ${active ? "text-primary" : "opacity-50"}`}
                       />
-                    </button>
-                  </th>
+                    </Button>
+                  </TableHead>
                 );
               })}
-            </tr>
-          </thead>
-          <tbody>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
             {sortedRows.map((chain) => (
-              <tr
+              <TableRow
                 key={chain.chainId}
                 className="border-b border-border last:border-0"
               >
-                <th scope="row" className="px-3 py-2 font-medium">
-                  <button
+                <TableHead scope="row" className="px-3 py-2 font-medium">
+                  <Button
+                    variant="ghost"
+                    size="content"
                     type="button"
                     disabled={!chain.orders.length}
                     onClick={() =>
@@ -168,38 +185,42 @@ export function NetworkActivity({
                         Chain {chain.chainId}
                       </span>
                     </span>
-                  </button>
-                </th>
-                <td className="px-3 py-2">
+                  </Button>
+                </TableHead>
+                <TableCell className="px-3 py-2">
                   {chain.orders.length.toLocaleString()}
-                </td>
-                <td
+                </TableCell>
+                <TableCell
                   className="whitespace-nowrap px-3 py-2"
                   title={`${chain.pricedCount} of ${chain.orders.length} orders reporting USD`}
                 >
                   {chain.value === undefined
                     ? "—"
                     : formatOrderUsd(chain.value)}
-                </td>
-                <td className="px-3 py-2 text-success">
+                </TableCell>
+                <TableCell className="px-3 py-2 text-success">
                   {chain.groups.completed.length}
-                </td>
-                <td className="px-3 py-2 text-amber-700 dark:text-amber-400">
+                </TableCell>
+                <TableCell className="px-3 py-2 text-warning">
                   {chain.groups.partial.length}
-                </td>
-                <td className="px-3 py-2 text-link">
+                </TableCell>
+                <TableCell className="px-3 py-2 text-link">
                   {chain.groups.active.length}
-                </td>
-                <td className="px-3 py-2">{chain.groups.cancelled.length}</td>
-                <td className="px-3 py-2">{chain.groups.expired.length}</td>
-                <td className="px-3 py-2 text-destructive">
+                </TableCell>
+                <TableCell className="px-3 py-2">
+                  {chain.groups.cancelled.length}
+                </TableCell>
+                <TableCell className="px-3 py-2">
+                  {chain.groups.expired.length}
+                </TableCell>
+                <TableCell className="px-3 py-2 text-destructive">
                   {chain.groups.failed.length}
-                </td>
-                <td className="px-3 py-2">{chain.errors}</td>
-              </tr>
+                </TableCell>
+                <TableCell className="px-3 py-2">{chain.errors}</TableCell>
+              </TableRow>
             ))}
-          </tbody>
-        </table>
+          </TableBody>
+        </Table>
       </div>
     </>
   );

@@ -1,5 +1,6 @@
 "use client";
 
+import { Button } from "@orbs/ui/controls/button";
 import { useState } from "react";
 import type { EChartsOption } from "echarts";
 import { ChevronRight } from "lucide-react";
@@ -198,13 +199,15 @@ export function RankedChart({
             : ""}
         </p>
         {sorted.length > 10 && (
-          <button
+          <Button
+            variant="ghost"
+            size="content"
             type="button"
             onClick={() => setAll(!all)}
             className="rounded text-xs font-medium text-link hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
             {all ? "Show top 10" : `Show all ${sorted.length}`}
-          </button>
+          </Button>
         )}
       </div>
       <details className="mt-4 border-t border-border pt-3 text-xs">
@@ -214,7 +217,9 @@ export function RankedChart({
         <ul className="mt-2 max-h-72 space-y-1 overflow-y-auto overscroll-contain">
           {visible.map((row) => (
             <li key={row.id}>
-              <button
+              <Button
+                variant="ghost"
+                size="content"
                 type="button"
                 onClick={() => onSelect(row.label, row.orders)}
                 className="group flex w-full cursor-pointer items-center justify-between gap-3 rounded-lg px-2 py-2.5 text-left transition-colors hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none"
@@ -257,7 +262,7 @@ export function RankedChart({
                     className="size-3.5 text-muted-foreground group-hover:text-primary"
                   />
                 </span>
-              </button>
+              </Button>
             </li>
           ))}
         </ul>

@@ -20,7 +20,6 @@ import {
   SelectValue,
 } from "@orbs/ui/controls/select";
 import { ChartPlot } from "@/components/charts/chart-plot";
-import { CHART_COLORS } from "@/components/charts/chart-colors";
 import { chartTooltip, useChartTheme } from "@/components/charts/chart-theme";
 import {
   tradingAppOrdersHref,
@@ -131,13 +130,13 @@ export default function TradingAppsChart({
             .map((status) => ({
               label: OVERVIEW_STATUSES[status].label,
               value: `${row.groups[status].length.toLocaleString()} · ${formatShare(row.groups[status].length, row.totalOrders)}`,
-              color: CHART_COLORS[status],
+              color: theme.outcomes[status],
             }))
         : [
             {
               label: "Failed / placed",
               value: `${row.groups.failed.length.toLocaleString()} / ${row.totalOrders.toLocaleString()} · ${failureRate(row)}`,
-              color: CHART_COLORS.failed,
+              color: theme.outcomes.failed,
             },
           ]),
       {
@@ -245,7 +244,7 @@ export default function TradingAppsChart({
               stack: "orders",
               barMaxWidth: 20,
               cursor: "pointer",
-              itemStyle: { color: CHART_COLORS[status] },
+              itemStyle: { color: theme.outcomes[status] },
               emphasis: { focus: "self" as const },
               data: rows.map((row) => row.groups[status].length),
             }))
@@ -258,7 +257,7 @@ export default function TradingAppsChart({
                 itemStyle: {
                   color:
                     displayMetric === "failure-rate"
-                      ? CHART_COLORS.failed
+                      ? theme.outcomes.failed
                       : theme.primary,
                   borderRadius: [0, 3, 3, 0],
                 },
@@ -351,7 +350,7 @@ export default function TradingAppsChart({
                 <span
                   aria-hidden
                   className="size-2 rounded-sm"
-                  style={{ background: CHART_COLORS[status] }}
+                  style={{ background: theme.outcomes[status] }}
                 />
                 {OVERVIEW_STATUSES[status].label}
               </span>

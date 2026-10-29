@@ -1,5 +1,6 @@
 "use client";
 
+import { Button } from "@orbs/ui/controls/button";
 import { useMemo } from "react";
 import type { EChartsOption } from "echarts";
 import { ChartPlot } from "@/components/charts/chart-plot";
@@ -163,7 +164,9 @@ function OrderSizes() {
           </summary>
           <div className="mt-3 space-y-1">
             {sizes.map((bucket) => (
-              <button
+              <Button
+                variant="ghost"
+                size="content"
                 key={bucket.key}
                 type="button"
                 disabled={!bucket.orders.length}
@@ -187,7 +190,7 @@ function OrderSizes() {
                       : formatOrderUsd(bucket.summary.value)}
                   </span>
                 </span>
-              </button>
+              </Button>
             ))}
           </div>
         </details>
@@ -217,7 +220,9 @@ function OrderSizes() {
           ))}
         </dl>
         {summary.unpriced.length > 0 && (
-          <button
+          <Button
+            variant="ghost"
+            size="content"
             type="button"
             className={`mt-6 text-xs ${inspectClass}`}
             onClick={() =>
@@ -229,7 +234,7 @@ function OrderSizes() {
           >
             Inspect {summary.unpriced.length.toLocaleString()} orders excluded
             from size statistics →
-          </button>
+          </Button>
         )}
       </Panel>
     </div>

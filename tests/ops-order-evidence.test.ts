@@ -12,6 +12,7 @@ import {
   listOrderMessage,
   matchingListOrder,
   reportedExecutionInput,
+  reportedExecutionOutput,
 } from "../apps/ops/src/lib/order-evidence";
 import { fullOrderToInspectionOrder } from "../apps/ops/src/lib/order-investigation";
 import { getFailureReason } from "../apps/ops/src/lib/order-diagnostics";
@@ -208,6 +209,34 @@ test("reported successful input sums exact amounts, never counts retries or esti
   record.metadata.chunks[1].index = 2;
   record.metadata.chunks[1].inToken = `0x${"2".repeat(40)}`;
   assert.equal(reportedExecutionInput(record), undefined);
+});
+
+test("reported output received sums successful matching-token fills without estimating missing receipts", () => {
+  const record = full([
+    { index: 1, status: "success", outAmount: "9007199254740993123456" },
+    { index: 2, status: "succeeded", outAmount: "42" },
+    { index: 3, status: "error", outAmount: "999999" },
+  ]);
+  record.order.witness.output = {
+    token: `0x${"2".repeat(40)}`,
+  } as Order["order"]["witness"]["output"];
+  assert.equal(reportedExecutionOutput(record), "9007199254740993123498");
+  record.metadata.chunks[1].outAmount = undefined;
+  assert.equal(reportedExecutionOutput(record), undefined);
+  record.metadata.chunks[1].outAmount = "42";
+  record.metadata.chunks[1].outToken = `0x${"3".repeat(40)}`;
+  assert.equal(reportedExecutionOutput(record), undefined);
+  record.metadata.chunks[1].outToken = record.order.witness.output.token;
+  record.metadata.chunks[1].index = 1;
+  assert.equal(reportedExecutionOutput(record), undefined);
+  record.metadata.chunks = [
+    { index: 1, status: "success", outAmount: "0" },
+  ] as OrderChunk[];
+  assert.equal(reportedExecutionOutput(record), "0");
+  record.metadata.chunks = [
+    { index: 1, status: "error", outAmount: "50" },
+  ] as OrderChunk[];
+  assert.equal(reportedExecutionOutput(record), undefined);
 });
 
 test("direct detail adaptation orders numeric service timestamps consistently with the history display", () => {

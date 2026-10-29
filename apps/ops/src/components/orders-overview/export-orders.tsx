@@ -1,18 +1,15 @@
 "use client";
 
 import { useSearchParams } from "next/navigation";
-import { useQueryClient } from "@tanstack/react-query";
-import { spotOverviewOrdersQueryOptions } from "@/lib/spot-overview-queries";
-import type { ListOrder } from "@orbs/domain/twap/types";
-import { Button } from "@orbs/ui/controls/button";
-import { ChevronDown, Download } from "lucide-react";
+import type { ListOrder, Order } from "@orbs/domain/twap/types";
+import { Download } from "lucide-react";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuTrigger,
-} from "@orbs/ui/controls/dropdown-menu";
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@orbs/ui/controls/select";
 import { getTwapOrderChainId } from "@orbs/domain/twap/utils";
 
 function download(content: string, type: string, extension: string) {
@@ -32,30 +29,62 @@ const csvCell = (value: unknown) => {
 
 export function ExportOrders({
   orders,
-  context,
+  snapshotAt,
 }: {
   orders: ListOrder[];
-  context?: string;
+  snapshotAt?: number;
 }) {
-  const search = useSearchParams(),
-    client = useQueryClient();
+  return (
+    <OrdersExport
+      orders={orders}
+      records={orders}
+      scope="All matching records, not just the visible page"
+      snapshotAt={snapshotAt}
+    />
+  );
+}
+
+export function ExportOrder({
+  order,
+  summary,
+  retrievedAt,
+}: {
+  order: Order;
+  summary: ListOrder;
+  retrievedAt: number;
+}) {
+  return (
+    <OrdersExport
+      orders={[summary]}
+      records={[order]}
+      scope="Selected order"
+      snapshotAt={retrievedAt}
+    />
+  );
+}
+
+function OrdersExport({
+  orders,
+  records,
+  scope,
+  snapshotAt,
+}: {
+  orders: ListOrder[];
+  records: ListOrder[] | Order[];
+  scope: string;
+  snapshotAt?: number;
+}) {
+  const search = useSearchParams();
+  const snapshot = snapshotAt;
   const metadata = () => ({
     exported_utc: new Date().toISOString(),
-    snapshot_utc: client.getQueryState(
-      spotOverviewOrdersQueryOptions().queryKey,
-    )?.dataUpdatedAt
-      ? new Date(
-          client.getQueryState(spotOverviewOrdersQueryOptions().queryKey)!
-            .dataUpdatedAt,
-        ).toISOString()
-      : "unavailable",
+    snapshot_utc: snapshot ? new Date(snapshot).toISOString() : "unavailable",
     timezone: "UTC",
     filter_query: search.toString(),
-    scope: "All matching records, not just the visible page",
+    scope,
     value_definition:
       "Original reported placed order value, not executed volume",
   });
-  const countLabel = `${orders.length.toLocaleString()}${context ? ` ${context}` : ""} ${orders.length === 1 ? "order" : "orders"}`;
   const csv = () => {
     const meta = metadata();
     const fields = [
@@ -119,51 +148,29 @@ export function ExportOrders({
     );
   };
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button
-          variant="ghost"
-          size="sm"
-          className={context ? "gap-1" : undefined}
-          disabled={!orders.length}
-          aria-label={context ? `Export ${countLabel}` : "Export orders"}
-        >
-          <Download
-            aria-hidden
-            className={context ? "hidden size-3.5 sm:block" : "size-3.5"}
-          />
-          {context ? (
-            <>
-              <span className="hidden sm:inline">Export {countLabel}</span>
-              <span className="sm:hidden">
-                Export ({orders.length.toLocaleString()})
-              </span>
-            </>
-          ) : (
-            "Export orders"
-          )}
-          <ChevronDown aria-hidden className="size-3" />
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
-        <DropdownMenuLabel>
-          {countLabel} · all matching records · UTC
-        </DropdownMenuLabel>
-        <DropdownMenuItem onSelect={csv}>
-          {context ? `${countLabel}, CSV` : "Download CSV"}
-        </DropdownMenuItem>
-        <DropdownMenuItem
-          onSelect={() =>
-            download(
-              JSON.stringify({ metadata: metadata(), orders }, null, 2),
-              "application/json",
-              "json",
-            )
-          }
-        >
-          {context ? `${countLabel}, JSON` : "Download JSON"}
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
+    <Select
+      value=""
+      disabled={!orders.length}
+      onValueChange={(format) => {
+        if (format === "csv") csv();
+        else if (format === "json")
+          download(
+            JSON.stringify({ metadata: metadata(), orders: records }, null, 2),
+            "application/json",
+            "json",
+          );
+      }}
+    >
+      <SelectTrigger className="h-9 w-auto" aria-label="Export">
+        <span className="inline-flex! items-center gap-2">
+          <Download aria-hidden className="size-3.5 shrink-0" />
+          <SelectValue placeholder="Export" />
+        </span>
+      </SelectTrigger>
+      <SelectContent align="end">
+        <SelectItem value="csv">Download CSV</SelectItem>
+        <SelectItem value="json">Download JSON</SelectItem>
+      </SelectContent>
+    </Select>
   );
 }

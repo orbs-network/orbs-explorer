@@ -1,17 +1,28 @@
 "use client";
 
-import { useMemo } from "react";
+import { Braces } from "lucide-react";
 import type { Order } from "@orbs/domain/twap/types";
-import { Copy } from "@orbs/ui/controls/copy";
+import { Button } from "@orbs/ui/controls/button";
+import { JsonPreviewDialog } from "@orbs/ui/json-preview-dialog";
 
-export function OrderPayload({ full }: { full: Order }) {
-  const payload = useMemo(() => JSON.stringify(full, null, 2), [full]);
+export function OrderPayload({
+  full,
+  defaultOpen = false,
+}: {
+  full: Order;
+  defaultOpen?: boolean;
+}) {
   return (
-    <div className="mt-2">
-      <Copy text="Copy full order JSON" value={payload} />
-      <pre className="mt-2 max-h-80 overflow-auto whitespace-pre-wrap break-all rounded bg-muted p-2 font-mono text-[11px]">
-        {payload}
-      </pre>
-    </div>
+    <JsonPreviewDialog
+      data={full}
+      title="Raw order service data"
+      description="Original order and execution fields returned by the service."
+      defaultOpen={defaultOpen}
+    >
+      <Button variant="secondary" size="sm">
+        <Braces aria-hidden className="size-3.5" />
+        View order JSON
+      </Button>
+    </JsonPreviewDialog>
   );
 }

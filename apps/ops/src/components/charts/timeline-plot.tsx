@@ -1,5 +1,16 @@
 "use client";
 
+import {
+  Table,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
+  TableCaption,
+} from "@orbs/ui/controls/table";
+
+import { Button } from "@orbs/ui/controls/button";
 import { useMemo } from "react";
 import type { EChartsOption } from "echarts";
 import type { ListOrder } from "@orbs/domain/twap/types";
@@ -16,7 +27,6 @@ import {
 } from "@/components/orders-overview/overview-display";
 import { ChartPlot } from "./chart-plot";
 import { chartTooltip, useChartTheme } from "./chart-theme";
-import { CHART_COLORS } from "./chart-colors";
 
 type ChartTheme = ReturnType<typeof useChartTheme>;
 export type TimelineSelection = (label: string, orders: ListOrder[]) => void;
@@ -50,6 +60,7 @@ export function timelineTooltip(
   data: OrderChartData,
   params: unknown,
   kind: "activity" | "value" | "errors",
+  colors: ChartTheme["outcomes"],
 ): string {
   const index = tooltipIndex(params);
   const bucket = index === undefined ? undefined : data.buckets[index];
@@ -84,12 +95,12 @@ export function timelineTooltip(
         {
           label: "With error history",
           value: `${bucket.withErrors.toLocaleString()} · ${formatShare(bucket.withErrors, bucket.total)}`,
-          color: CHART_COLORS.partial,
+          color: colors.partial,
         },
         {
           label: "Terminal failures",
           value: `${bucket.failed.toLocaleString()} · ${formatShare(bucket.failed, bucket.total)}`,
-          color: CHART_COLORS.failed,
+          color: colors.failed,
         },
         { label: "Orders placed", value: bucket.total.toLocaleString() },
       ],
@@ -103,7 +114,7 @@ export function timelineTooltip(
         (status) => ({
           label: OVERVIEW_STATUSES[status].label,
           value: `${bucket[status].toLocaleString()} · ${formatShare(bucket[status], bucket.total)}`,
-          color: CHART_COLORS[status],
+          color: colors[status],
         }),
       ),
       { label: "Reported placed value", value },
@@ -229,7 +240,7 @@ export function PlacementActivityPlot({
           shadowStyle: { color: `${theme.primary}0d` },
         },
         formatter: (params: unknown) =>
-          timelineTooltip(data, params, "activity"),
+          timelineTooltip(data, params, "activity", theme.outcomes),
       },
       series: statuses.map((status) => ({
         name: OVERVIEW_STATUSES[status].label,
@@ -237,13 +248,13 @@ export function PlacementActivityPlot({
         stack: "orders",
         barMaxWidth: 42,
         barCategoryGap: "30%",
-        itemStyle: { color: CHART_COLORS[status] },
+        itemStyle: { color: theme.outcomes[status] },
         emphasis: {
           itemStyle: {
             borderColor: theme.surface,
             borderWidth: 1,
             shadowBlur: 8,
-            shadowColor: `${CHART_COLORS[status]}30`,
+            shadowColor: `${theme.outcomes[status]}30`,
           },
         },
         data: data.buckets.map((bucket, index) => ({
@@ -279,7 +290,7 @@ export function PlacementActivityPlot({
             <span
               aria-hidden
               className="size-2 rounded-sm"
-              style={{ background: CHART_COLORS[status] }}
+              style={{ background: theme.outcomes[status] }}
             />
             {OVERVIEW_STATUSES[status].label}
           </li>
@@ -302,12 +313,15 @@ export function TimelineDataTable({
         View timeline data
       </summary>
       <div className="mt-3 max-h-72 overflow-auto">
-        <table className="w-full text-left tabular-nums">
-          <caption className="sr-only">
+        <Table
+          containerProps={{ className: "overflow-visible" }}
+          className="w-full text-left tabular-nums"
+        >
+          <TableCaption className="sr-only">
             Timeline totals in UTC; select a period to inspect its orders
-          </caption>
-          <thead>
-            <tr>
+          </TableCaption>
+          <TableHeader>
+            <TableRow>
               {[
                 "Period (UTC)",
                 "Orders",
@@ -316,23 +330,28 @@ export function TimelineDataTable({
                 "With errors",
                 "Failed",
               ].map((label) => (
-                <th
+                <TableHead
                   scope="col"
                   key={label}
                   className="whitespace-nowrap px-2 py-2 font-medium text-muted-foreground"
                 >
                   {label}
-                </th>
+                </TableHead>
               ))}
-            </tr>
-          </thead>
-          <tbody>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
             {data.buckets.map((bucket) => {
               const priced = reportedUsdCount(bucket);
               return (
-                <tr key={bucket.timestamp} className="border-t border-border">
-                  <th scope="row" className="px-2 py-2 font-normal">
-                    <button
+                <TableRow
+                  key={bucket.timestamp}
+                  className="border-t border-border"
+                >
+                  <TableHead scope="row" className="px-2 py-2 font-normal">
+                    <Button
+                      variant="ghost"
+                      size="content"
                       type="button"
                       disabled={!bucket.total}
                       onClick={() =>
@@ -342,28 +361,30 @@ export function TimelineDataTable({
                     >
                       {bucket.label}
                       {bucket.partialPeriod ? " · Partial" : ""}
-                    </button>
-                  </th>
-                  <td className="px-2 py-2">{bucket.total.toLocaleString()}</td>
-                  <td className="whitespace-nowrap px-2 py-2">
+                    </Button>
+                  </TableHead>
+                  <TableCell className="px-2 py-2">
+                    {bucket.total.toLocaleString()}
+                  </TableCell>
+                  <TableCell className="whitespace-nowrap px-2 py-2">
                     {priced || !bucket.total
                       ? formatOrderUsd(bucket.value)
                       : "—"}
-                  </td>
-                  <td className="whitespace-nowrap px-2 py-2 text-muted-foreground">
+                  </TableCell>
+                  <TableCell className="whitespace-nowrap px-2 py-2 text-muted-foreground">
                     {priced.toLocaleString()}/{bucket.total.toLocaleString()}
-                  </td>
-                  <td className="px-2 py-2">
+                  </TableCell>
+                  <TableCell className="px-2 py-2">
                     {bucket.withErrors.toLocaleString()}
-                  </td>
-                  <td className="px-2 py-2">
+                  </TableCell>
+                  <TableCell className="px-2 py-2">
                     {bucket.failed.toLocaleString()}
-                  </td>
-                </tr>
+                  </TableCell>
+                </TableRow>
               );
             })}
-          </tbody>
-        </table>
+          </TableBody>
+        </Table>
       </div>
     </details>
   );

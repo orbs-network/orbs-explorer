@@ -1,5 +1,13 @@
 "use client";
 
+import {
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
+} from "@orbs/ui/controls/table";
+
 import { useId, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
@@ -8,7 +16,6 @@ import {
   CheckCircle2,
   ChevronDown,
   CircleHelp,
-  Loader2,
   RefreshCw,
 } from "lucide-react";
 import { Badge } from "@orbs/ui/controls/badge";
@@ -29,6 +36,11 @@ import {
 } from "@/lib/system-health";
 import { Panel, TableFrame } from "./primitives";
 import { useOperationsData } from "./operations-view";
+import {
+  InlineSkeleton,
+  ServiceStatusSkeleton,
+  TableSkeleton,
+} from "@/components/loading-skeletons";
 import { globalScopeHref } from "@/lib/partner-navigation";
 import { getTwapOrderChainId } from "@orbs/domain/twap/utils";
 import { getOverviewOrderStatus } from "@orbs/domain/twap/utils/orders-overview";
@@ -51,6 +63,10 @@ function ExactTime({ value }: { value: number }) {
 }
 
 function CoverageSummary({ service }: { service: SystemHealthService }) {
+  if (service.isPending && !service.snapshot)
+    return (
+      <InlineSkeleton label="Checking service coverage" className="w-36" />
+    );
   const coverage = summarizeSystemCoverage(
     service.snapshot,
     service.assessment,
@@ -58,7 +74,7 @@ function CoverageSummary({ service }: { service: SystemHealthService }) {
   );
   return (
     <p
-      className={`text-[11px] ${coverage.state === "partial" ? "text-amber-700 dark:text-amber-400" : "text-muted-foreground"}`}
+      className={`text-[11px] ${coverage.state === "partial" ? "text-warning" : "text-muted-foreground"}`}
       title={
         coverage.missing.join(". ") ||
         "The fresh response includes listener and taker signals. This does not verify order execution."
@@ -102,7 +118,7 @@ function SignalBadge({
         active
           ? "text-success"
           : issue
-            ? "text-amber-700 dark:text-amber-400"
+            ? "text-warning"
             : "text-muted-foreground"
       }
     >
@@ -115,22 +131,11 @@ function SignalBadge({
 function ServiceBadge({ service }: { service: SystemHealthService }) {
   const size = "px-1.5 text-[10px] [&>svg]:size-2.5";
   if (service.isPending && !service.isError) {
-    return (
-      <Badge variant="outline" className={size}>
-        <Loader2
-          aria-hidden
-          className="animate-spin motion-reduce:animate-none"
-        />
-        Checking API
-      </Badge>
-    );
+    return <InlineSkeleton label="Checking API" className="h-4 w-24" />;
   }
   if (service.isError) {
     return (
-      <Badge
-        variant="outline"
-        className={`${size} text-amber-700 dark:text-amber-400`}
-      >
+      <Badge variant="outline" className={`${size} text-warning`}>
         <AlertTriangle aria-hidden />
         API check failed
       </Badge>
@@ -146,6 +151,15 @@ function ServiceBadge({ service }: { service: SystemHealthService }) {
 
 function CompactServiceSummary({ service }: { service: SystemHealthService }) {
   const snapshot = service.snapshot;
+  if (service.isPending && !snapshot)
+    return (
+      <div className="min-w-0 space-y-1 rounded-lg bg-muted/40 p-2">
+        <p className="text-[11px] font-medium">{service.label}</p>
+        <ServiceStatusSkeleton
+          label={`Checking ${service.label.toLowerCase()}`}
+        />
+      </div>
+    );
   const assessment = service.assessment;
   const reportAge =
     snapshot?.reportedAt === undefined
@@ -173,7 +187,7 @@ function CompactServiceSummary({ service }: { service: SystemHealthService }) {
       )}
       {snapshot && (
         <p
-          className={`text-[10px] ${assessment?.freshness === "stale" ? "text-amber-700 dark:text-amber-400" : "text-muted-foreground"}`}
+          className={`text-[10px] ${assessment?.freshness === "stale" ? "text-warning" : "text-muted-foreground"}`}
         >
           {assessment?.freshness === "unknown"
             ? snapshot.reportedAt === undefined
@@ -196,13 +210,20 @@ function CompactServiceSummary({ service }: { service: SystemHealthService }) {
               <dd
                 className={
                   !service.isError && coverage?.needsReview
-                    ? "text-amber-700 dark:text-amber-400"
+                    ? "text-warning"
                     : "text-muted-foreground"
                 }
               >
                 {service.isError && snapshot ? "Cached: " : ""}
                 {coverage?.label ??
-                  (service.isError ? "Unavailable" : "Checking…")}
+                  (service.isError ? (
+                    "Unavailable"
+                  ) : (
+                    <InlineSkeleton
+                      label="Checking coverage"
+                      className="w-32"
+                    />
+                  ))}
               </dd>
             </div>
           );
@@ -214,6 +235,15 @@ function CompactServiceSummary({ service }: { service: SystemHealthService }) {
 
 function ServiceSummary({ service }: { service: SystemHealthService }) {
   const snapshot = service.snapshot;
+  if (service.isPending && !snapshot)
+    return (
+      <div className="min-w-0 space-y-2 rounded-lg bg-muted/40 px-3 py-2.5">
+        <p className="text-xs font-medium">{service.label}</p>
+        <ServiceStatusSkeleton
+          label={`Checking ${service.label.toLowerCase()}`}
+        />
+      </div>
+    );
   const coverage = summarizeSystemCoverage(
     snapshot,
     service.assessment,
@@ -233,7 +263,7 @@ function ServiceSummary({ service }: { service: SystemHealthService }) {
           ? service.error?.message || "Status could not be checked."
           : snapshot
             ? `${Math.round(snapshot.latencyMs)} ms response time`
-            : "Requesting the service status endpoint…"}
+            : "Status unavailable"}
       </p>
       {snapshot && (
         <p className="text-xs text-muted-foreground">
@@ -282,9 +312,21 @@ function CoverageNote({
   kind: "listener" | "taker";
 }) {
   if (!service.snapshot) {
+    if (service.isPending)
+      return (
+        <TableSkeleton
+          label={`Checking ${service.label.toLowerCase()} ${kind === "listener" ? "listeners" : "taker heartbeats"}`}
+          columns={5}
+          rows={3}
+        />
+      );
     return (
       <p className="text-xs text-muted-foreground">
-        {service.isError ? "Status unavailable." : "Checking service…"}
+        {service.isError ? (
+          "Status unavailable."
+        ) : (
+          <InlineSkeleton label="Checking service" className="w-48" />
+        )}
       </p>
     );
   }
@@ -359,19 +401,19 @@ function ListenerDetails({ services }: { services: SystemHealthService[] }) {
           <CoverageNote service={service} kind="listener" />
           {!!service.assessment?.listeners.length && (
             <TableFrame label={`${service.label} listener signals`}>
-              <thead>
-                <tr>
-                  <th scope="col">Network</th>
-                  <th scope="col">Listener</th>
-                  <th scope="col">Last block</th>
-                  <th scope="col">Update age</th>
-                  <th scope="col">Currently active orders</th>
-                </tr>
-              </thead>
-              <tbody>
+              <TableHeader>
+                <TableRow>
+                  <TableHead scope="col">Network</TableHead>
+                  <TableHead scope="col">Listener</TableHead>
+                  <TableHead scope="col">Last block</TableHead>
+                  <TableHead scope="col">Update age</TableHead>
+                  <TableHead scope="col">Currently active orders</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
                 {service.assessment.listeners.map((row) => (
-                  <tr key={row.key}>
-                    <td>
+                  <TableRow key={row.key}>
+                    <TableCell>
                       <Network
                         chainId={row.chainId}
                         data={{
@@ -387,17 +429,19 @@ function ListenerDetails({ services }: { services: SystemHealthService[] }) {
                       )}
                       {row.chainId === 295 &&
                         /hemi/i.test(row.chainName ?? "") && (
-                          <p className="mt-1 text-xs text-amber-700 dark:text-amber-400">
+                          <p className="mt-1 text-xs text-warning">
                             Service label: {row.chainName} · identity mismatch;
                             verify service configuration
                           </p>
                         )}
-                    </td>
-                    <td>
+                    </TableCell>
+                    <TableCell>
                       <SignalBadge state={row.state} cached={service.isError} />
-                    </td>
-                    <td>{row.lastBlock?.toLocaleString() ?? "Unreported"}</td>
-                    <td
+                    </TableCell>
+                    <TableCell>
+                      {row.lastBlock?.toLocaleString() ?? "Unreported"}
+                    </TableCell>
+                    <TableCell
                       title={
                         row.updatedAt
                           ? new Date(row.updatedAt).toLocaleString()
@@ -405,13 +449,16 @@ function ListenerDetails({ services }: { services: SystemHealthService[] }) {
                       }
                     >
                       {formatHealthAge(row.ageMs)}
-                    </td>
-                    <td>
+                    </TableCell>
+                    <TableCell>
                       {row.chainId === 295 &&
                       /hemi/i.test(row.chainName ?? "") ? (
                         "Identity needs review"
                       ) : isLoading ? (
-                        "Loading orders…"
+                        <InlineSkeleton
+                          label="Loading orders"
+                          className="w-24"
+                        />
                       ) : isError ? (
                         "Orders unavailable"
                       ) : row.chainId === undefined ? (
@@ -438,10 +485,10 @@ function ListenerDetails({ services }: { services: SystemHealthService[] }) {
                           active
                         </Link>
                       )}
-                    </td>
-                  </tr>
+                    </TableCell>
+                  </TableRow>
                 ))}
-              </tbody>
+              </TableBody>
             </TableFrame>
           )}
         </div>
@@ -459,29 +506,29 @@ function TakerDetails({ services }: { services: SystemHealthService[] }) {
           <CoverageNote service={service} kind="taker" />
           {!!service.assessment?.takers.length && (
             <TableFrame label={`${service.label} taker heartbeats`}>
-              <thead>
-                <tr>
-                  <th scope="col">Taker server</th>
-                  <th scope="col">Heartbeat</th>
-                  <th scope="col">Last seen</th>
-                  <th scope="col">Avg. interval</th>
-                  <th scope="col">Review after</th>
-                </tr>
-              </thead>
-              <tbody>
+              <TableHeader>
+                <TableRow>
+                  <TableHead scope="col">Taker server</TableHead>
+                  <TableHead scope="col">Heartbeat</TableHead>
+                  <TableHead scope="col">Last seen</TableHead>
+                  <TableHead scope="col">Avg. interval</TableHead>
+                  <TableHead scope="col">Review after</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
                 {service.assessment.takers.map((row) => (
-                  <tr key={row.key}>
-                    <td className="max-w-64 break-all font-mono">
+                  <TableRow key={row.key}>
+                    <TableCell className="max-w-64 break-all font-mono">
                       {row.serverId ?? "Server unreported"}
-                    </td>
-                    <td>
+                    </TableCell>
+                    <TableCell>
                       <SignalBadge
                         state={row.state}
                         cached={service.isError}
                         taker
                       />
-                    </td>
-                    <td
+                    </TableCell>
+                    <TableCell
                       title={
                         row.lastFetchAt
                           ? new Date(row.lastFetchAt).toLocaleString()
@@ -491,16 +538,16 @@ function TakerDetails({ services }: { services: SystemHealthService[] }) {
                       {row.ageMs === undefined
                         ? "Unreported"
                         : `${formatHealthAge(row.ageMs)} ago`}
-                    </td>
-                    <td>
+                    </TableCell>
+                    <TableCell>
                       {row.averageIntervalMs && row.averageIntervalMs > 0
                         ? `${(row.averageIntervalMs / 1000).toFixed(1)}s`
                         : "Unreported"}
-                    </td>
-                    <td>{formatHealthAge(row.overdueAfterMs)}</td>
-                  </tr>
+                    </TableCell>
+                    <TableCell>{formatHealthAge(row.overdueAfterMs)}</TableCell>
+                  </TableRow>
                 ))}
-              </tbody>
+              </TableBody>
             </TableFrame>
           )}
         </div>
@@ -517,9 +564,7 @@ function ServiceOrderImpact({ services }: { services: SystemHealthService[] }) {
   const { scope } = operational;
   if (isLoading)
     return (
-      <p role="status" className="text-sm text-muted-foreground">
-        Loading order exposure… API and worker checks remain available.
-      </p>
+      <TableSkeleton label="Loading order exposure" columns={5} rows={3} />
     );
   if (isError)
     return (
@@ -682,9 +727,10 @@ export function SystemHealth({
         {(view !== "monitoring" || !hasEvaluation) && (
           <div className="flex flex-wrap items-center justify-between gap-1">
             {view === "monitoring" ? (
-              <span className="text-[11px] text-muted-foreground">
-                Checking service signals…
-              </span>
+              <InlineSkeleton
+                label="Checking service signals"
+                className="w-48"
+              />
             ) : (
               <>
                 <Button

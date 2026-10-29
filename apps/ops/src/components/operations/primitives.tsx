@@ -1,5 +1,8 @@
 "use client";
 
+import { Table } from "@orbs/ui/controls/table";
+
+import { Button } from "@orbs/ui/controls/button";
 import { useId, type ReactNode } from "react";
 import { ChevronRight } from "lucide-react";
 import { InfoHint } from "@/components/info-hint";
@@ -68,7 +71,7 @@ export function Metric({
         )}
       </span>
       <strong
-        className={`mt-2 block text-2xl font-semibold tracking-tight tabular-nums ${orders && !orders.length ? "text-muted-foreground" : tone === "danger" ? "text-destructive" : tone === "warning" ? "text-amber-800 dark:text-amber-300" : ""}`}
+        className={`mt-2 block text-2xl font-semibold tracking-tight tabular-nums ${orders && !orders.length ? "text-muted-foreground" : tone === "danger" ? "text-destructive" : tone === "warning" ? "text-warning" : ""}`}
       >
         {value}
       </strong>
@@ -83,7 +86,9 @@ export function Metric({
   const base =
     "flex min-w-0 flex-col items-stretch justify-start rounded-xl bg-card p-4 text-left";
   return orders ? (
-    <button
+    <Button
+      variant="ghost"
+      size="content"
       type="button"
       disabled={!orders.length}
       onClick={() => inspectOrders(label, orders)}
@@ -91,7 +96,7 @@ export function Metric({
       className={`${base} transition-colors enabled:hover:bg-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-default motion-reduce:transition-none`}
     >
       {content}
-    </button>
+    </Button>
   ) : (
     <div className={base}>{content}</div>
   );
@@ -105,16 +110,18 @@ export function TableFrame({
   children: ReactNode;
 }) {
   return (
-    <div
-      role="region"
+    <Table
       aria-label={label}
-      tabIndex={0}
-      className="min-w-0 overflow-x-auto rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      containerProps={{
+        role: "region",
+        "aria-label": label,
+        tabIndex: 0,
+        className:
+          "min-w-0 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring",
+      }}
     >
-      <table aria-label={label} className="ops-data-table">
-        {children}
-      </table>
-    </div>
+      {children}
+    </Table>
   );
 }
 

@@ -5,9 +5,10 @@ import { useQuery } from "@tanstack/react-query";
 import { getOrderLogsUI } from "@orbs/domain/twap/api";
 import { Button } from "@orbs/ui/controls/button";
 import { Input } from "@orbs/ui/controls/input";
-import { Copy } from "@orbs/ui/controls/copy";
+import { JsonPreviewDialog } from "@orbs/ui/json-preview-dialog";
 import { formatOrderDate } from "@/components/orders-overview/overview-display";
 import { EmptyState } from "@/components/operations/primitives";
+import { EventListSkeleton } from "@/components/loading-skeletons";
 
 function eventLabel(record: Record<string, unknown>, index: number): string {
   for (const key of [
@@ -70,15 +71,11 @@ export function OrderClientLogs({ hash }: { hash: string }) {
           </span>
         )}
       </div>
-      {query.isFetching && !records && (
-        <p role="status" className="text-sm text-muted-foreground">
-          Loading client events for this hash…
-        </p>
-      )}
+      {query.isFetching && !records && <EventListSkeleton />}
       {query.isError && (
         <div
           role="alert"
-          className={`rounded-lg p-4 text-sm ${records ? "bg-amber-500/10" : "bg-destructive/10"}`}
+          className={`rounded-lg p-4 text-sm ${records ? "bg-warning-surface" : "bg-destructive/10"}`}
         >
           <p className="font-medium">
             {records
@@ -109,32 +106,45 @@ export function OrderClientLogs({ hash }: { hash: string }) {
             <p role="status" className="text-xs text-muted-foreground">
               {visible.length} of {records.length} returned events
             </p>
-            <Copy
-              text="Copy returned client logs JSON"
-              value={JSON.stringify(records, null, 2)}
-            />
+            <JsonPreviewDialog
+              data={records}
+              title="Returned client logs"
+              description="Original client events returned for this order."
+            >
+              <Button variant="secondary" size="sm">
+                View all logs JSON
+              </Button>
+            </JsonPreviewDialog>
           </div>
           <div className="max-h-[36rem] space-y-2 overflow-auto overscroll-contain">
             {visible.map((record, index) => (
-              <details
+              <article
                 key={index}
-                className="rounded-lg bg-muted/40 p-3"
+                className="flex flex-wrap items-start justify-between gap-3 rounded-lg bg-muted/40 p-3"
               >
-                <summary className="cursor-pointer rounded text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-                  <span className="break-words">
-                    {eventLabel(record, index)}
-                  </span>
-                  <span className="mt-1 block text-xs text-muted-foreground">
+                <div className="min-w-0 flex-1 text-sm [overflow-wrap:anywhere]">
+                  <p>{eventLabel(record, index)}</p>
+                  <p className="mt-1 text-xs text-muted-foreground">
                     {typeof record.timestamp === "string" ||
                     typeof record.timestamp === "number"
                       ? formatOrderDate(record.timestamp)
                       : "Timestamp not provided"}
-                  </span>
-                </summary>
-                <pre className="mt-3 max-h-80 overflow-auto whitespace-pre-wrap break-all rounded-md bg-muted p-3 font-mono text-xs">
-                  {JSON.stringify(record, null, 2)}
-                </pre>
-              </details>
+                  </p>
+                </div>
+                <JsonPreviewDialog
+                  data={record}
+                  title={`Client event ${index + 1}`}
+                  description="Original fields returned for this client event."
+                >
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    aria-label={`View client event ${index + 1} JSON`}
+                  >
+                    View JSON
+                  </Button>
+                </JsonPreviewDialog>
+              </article>
             ))}
           </div>
           {!visible.length && (

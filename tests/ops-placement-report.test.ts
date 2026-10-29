@@ -77,6 +77,25 @@ test("equal rolling placement comparisons have no shared boundary, future orders
   assert.equal(report(input, "all").previous, undefined);
 });
 
+test("24-hour placement windows compare the immediately preceding 24 hours", () => {
+  const result = report(
+    [
+      order(0),
+      order(0.5),
+      order(1),
+      order(1.5),
+      order(2),
+      order(2.5),
+      order(-0.1),
+    ],
+    1,
+  );
+  assert.equal(result.current.orders, 3);
+  assert.equal(result.previous?.orders, 2);
+  assert.equal(result.start, end - day);
+  assert.equal(result.previousStart, end - 2 * day);
+});
+
 test("placement report applies the same app/network identity and filter to both periods", () => {
   const result = report(
     [order(1), order(8), order(2, 8453), order(10, 8453), order(11, 8453)],

@@ -1,5 +1,7 @@
 "use client";
 
+import { TableRow, TableHead, TableCell } from "@orbs/ui/controls/table";
+
 import { useId, useMemo, useState } from "react";
 import { ChevronRight, Copy, Search, X } from "lucide-react";
 import { getChainName, getPartner } from "@orbs/domain/utils/utils";
@@ -228,19 +230,19 @@ function AdapterAddresses() {
           minWidth={1040}
           itemKey={(row) => row.key}
           header={
-            <tr>
-              <th scope="col">Trading app</th>
-              <th scope="col">Network</th>
-              <th scope="col">Adapter address</th>
-              <th scope="col">Catalog match</th>
-              <th scope="col" className="text-right">
+            <TableRow>
+              <TableHead scope="col">Trading app</TableHead>
+              <TableHead scope="col">Network</TableHead>
+              <TableHead scope="col">Adapter address</TableHead>
+              <TableHead scope="col">Catalog match</TableHead>
+              <TableHead scope="col" className="text-left">
                 Orders in view
-              </th>
-            </tr>
+              </TableHead>
+            </TableRow>
           }
           rowContent={(row) => (
             <>
-              <th scope="row">
+              <TableHead scope="row">
                 <div className="space-y-1.5">
                   {row.partners.length ? (
                     row.partners.map((partner) => (
@@ -257,15 +259,15 @@ function AdapterAddresses() {
                     </span>
                   )}
                 </div>
-              </th>
-              <td>
+              </TableHead>
+              <TableCell>
                 <Network
                   chainId={row.chainId}
                   variant="inline"
                   showChainId={false}
                 />
-              </td>
-              <td>
+              </TableCell>
+              <TableCell>
                 <span className="inline-flex items-center gap-2">
                   <code className="max-w-xs select-all break-all text-xs">
                     {displayAddress(row) || "Not provided"}
@@ -283,8 +285,8 @@ function AdapterAddresses() {
                     </Button>
                   )}
                 </span>
-              </td>
-              <td>
+              </TableCell>
+              <TableCell>
                 <AdapterMatchBadge
                   comparison={row.comparison}
                   knownNetworks={row.knownNetworks}
@@ -296,10 +298,12 @@ function AdapterAddresses() {
                       An order reported an invalid checksum. Inspect its orders.
                     </p>
                   )}
-              </td>
-              <td className="text-right">
+              </TableCell>
+              <TableCell className="text-left">
                 {row.orders.length ? (
-                  <button
+                  <Button
+                    variant="ghost"
+                    size="content"
                     type="button"
                     aria-label={`Inspect ${row.orders.length} orders for adapter ${displayAddress(row) || "not provided"} on ${networkName(row.chainId)}`}
                     onClick={() =>
@@ -309,15 +313,15 @@ function AdapterAddresses() {
                         "Orders matching this adapter and network within the current page filters.",
                       )
                     }
-                    className="inline-flex min-h-8 items-center justify-end gap-1 rounded px-2 font-medium tabular-nums text-link hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    className="inline-flex min-h-8 items-center justify-start gap-1 rounded px-2 font-medium tabular-nums text-link hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   >
                     {row.orders.length.toLocaleString()}
                     <ChevronRight aria-hidden className="size-3" />
-                  </button>
+                  </Button>
                 ) : (
                   <span className="px-2 text-muted-foreground">0</span>
                 )}
-              </td>
+              </TableCell>
             </>
           )}
         />

@@ -4,18 +4,15 @@ import { useMemo } from "react";
 import { ArrayParam, StringParam, useQueryParams } from "use-query-params";
 import { useSearchParams } from "next/navigation";
 import { INVESTIGATION_QUERY_PARAMS } from "../lib/investigation-filter-query";
+import { isOrderPeriod } from "../lib/order-period";
+
+export { ORDER_PERIODS } from "../lib/order-period";
 
 export type OrderScopeSelection = {
   period: string;
   chainIds: string[];
   partnerIds: string[];
 };
-
-export const ORDER_PERIODS = [
-  { label: "Last 7 days", value: "7" },
-  { label: "Last 30 days", value: "30" },
-  { label: "All available history", value: "all" },
-];
 
 export function useOrderScope() {
   const searchParams = useSearchParams();
@@ -29,9 +26,7 @@ export function useOrderScope() {
     },
     { updateType: "pushIn" },
   );
-  const period = ORDER_PERIODS.some((option) => option.value === query.period)
-    ? query.period!
-    : "7";
+  const period = isOrderPeriod(query.period) ? query.period : "7";
   const chainIds = useMemo(
     () =>
       (query.chain_id ?? []).filter((value): value is string => value !== null),

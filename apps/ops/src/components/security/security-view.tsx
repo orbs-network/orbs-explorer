@@ -20,17 +20,13 @@ import { ViewTabs } from "@/components/view-tabs";
 import { globalScopeHref } from "@/lib/partner-navigation";
 import { SystemHealth } from "@/components/operations/system-health";
 import { InfoHint } from "@/components/info-hint";
+import { TableSkeleton } from "@/components/loading-skeletons";
 
 function HistoryBoundary({ children }: { children: ReactNode }) {
   const { isLoading, isError, retry } = useOperationsData();
   if (isLoading)
     return (
-      <p
-        role="status"
-        className="rounded-lg bg-muted/40 p-4 text-sm text-muted-foreground"
-      >
-        Loading complete order history for these checks…
-      </p>
+      <TableSkeleton label="Loading security checks" columns={6} rows={4} />
     );
   if (isError)
     return (
@@ -68,7 +64,9 @@ function ClusterList({
     >
       <div className="divide-y divide-border">
         {clusters.slice(0, limit).map((cluster) => (
-          <button
+          <Button
+            variant="ghost"
+            size="content"
             type="button"
             key={cluster.key}
             onClick={() =>
@@ -102,7 +100,7 @@ function ClusterList({
               </span>
             </span>
             <ChevronRight aria-hidden className="mt-1 size-4 shrink-0" />
-          </button>
+          </Button>
         ))}
       </div>
       {clusters.length > limit && (
@@ -163,7 +161,7 @@ function SecurityFindings() {
         {review.flagged.length || !canVerify ? (
           <CircleAlert
             aria-hidden
-            className="mt-0.5 size-5 shrink-0 text-amber-500"
+            className="mt-0.5 size-5 shrink-0 text-warning"
           />
         ) : (
           <CheckCircle2
@@ -189,7 +187,7 @@ function SecurityFindings() {
           )}
           {/* The page header already shows freshness; only warn when it matters. */}
           {stale && (
-            <p className="text-xs text-amber-700 dark:text-amber-400">
+            <p className="text-xs text-warning">
               Snapshot from {formatOrderDate(updatedAt)} is over 5 minutes old;
               refresh before relying on these results.
             </p>
@@ -332,7 +330,7 @@ function SecurityCoverage({
           >
             <dt className="text-muted-foreground">{row.label}</dt>
             <dd
-              className={`tabular-nums ${row.warn ? "font-medium text-amber-700 dark:text-amber-400" : ""}`}
+              className={`tabular-nums ${row.warn ? "font-medium text-warning" : ""}`}
             >
               {row.value}
             </dd>

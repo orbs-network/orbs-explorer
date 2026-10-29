@@ -28,6 +28,7 @@ export interface ListOrder {
   };
   order: {
     witness: {
+      swapper?: string;
       deadline: string;
       epoch: number;
       chainId: number;

@@ -1,6 +1,7 @@
 "use client";
 
 import { useTheme } from "next-themes";
+import { CHART_COLORS } from "./chart-colors";
 
 const themes = {
   dark: {
@@ -11,6 +12,7 @@ const themes = {
     surface: "#29292b",
     background: "#121214",
     primary: "#7a89e9",
+    outcomes: CHART_COLORS.dark,
   },
   light: {
     text: "#121214",
@@ -20,6 +22,7 @@ const themes = {
     surface: "#ffffff",
     background: "#f6f6f6",
     primary: "#3346f2",
+    outcomes: CHART_COLORS.light,
   },
 };
 

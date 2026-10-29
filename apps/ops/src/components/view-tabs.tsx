@@ -42,7 +42,7 @@ export function ViewTabs({
         const next = new URLSearchParams(search.toString());
         if (value === fallback.value) next.delete(param);
         else next.set(param, value);
-        router.push(`${pathname}${next.size ? `?${next}` : ""}`, {
+        router.replace(`${pathname}${next.size ? `?${next}` : ""}`, {
           scroll: false,
         });
       }}
@@ -56,7 +56,7 @@ export function ViewTabs({
           <TabsTrigger
             key={tab.value}
             value={tab.value}
-            className="min-h-9 flex-none rounded-md border-0 px-3 text-xs text-muted-foreground hover:text-foreground data-[state=active]:bg-card data-[state=active]:font-semibold data-[state=active]:text-link data-[state=active]:shadow-none motion-reduce:transition-none dark:data-[state=active]:bg-card dark:data-[state=active]:text-link"
+            className="min-h-9 flex-none rounded-md border-0 px-3 text-xs text-muted-foreground hover:text-foreground data-[state=active]:bg-primary/15 data-[state=active]:font-semibold data-[state=active]:text-link data-[state=active]:shadow-[inset_0_-2px_0_var(--primary)] motion-reduce:transition-none dark:data-[state=active]:bg-primary/20 dark:data-[state=active]:text-link"
           >
             {tab.label}
           </TabsTrigger>

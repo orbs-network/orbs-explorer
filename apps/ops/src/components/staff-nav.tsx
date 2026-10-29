@@ -29,13 +29,6 @@ const groups = [
       {
         href: "/orders",
         label: "All orders",
-        description: "Find an order, review its details, or search by hash.",
-      },
-      {
-        href: "/failures",
-        label: "Errors & failures",
-        description:
-          "Understand what went wrong and which orders were affected.",
       },
     ],
   },
@@ -62,29 +55,6 @@ const groups = [
       },
     ],
   },
-  {
-    label: "Monitoring",
-    links: [
-      {
-        href: "/security",
-        label: "Service & security",
-        description:
-          "Check service health, worker coverage, unusual activity, and adapter addresses.",
-      },
-      {
-        href: "/adapters",
-        label: "Adapters",
-        description:
-          "Compare configured adapter addresses with order activity and check an address.",
-      },
-      {
-        href: "/data-quality",
-        label: "Data checks",
-        description:
-          "Find missing order details, inconsistent records, and gaps in app configuration.",
-      },
-    ],
-  },
 ];
 
 export function StaffNav({
@@ -108,7 +78,7 @@ export function StaffNav({
       brand={
         <Link
           href={scopedHref("/")}
-          aria-label="Orbs Operations home"
+          aria-label="Orbs Spot home"
           className="flex w-fit shrink-0 items-center gap-2 rounded-sm text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
           <Image
@@ -119,7 +89,7 @@ export function StaffNav({
             className="size-7 shrink-0"
           />
           <span className="whitespace-nowrap">
-            Orbs <span className="font-normal text-muted-foreground">Ops</span>
+            Orbs <span className="font-normal text-muted-foreground">Spot</span>
           </span>
         </Link>
       }

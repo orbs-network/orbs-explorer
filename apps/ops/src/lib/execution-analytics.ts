@@ -7,6 +7,7 @@ import {
   getFailureReason,
   hasExecutionErrors,
   hasLastExecutionError,
+  executionErrorCount,
   reportedNumber,
 } from "./order-diagnostics";
 import {
@@ -187,7 +188,7 @@ export function buildExecutionHealth(orders: ListOrder[], snapshot: number) {
     signals[priceCheck ? 0 : raw === "eligible" ? 1 : 2].orders.push(order);
     const summary = order.metadata.chunkSummary;
     const success = reportedNumber(summary?.success);
-    const errors = reportedNumber(summary?.error);
+    const errors = executionErrorCount(order);
     const expected = reportedNumber(order.metadata.expectedChunks);
     if (success !== undefined) {
       successfulChunks += success;
@@ -334,7 +335,7 @@ export function buildFailureAnalytics(orders: ListOrder[]) {
   let reportedErrors = 0;
   let errorCoverage = 0;
   for (const order of orders) {
-    const errors = reportedNumber(order.metadata.chunkSummary?.error);
+    const errors = executionErrorCount(order);
     if (errors !== undefined) {
       reportedErrors += errors;
       errorCoverage++;

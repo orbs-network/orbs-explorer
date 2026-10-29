@@ -1,6 +1,7 @@
 "use client";
 
 import { useId } from "react";
+import { useRouter } from "next/navigation";
 import { FilterCombobox, type FilterOption } from "@orbs/ui/filter-combobox";
 import {
   FilterDrawer,
@@ -21,13 +22,16 @@ import {
   type OrderScopeSelection,
 } from "@/hooks/use-order-scope";
 import { useInvestigationFilters } from "@/hooks/use-investigation-filters";
+import { FilterFieldsSkeleton } from "./loading-skeletons";
 import {
   DEFAULT_INVESTIGATION_FILTERS,
   getUsdRangeError,
   getPlacementRangeError,
+  getSwapperAddressError,
   type InvestigationFilters,
 } from "@/lib/order-investigation";
 import { investigationFilterQuery } from "@/lib/investigation-filter-query";
+import { orderHashSearchHref } from "@/lib/order-quick-views";
 import {
   InvestigationFilterFields,
   investigationBadges,
@@ -45,8 +49,8 @@ export function OrderFilters({
   partner,
   orderTypes,
   applicationMode = "draft",
-  omitStatus = false,
-  periodLabel = "Order placement period",
+  periodLabel = "Order period",
+  isLoading = false,
 }: {
   scope: ReturnType<typeof useOrderScope>;
   networkOptions: FilterOption[];
@@ -54,10 +58,11 @@ export function OrderFilters({
   partner?: { id: string; label: string };
   orderTypes?: string[];
   applicationMode?: FilterApplicationMode;
-  omitStatus?: boolean;
   periodLabel?: string | null;
+  isLoading?: boolean;
 }) {
   const id = useId();
+  const router = useRouter();
   const { filters } = useInvestigationFilters();
   const value: FilterValue = {
     scope: {
@@ -67,19 +72,36 @@ export function OrderFilters({
     },
     investigation: filters,
   };
-  const apply = (next: FilterValue) =>
-    scope.applyFilters(
+  const apply = (next: FilterValue) => {
+    const nextScope =
       orderTypes &&
-        (next.investigation.placedSince || next.investigation.placedUntil)
+      (next.investigation.placedSince || next.investigation.placedUntil)
         ? { ...next.scope, period: "all" }
-        : next.scope,
-      {
-        ...(orderTypes ? investigationFilterQuery(next.investigation) : {}),
-      },
-    );
+        : next.scope;
+    const investigation: Record<string, string | undefined> = orderTypes
+      ? investigationFilterQuery(next.investigation)
+      : {};
+    if (orderTypes) {
+      const query = new URLSearchParams(scope.query);
+      for (const [key, value] of Object.entries(investigation)) {
+        if (value === undefined) query.delete(key);
+        else query.set(key, value);
+      }
+      const href = orderHashSearchHref(next.investigation.query, {
+        ...nextScope,
+        partnerId: partner?.id,
+        query: query.toString(),
+      });
+      if (href) {
+        router.push(href);
+        return;
+      }
+    }
+    scope.applyFilters(nextScope, investigation);
+  };
   const clearValue: FilterValue = {
     scope: {
-      period: "7",
+      period: scope.period,
       chainIds: [],
       partnerIds: partner ? [partner.id] : [],
     },
@@ -89,6 +111,7 @@ export function OrderFilters({
   for (const chainId of scope.chainIds)
     badges.push({
       key: `chain-${chainId}`,
+      category: "network",
       icon: <NetworkIcon chainId={Number(chainId)} className="size-3.5" />,
       label: `Network: ${networkOptions.find((option) => option.value === chainId)?.label ?? chainId}`,
       onRemove: () =>
@@ -104,6 +127,7 @@ export function OrderFilters({
     for (const partnerId of scope.partnerIds)
       badges.push({
         key: `partner-${partnerId}`,
+        category: "trading-app",
         label: `App: ${partnerOptions.find((option) => option.value === partnerId)?.label ?? partnerId}`,
         onRemove: () =>
           apply({
@@ -132,16 +156,12 @@ export function OrderFilters({
           ? "Changes apply immediately."
           : "Choose your filters, then select Apply filters."
       }
-      emptyLabel={partner ? "All networks" : "All networks · all trading apps"}
+      emptyLabel=""
       toolbarControls={
         periodLabel === null ? undefined : (
-          <div className="flex shrink-0 items-center gap-2">
-            <label
-              htmlFor={`${id}-period`}
-              className="text-xs text-muted-foreground"
-            >
-              <span className="sm:hidden">Placed in</span>
-              <span className="hidden sm:inline">{periodLabel}</span>
+          <div className="mr-2 flex shrink-0 items-center gap-2">
+            <label htmlFor={`${id}-period`} className="sr-only">
+              {periodLabel}
             </label>
             <Select
               name="period"
@@ -153,7 +173,7 @@ export function OrderFilters({
               <SelectTrigger
                 id={`${id}-period`}
                 aria-label={periodLabel ?? undefined}
-                className="h-8 w-32 border-control-border bg-control-background text-xs"
+                className="h-8 w-36 border-control-border bg-control-background text-xs"
               >
                 <SelectValue>
                   {scope.period === "all"
@@ -177,6 +197,7 @@ export function OrderFilters({
       validate={
         orderTypes
           ? (draft) =>
+              getSwapperAddressError(draft.investigation.swapper) ||
               getUsdRangeError(
                 draft.investigation.minUsd,
                 draft.investigation.maxUsd,
@@ -188,43 +209,48 @@ export function OrderFilters({
           : undefined
       }
     >
-      {(draft, onChange, validation) => (
-        <>
-          <FilterCombobox
-            label="Networks"
-            emptyLabel="All networks"
-            options={networkOptions}
-            mode="multiple"
-            value={draft.scope.chainIds}
-            onChange={(chainIds) =>
-              onChange({ ...draft, scope: { ...draft.scope, chainIds } })
-            }
-          />
-          {!partner && (
+      {(draft, onChange, validation) => {
+        const scopeFields = isLoading ? (
+          <FilterFieldsSkeleton />
+        ) : (
+          <>
             <FilterCombobox
-              label="Trading apps"
-              emptyLabel="All trading apps"
-              options={partnerOptions}
+              label="Networks"
+              emptyLabel="Select networks"
+              options={networkOptions}
               mode="multiple"
-              value={draft.scope.partnerIds}
-              onChange={(partnerIds) =>
-                onChange({ ...draft, scope: { ...draft.scope, partnerIds } })
+              value={draft.scope.chainIds}
+              onChange={(chainIds) =>
+                onChange({ ...draft, scope: { ...draft.scope, chainIds } })
               }
             />
-          )}
-          {orderTypes && (
-            <InvestigationFilterFields
-              value={draft.investigation}
-              types={orderTypes}
-              validation={validation}
-              omitStatus={omitStatus}
-              onChange={(investigation) =>
-                onChange({ ...draft, investigation })
-              }
-            />
-          )}
-        </>
-      )}
+            {!partner && (
+              <FilterCombobox
+                label="Trading apps"
+                emptyLabel="All trading apps"
+                options={partnerOptions}
+                mode="multiple"
+                value={draft.scope.partnerIds}
+                onChange={(partnerIds) =>
+                  onChange({ ...draft, scope: { ...draft.scope, partnerIds } })
+                }
+              />
+            )}
+          </>
+        );
+        return orderTypes ? (
+          <InvestigationFilterFields
+            value={draft.investigation}
+            types={orderTypes}
+            validation={validation}
+            onChange={(investigation) => onChange({ ...draft, investigation })}
+          >
+            {scopeFields}
+          </InvestigationFilterFields>
+        ) : (
+          scopeFields
+        );
+      }}
     </FilterDrawer>
   );
 }

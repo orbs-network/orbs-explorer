@@ -4,6 +4,9 @@ import { QueryProvider } from "@orbs/ui/providers/query-provider";
 import { RouterProvider } from "@orbs/ui/providers/router-provider";
 import { ThemeProvider } from "@orbs/ui/providers/theme-provider";
 import { Toaster } from "@/components/toaster";
+import { ScrollToTop } from "@/components/scroll-to-top";
+import { Page } from "@/components/page";
+import { PageSkeleton } from "@/components/loading-skeletons";
 import "./globals.css";
 
 const sans = Montserrat({
@@ -19,8 +22,8 @@ const mono = JetBrains_Mono({
   display: "swap",
 });
 export const metadata: Metadata = {
-  title: "Orbs Operations",
-  description: "Internal Orbs operations dashboard",
+  title: "Orbs Spot",
+  description: "Orbs Spot dashboard",
   robots: { index: false, follow: false },
 };
 
@@ -41,7 +44,13 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <QueryProvider>
-            <RouterProvider>
+            <RouterProvider
+              fallback={
+                <Page>
+                  <PageSkeleton />
+                </Page>
+              }
+            >
               <a
                 href="#main-content"
                 className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[100] focus:rounded-md focus:bg-primary focus:p-3 focus:text-primary-foreground"
@@ -49,6 +58,7 @@ export default function RootLayout({
                 Skip to content
               </a>
               {children}
+              <ScrollToTop />
               <Toaster />
             </RouterProvider>
           </QueryProvider>

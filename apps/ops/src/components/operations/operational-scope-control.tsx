@@ -9,6 +9,8 @@ import {
   SelectValue,
 } from "@orbs/ui/controls/select";
 import type { OperationalPlacementScope } from "@/lib/operational-scope";
+import { orderPeriodRange } from "@/lib/order-period";
+import { InlineSkeleton } from "@/components/loading-skeletons";
 
 export function OperationalScopeControl({
   placement,
@@ -17,6 +19,7 @@ export function OperationalScopeControl({
   period,
   isLoading = false,
   isUnavailable = false,
+  hasAllDatesCount = true,
 }: {
   placement: OperationalPlacementScope;
   setPlacement: (value: OperationalPlacementScope) => void;
@@ -24,10 +27,10 @@ export function OperationalScopeControl({
   period: string;
   isLoading?: boolean;
   isUnavailable?: boolean;
+  hasAllDatesCount?: boolean;
 }) {
   const id = useId();
-  const range =
-    period === "all" ? "all available history" : `the last ${period} days`;
+  const range = orderPeriodRange(period);
   return (
     <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
       <div className="flex flex-wrap items-center gap-2">
@@ -50,16 +53,21 @@ export function OperationalScopeControl({
         </Select>
       </div>
       <p
-        role="status"
+        role={isLoading && !isUnavailable ? undefined : "status"}
         className="max-w-2xl text-xs leading-relaxed text-muted-foreground"
       >
-        {isUnavailable
-          ? "Current-order scope is unavailable until complete order history can be loaded."
-          : isLoading
-            ? "Loading the current order snapshot…"
-            : placement === "all"
-              ? `${counts.total.toLocaleString()} currently active · all placement dates`
-              : `${counts.shown.toLocaleString()} currently active · placed in ${range}. ${counts.excluded.toLocaleString()} older active orders excluded.`}
+        {isUnavailable ? (
+          "Current-order scope is unavailable until complete order history can be loaded."
+        ) : isLoading ? (
+          <InlineSkeleton
+            label="Loading the current order snapshot"
+            className="w-64"
+          />
+        ) : placement === "all" ? (
+          `${counts.total.toLocaleString()} currently active · all placement dates`
+        ) : (
+          `${counts.shown.toLocaleString()} currently active · placed in ${range}.${hasAllDatesCount ? ` ${counts.excluded.toLocaleString()} older active orders excluded.` : ""}`
+        )}
       </p>
     </div>
   );

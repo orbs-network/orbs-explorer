@@ -1,5 +1,16 @@
 "use client";
 
+import {
+  Table,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
+  TableCaption,
+} from "@orbs/ui/controls/table";
+
+import { Button } from "@orbs/ui/controls/button";
 import { useMemo } from "react";
 import type { EChartsOption } from "echarts";
 import { ChartPlot } from "@/components/charts/chart-plot";
@@ -121,33 +132,41 @@ export function PlacementHeatmap() {
           role="region"
           aria-label="UTC placement data"
         >
-          <table className="w-full text-left text-xs">
-            <caption className="sr-only">
+          <Table
+            containerProps={{ className: "overflow-visible" }}
+            className="w-full text-left text-xs"
+          >
+            <TableCaption className="sr-only">
               Order placements for each weekday and UTC hour
-            </caption>
-            <thead className="sticky top-0 bg-card text-muted-foreground">
-              <tr>
-                <th scope="col" className="px-2 py-2 font-medium">
+            </TableCaption>
+            <TableHeader className="sticky top-0 bg-card text-muted-foreground">
+              <TableRow>
+                <TableHead scope="col" className="px-2 py-2 font-medium">
                   UTC placement hour
-                </th>
-                <th scope="col" className="px-2 py-2 text-right font-medium">
+                </TableHead>
+                <TableHead
+                  scope="col"
+                  className="px-2 py-2 text-left font-medium"
+                >
                   Orders
-                </th>
-              </tr>
-            </thead>
-            <tbody>
+                </TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               {data.cells.map((cell, index) => (
-                <tr
+                <TableRow
                   key={`${cell.day}-${cell.hour}`}
                   className="border-t border-border/50"
                 >
-                  <th scope="row" className="px-2 py-2 font-normal">
+                  <TableHead scope="row" className="px-2 py-2 font-normal">
                     {UTC_WEEKDAYS[cell.day]}{" "}
                     {cell.hour.toString().padStart(2, "0")}:00–
                     {cell.hour.toString().padStart(2, "0")}:59
-                  </th>
-                  <td className="px-2 py-2 text-right">
-                    <button
+                  </TableHead>
+                  <TableCell className="px-2 py-2 text-left">
+                    <Button
+                      variant="ghost"
+                      size="content"
                       type="button"
                       disabled={!cell.orders.length}
                       className={inspectClass}
@@ -156,12 +175,12 @@ export function PlacementHeatmap() {
                     >
                       {cell.orders.length.toLocaleString()}
                       {cell.orders.length ? " →" : ""}
-                    </button>
-                  </td>
-                </tr>
+                    </Button>
+                  </TableCell>
+                </TableRow>
               ))}
-            </tbody>
-          </table>
+            </TableBody>
+          </Table>
         </div>
       </details>
       <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-xs text-muted-foreground">
@@ -171,7 +190,9 @@ export function PlacementHeatmap() {
           {data.excluded.length > 0 && (
             <>
               {" "}
-              <button
+              <Button
+                variant="ghost"
+                size="content"
                 type="button"
                 className={inspectClass}
                 onClick={() =>
@@ -183,12 +204,14 @@ export function PlacementHeatmap() {
                 }
               >
                 Inspect {data.excluded.length.toLocaleString()} excluded →
-              </button>
+              </Button>
             </>
           )}
         </span>
         {data.maximum > 0 && (
-          <button
+          <Button
+            variant="ghost"
+            size="content"
             type="button"
             className={inspectClass}
             onClick={() =>
@@ -198,7 +221,7 @@ export function PlacementHeatmap() {
             Peak: {UTC_WEEKDAYS[peak.day].slice(0, 3)}{" "}
             {peak.hour.toString().padStart(2, "0")}:00 UTC ·{" "}
             {peak.orders.length.toLocaleString()} orders →
-          </button>
+          </Button>
         )}
       </div>
     </Panel>

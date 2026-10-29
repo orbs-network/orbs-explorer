@@ -5,6 +5,7 @@ import {
   useId,
   useMemo,
   useRef,
+  useState,
   useSyncExternalStore,
   type KeyboardEvent,
 } from "react";
@@ -22,6 +23,7 @@ import { SVGRenderer } from "echarts/renderers";
 import { LegacyGridContainLabel } from "echarts/features";
 import type { EChartsOption } from "echarts";
 import { useChartTheme } from "./chart-theme";
+import { ChartPlotSkeleton } from "../loading-skeletons";
 
 registerCharts([
   BarChart,
@@ -82,6 +84,7 @@ export function ChartPlot({
 }) {
   const container = useRef<HTMLDivElement>(null);
   const chart = useRef<EChartsType | null>(null);
+  const [ready, setReady] = useState(false);
   const select = useRef(onSelect);
   const keyboardIndex = useRef(-1);
   const instructionsId = useId();
@@ -147,6 +150,7 @@ export function ChartPlot({
       if (!chart.current) {
         const instance = init(element, undefined, { renderer: "svg" });
         chart.current = instance;
+        instance.on("finished", () => setReady(true));
         instance.on("click", (event) => {
           if (
             event.componentType === "series" &&
@@ -254,21 +258,32 @@ export function ChartPlot({
 
   return (
     <>
-      <div
-        ref={container}
-        role="img"
-        aria-label={label}
-        aria-describedby={onSelect ? instructionsId : undefined}
-        tabIndex={onSelect ? 0 : undefined}
-        onKeyDown={onKeyDown}
-        onBlur={() => {
-          chart.current?.dispatchAction({ type: "hideTip" });
-          chart.current?.dispatchAction({ type: "downplay" });
-        }}
-        data-chart-engine="echarts"
-        className={`min-w-0 w-full rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring ${className}`}
-        style={{ height }}
-      />
+      <div className="relative min-w-0" style={{ height }}>
+        {!ready && (
+          <div className="pointer-events-none absolute inset-0">
+            <ChartPlotSkeleton
+              label={`Loading chart: ${label}`}
+              height={height}
+            />
+          </div>
+        )}
+        <div
+          ref={container}
+          role="img"
+          aria-label={label}
+          aria-hidden={!ready}
+          aria-describedby={onSelect ? instructionsId : undefined}
+          tabIndex={ready && onSelect ? 0 : undefined}
+          onKeyDown={onKeyDown}
+          onBlur={() => {
+            chart.current?.dispatchAction({ type: "hideTip" });
+            chart.current?.dispatchAction({ type: "downplay" });
+          }}
+          data-chart-engine="echarts"
+          className={`min-w-0 w-full rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring ${!ready ? "invisible" : ""} ${className}`}
+          style={{ height }}
+        />
+      </div>
       {onSelect && (
         <p id={instructionsId} className="sr-only">
           Use the arrow keys to explore data, then press Enter to inspect

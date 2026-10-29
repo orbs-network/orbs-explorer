@@ -1,22 +1,27 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Info, Link as LinkIcon, RefreshCw } from "lucide-react";
+import { ArrowLeft, ClipboardCopy, RefreshCw } from "lucide-react";
 import { getSpotOrder } from "@orbs/domain/twap/api";
+import { REACT_QUERY_KEYS } from "@orbs/domain/consts";
+import type { ListOrder } from "@orbs/domain/twap/types";
 import { useSpotPartner } from "@orbs/domain/twap/hooks/use-spot-partner";
+import { useSpotConfig } from "@orbs/domain/twap/hooks/use-spot-config";
+import { useToken } from "@orbs/domain/hooks/use-token";
 import { useCopy } from "@orbs/domain/hooks/use-copy";
 import { getTwapOrderChainId } from "@orbs/domain/twap/utils";
 import { shortenAddress } from "@orbs/domain/utils/utils";
 import { Button } from "@orbs/ui/controls/button";
 import { Copy } from "@orbs/ui/controls/copy";
-import { Spinner } from "@orbs/ui/controls/spinner";
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
 } from "@orbs/ui/controls/tooltip";
+import { OrderDetailSkeleton } from "@/components/loading-skeletons";
 import { EmptyState, Panel } from "@/components/operations/primitives";
 import { OrderPayload } from "./order-payload";
 import { formatOrderDate } from "@/components/orders-overview/overview-display";
@@ -26,15 +31,22 @@ import {
   orderDetailHref,
   ordersScopeHref,
 } from "@/lib/order-investigation";
-import { useOrderScope } from "@/hooks/use-order-scope";
+import { useOrderNavigationScope } from "@/hooks/use-order-navigation-scope";
+import { partnerOrdersTabHref } from "@/lib/partner-navigation";
 import { BackButton } from "@/components/back-button";
 import { OrderLookup } from "./order-lookup";
 import { ViewTabs } from "@/components/view-tabs";
 import { OrderClientLogs } from "./order-client-logs";
 import { OrderSourceOptions } from "./order-source-options";
-import { OrderSummary, OrderTerms, OrderTimeline } from "./order-detail-parts";
-import { spotOverviewOrdersQueryOptions } from "@/lib/spot-overview-queries";
+import {
+  OrderIdentity,
+  OrderSummary,
+  OrderTerms,
+  OrderTimeline,
+} from "./order-detail-parts";
 import { matchingListOrder } from "@/lib/order-evidence";
+import { ExportOrder } from "@/components/orders-overview/export-orders";
+import { SnapshotFreshness } from "@/components/operations/snapshot-freshness";
 
 export function OrderDetail({
   hash,
@@ -45,7 +57,7 @@ export function OrderDetail({
 }) {
   const router = useRouter();
   const queryClient = useQueryClient();
-  const navigationScope = useOrderScope();
+  const navigationScope = useOrderNavigationScope();
   const searchParams = useSearchParams();
   const copy = useCopy();
   const detailHrefForSource = (selectedSource?: "v1" | "v2") => {
@@ -72,15 +84,33 @@ export function OrderDetail({
   });
   const full = query.data;
   const list = full ? fullOrderToInspectionOrder(full, source) : undefined;
-  const historyOptions = spotOverviewOrdersQueryOptions();
-  const cachedHistory = queryClient.getQueryData(historyOptions.queryKey);
-  const cachedList = full
-    ? matchingListOrder(full, cachedHistory ?? [])
+  const cached = full
+    ? queryClient
+        .getQueryCache()
+        .findAll({ queryKey: [REACT_QUERY_KEYS.spotOrders, "overview"] })
+        .flatMap(({ state }) => {
+          const order = matchingListOrder(
+            full,
+            Array.isArray(state.data) ? (state.data as ListOrder[]) : [],
+          );
+          return order ? [{ order, updatedAt: state.dataUpdatedAt }] : [];
+        })
+        .sort((a, b) => b.updatedAt - a.updatedAt)[0]
     : undefined;
-  const listUpdatedAt = queryClient.getQueryState(
-    historyOptions.queryKey,
-  )?.dataUpdatedAt;
+  const cachedList = cached?.order;
+  const listUpdatedAt = cached?.updatedAt;
   const chainId = getTwapOrderChainId(full ?? undefined);
+  const configQuery = useSpotConfig();
+  const inputToken = useToken(full?.order.witness.input?.token, chainId);
+  const outputToken = useToken(full?.order.witness.output?.token, chainId);
+  // Keep the initial placeholder until amounts and app identity can render
+  // together. Cached content stays visible during subsequent refreshes.
+  const isLoading =
+    query.isPending ||
+    Boolean(
+      full &&
+        (configQuery.isPending || inputToken.isLoading || outputToken.isLoading),
+    );
   const app = useSpotPartner(full?.order.witness.exchange.adapter, chainId);
   const adapterSearch = new URLSearchParams(
     ordersScopeHref(navigationScope).split("?")[1],
@@ -93,85 +123,127 @@ export function OrderDetail({
   const adapter = full?.order.witness.exchange.adapter;
   if (adapter) adapterSearch.set("order_adapter", adapter);
   if (full?.source) adapterSearch.set("order_source", full.source);
-  const adapterOrdersHref = adapter ? `/orders?${adapterSearch}` : undefined;
+  const adapterOrdersHref = adapter
+    ? navigationScope.partnerId
+      ? partnerOrdersTabHref(navigationScope.partnerId, {
+          query: adapterSearch.toString(),
+        })
+      : `/orders?${adapterSearch}`
+    : undefined;
   return (
-    <div className="space-y-4">
-      <BackButton fallbackHref={ordersScopeHref(navigationScope)} />
-      <header className="flex flex-wrap items-center justify-between gap-3">
-        <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
-            <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">
-              Order details
-            </h1>
-            <div className="rounded-md bg-muted/30 px-2" title={hash}>
-              <Copy text={shortenAddress(hash)} value={hash} tooltip={hash} />
-            </div>
+    <div className="space-y-3">
+      <nav aria-label="Order navigation">
+        {navigationScope.partnerId ? (
+          <Link
+            href={partnerOrdersTabHref(
+              navigationScope.partnerId,
+              navigationScope,
+            )}
+            aria-label="Back to orders"
+            className="inline-flex min-h-8 items-center gap-1.5 rounded text-xs text-link hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            <ArrowLeft aria-hidden className="size-4" />
+            Back to orders
+          </Link>
+        ) : (
+          <BackButton fallbackHref={ordersScopeHref(navigationScope)} />
+        )}
+      </nav>
+      <header className="flex flex-wrap items-center gap-x-5 gap-y-2">
+        <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
+          <h1 className="text-xl font-semibold tracking-tight">
+            Order details
+          </h1>
+          <div className="rounded-md bg-muted/30 px-2" title={hash}>
+            <Copy text={shortenAddress(hash)} value={hash} tooltip={hash} />
           </div>
-          {full && (
-            <div className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground">
-              <span>Retrieved {formatOrderDate(query.dataUpdatedAt)}</span>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    type="button"
-                    aria-label="About this order record"
-                    className="rounded p-1 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                  >
-                    <Info aria-hidden className="size-3.5" />
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  Direct order lookup. Overview filters do not restrict this
-                  record.
-                </TooltipContent>
-              </Tooltip>
-            </div>
-          )}
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={!valid}
-            aria-label="Copy order link"
-            onClick={() =>
-              copy(`${window.location.origin}${detailHrefForSource(source)}`)
-            }
-          >
-            <LinkIcon aria-hidden className="size-3.5" />
-            <span className="hidden sm:inline">Copy link</span>
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={!valid || query.isFetching}
-            aria-label="Refresh order"
-            onClick={() => void query.refetch()}
-          >
-            <RefreshCw
-              aria-hidden
-              className={`size-4 ${query.isFetching ? "animate-spin motion-reduce:animate-none" : ""}`}
-            />
-            <span className="sm:hidden">Refresh</span>
-            <span className="hidden sm:inline">Refresh order</span>
-          </Button>
-          {!full && valid && (
-            <OrderSourceOptions
-              value={source ?? "all"}
-              onChange={(value) =>
-                router.push(
-                  detailHrefForSource(
-                    value === "all" ? undefined : (value as "v1" | "v2"),
-                  ),
-                  { scroll: false },
-                )
-              }
+        <div className="ml-auto flex min-w-0 max-w-full flex-wrap items-center justify-end gap-x-3 gap-y-2">
+          {full && !isLoading && (
+            <SnapshotFreshness
+              updatedAt={query.dataUpdatedAt}
+              refreshing={query.isFetching}
+              failed={query.isError}
+              mode="manual"
             />
           )}
+          <div className="flex shrink-0 items-center gap-2">
+            {full && list && !isLoading && (
+              <ExportOrder
+                order={full}
+                summary={cachedList ?? list}
+                retrievedAt={query.dataUpdatedAt}
+              />
+            )}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="size-9"
+                  disabled={!valid}
+                  aria-label="Copy order link"
+                  onClick={() =>
+                    copy(
+                      `${window.location.origin}${detailHrefForSource(source)}`,
+                    )
+                  }
+                >
+                  <ClipboardCopy aria-hidden className="size-3.5" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Copy link</TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="size-9"
+                  disabled={!valid || query.isFetching || isLoading}
+                  aria-label="Refresh order"
+                  aria-busy={query.isFetching || isLoading}
+                  onClick={() => void query.refetch()}
+                >
+                  <RefreshCw
+                    aria-hidden
+                    className={`size-4 ${query.isFetching ? "animate-spin motion-reduce:animate-none" : ""}`}
+                  />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                {query.isFetching ? "Refreshing order" : "Refresh order"}
+              </TooltipContent>
+            </Tooltip>
+            <span role="status" className="sr-only">
+              {isLoading
+                ? "Loading order details"
+                : query.isFetching
+                  ? "Refreshing order"
+                  : query.isError
+                    ? "Order refresh failed"
+                    : full
+                      ? "Order updated"
+                      : ""}
+            </span>
+            {!full && valid && !isLoading && (
+              <OrderSourceOptions
+                value={source ?? "all"}
+                onChange={(value) =>
+                  router.push(
+                    detailHrefForSource(
+                      value === "all" ? undefined : (value as "v1" | "v2"),
+                    ),
+                    { scroll: false },
+                  )
+                }
+              />
+            )}
+          </div>
         </div>
       </header>
       {query.isError && full && (
-        <div role="alert" className="rounded-lg bg-amber-500/10 p-3 text-sm">
+        <div role="alert" className="rounded-lg bg-warning-surface p-3 text-sm">
           <p className="font-medium">Order refresh failed</p>
           <p className="mt-1 text-muted-foreground">
             Showing the last successful record from{" "}
@@ -185,14 +257,8 @@ export function OrderDetail({
           title="Invalid order hash"
           description="Enter a full order hash beginning with 0x followed by 64 hexadecimal characters."
         />
-      ) : query.isPending ? (
-        <div
-          role="status"
-          className="flex min-h-48 items-center justify-center gap-3 text-sm text-muted-foreground"
-        >
-          <Spinner className="size-6" />
-          Loading full order and execution history…
-        </div>
+      ) : isLoading ? (
+        <OrderDetailSkeleton />
       ) : query.isError && !full ? (
         <div role="alert" className="rounded-xl bg-destructive/10 p-5">
           <h2 className="font-semibold">Order details could not be loaded</h2>
@@ -216,6 +282,13 @@ export function OrderDetail({
         />
       ) : (
         <>
+          <OrderIdentity
+            full={full}
+            list={list}
+            appName={app.partnerName}
+            appId={app.partnerId}
+            queryString={searchParams.toString()}
+          />
           <ViewTabs
             label="Order detail views"
             param="order_view"
@@ -229,9 +302,6 @@ export function OrderDetail({
                     retrievedAt={query.dataUpdatedAt}
                     full={full}
                     list={list}
-                    appName={app.partnerName}
-                    appId={app.partnerId}
-                    queryString={searchParams.toString()}
                     cachedList={cachedList}
                     listUpdatedAt={listUpdatedAt}
                   />
@@ -283,7 +353,7 @@ export function OrderDetail({
           />
         </>
       )}
-      {!full && !query.isPending && (
+      {!full && !isLoading && (
         <Panel title="Look up another order">
           <OrderLookup
             initialHash={valid ? "" : hash}
@@ -304,8 +374,7 @@ function TechnicalEvidence({
   initial: string | null;
   full: Parameters<typeof OrderPayload>[0]["full"];
 }) {
-  const [logs, setLogs] = useState(initial === "logs"),
-    [payload, setPayload] = useState(initial === "payload");
+  const [logs, setLogs] = useState(initial === "logs");
   return (
     <div className="space-y-4">
       <details
@@ -322,20 +391,10 @@ function TechnicalEvidence({
           </div>
         )}
       </details>
-      <details
-        className="rounded-xl bg-card p-4"
-        open={payload}
-        onToggle={(event) => setPayload(event.currentTarget.open)}
-      >
-        <summary className="cursor-pointer rounded-sm text-sm font-medium focus-visible:ring-2 focus-visible:ring-ring">
-          Raw service data (JSON)
-        </summary>
-        {payload && (
-          <div className="mt-4">
-            <OrderPayload full={full} />
-          </div>
-        )}
-      </details>
+      <section className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-card p-4">
+        <h2 className="text-sm font-medium">Raw service data</h2>
+        <OrderPayload full={full} defaultOpen={initial === "payload"} />
+      </section>
     </div>
   );
 }

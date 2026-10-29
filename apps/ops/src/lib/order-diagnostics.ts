@@ -3,7 +3,11 @@ import {
   getOrderValueUsd,
   getOverviewOrderStatus,
 } from "@orbs/domain/twap/utils/orders-overview";
-import { listOrderMessage } from "./order-evidence";
+import {
+  isContractCancellation,
+  isErrorStatus,
+  listOrderMessage,
+} from "./order-evidence";
 
 export function reportedNumber(value: unknown): number | undefined {
   if (
@@ -16,16 +20,30 @@ export function reportedNumber(value: unknown): number | undefined {
 }
 
 export function hasLastExecutionError(order: ListOrder) {
-  return /^(error|failed)$/i.test(
-    order.metadata.chunkSummary?.lastChunkStatus ?? "",
+  const summary = order.metadata.chunkSummary;
+  return (
+    isErrorStatus(summary?.lastChunkStatus) &&
+    !isContractCancellation(summary?.lastChunkDescription)
+  );
+}
+
+/** Exclude the known cancellation event, retaining all other reported errors. */
+export function executionErrorCount(order: ListOrder): number | undefined {
+  const summary = order.metadata.chunkSummary;
+  const reported = reportedNumber(summary?.error);
+  if (reported === undefined) return;
+  return Math.max(
+    0,
+    reported -
+      Number(
+        isErrorStatus(summary?.lastChunkStatus) &&
+          isContractCancellation(summary?.lastChunkDescription),
+      ),
   );
 }
 
 export function hasExecutionErrors(order: ListOrder) {
-  return (
-    (reportedNumber(order.metadata.chunkSummary?.error) ?? 0) > 0 ||
-    hasLastExecutionError(order)
-  );
+  return (executionErrorCount(order) ?? 0) > 0 || hasLastExecutionError(order);
 }
 
 export function getFailureReason(order: ListOrder): string | undefined {
@@ -48,7 +66,7 @@ export function buildOrderDiagnostics(orders: ListOrder[], snapshot: number) {
       reportedNumber(order.metadata.chunkSummary.success) !== undefined,
   );
   const failed = summaries.filter(
-    (order) => reportedNumber(order.metadata.chunkSummary.error) !== undefined,
+    (order) => executionErrorCount(order) !== undefined,
   );
   const expected = orders.filter(
     (order) => reportedNumber(order.metadata.expectedChunks) !== undefined,
@@ -108,8 +126,7 @@ export function buildOrderDiagnostics(orders: ListOrder[], snapshot: number) {
     ),
     successfulCoverage: successful.length,
     errorChunks: failed.reduce(
-      (sum, order) =>
-        sum + (reportedNumber(order.metadata.chunkSummary.error) ?? 0),
+      (sum, order) => sum + (executionErrorCount(order) ?? 0),
       0,
     ),
     errorCoverage: failed.length,

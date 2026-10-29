@@ -9,6 +9,9 @@ import {
   type ReactNode,
 } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { spotOverviewOrdersQueryOptions } from "../apps/ops/src/lib/spot-overview-queries";
+import { historyExchangeForPartners } from "../apps/ops/src/lib/spot-history-scope";
 import type { ListOrder, SpotConfig } from "../packages/domain/src/twap/types";
 import { buildSpotOverview } from "../apps/ops/src/lib/overview-data";
 import { buildActiveOrderAttention } from "../apps/ops/src/lib/attention-queue";
@@ -79,7 +82,23 @@ const data = {
 } as ReturnType<typeof useSpotOverview>;
 const requireOps = createRequire(resolve("apps/ops/package.json"));
 
-function captureOperational(search = "") {
+function captureOperational(search = "", seedAllDates = true) {
+  const client = new QueryClient({
+    defaultOptions: { queries: { gcTime: Infinity, retry: false } },
+  });
+  if (seedAllDates)
+    client.setQueryData(
+      spotOverviewOrdersQueryOptions({
+        chainIds: selected.chainIds,
+        exchange: historyExchangeForPartners(
+          config,
+          selected.partnerIds,
+          selected.chainIds,
+        ),
+      }).queryKey,
+      records,
+      { updatedAt: snapshot },
+    );
   const updates: string[] = [];
   const adapter = {
     location: { search },
@@ -106,17 +125,22 @@ function captureOperational(search = "") {
   }
   renderToStaticMarkup(
     createElement(
-      QueryParamProvider,
-      { adapter: Adapter },
-      createElement(Capture),
+      QueryClientProvider,
+      { client },
+      createElement(
+        QueryParamProvider,
+        { adapter: Adapter },
+        createElement(Capture),
+      ),
     ),
   );
   assert.ok(captured);
+  client.clear();
   return { operational: captured, updates };
 }
 
 test("current operations include a 30-day-old active order independently of the reporting placement period", () => {
-  const { operational } = captureOperational("?period=7");
+  const { operational } = captureOperational("?period=7&active_scope=all");
   assert.equal(operational.placement, "all");
   assert.deepEqual(operational.counts, { total: 2, shown: 2, excluded: 0 });
   assert.equal(operational.scope.period, "all");
@@ -144,7 +168,7 @@ test("placement narrowing is explicit, counts exclusions, and preserves the narr
   );
   assert.equal(operational.scope.period, "7");
   operational.setPlacement("all");
-  assert.equal(new URLSearchParams(updates[0]).has("active_scope"), false);
+  assert.equal(new URLSearchParams(updates[0]).get("active_scope"), "all");
   assert.equal(
     new URLSearchParams(updates[0]).get("period"),
     "7",
@@ -153,7 +177,7 @@ test("placement narrowing is explicit, counts exclusions, and preserves the narr
 });
 
 test("global and partner active checks use the same rules and every all-history link reproduces the active cohort", () => {
-  const { operational } = captureOperational();
+  const { operational } = captureOperational("?active_scope=all");
   const issues = buildActiveOrderAttention(
     operational.data.orders,
     snapshot,
@@ -202,10 +226,17 @@ test("global and partner active checks use the same rules and every all-history 
   }
 });
 
-test("invalid operational scope falls back to all dates and navigation clears hidden local filters", () => {
+test("default and invalid operational scopes follow the selected period without requiring all-date history", () => {
+  const { operational } = captureOperational("", false);
+  assert.equal(operational.placement, "placement");
+  assert.equal(operational.hasAllDatesCount, false);
+  assert.deepEqual(
+    operational.data.orders.map((item) => item.hash),
+    ["recent-active"],
+  );
   assert.equal(
     captureOperational("?active_scope=invalid").operational.placement,
-    "all",
+    "placement",
   );
   const href = ordersScopeHref(operationalNavigationScope(selected));
   const query = new URL(href, "https://ops.test").searchParams;

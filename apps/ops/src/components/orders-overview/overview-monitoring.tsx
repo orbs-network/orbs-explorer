@@ -1,11 +1,20 @@
 "use client";
 
+import {
+  Table,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
+} from "@orbs/ui/controls/table";
+
 import { useMemo } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { Network } from "@orbs/ui/controls/network";
 import { Button } from "@orbs/ui/controls/button";
-import { Spinner } from "@orbs/ui/controls/spinner";
+import { ChartSkeleton } from "@/components/loading-skeletons";
 import { Panel } from "@/components/operations/primitives";
 import { useOperationsData } from "@/components/operations/operations-view";
 import { ViewTabs } from "@/components/view-tabs";
@@ -26,14 +35,7 @@ import { attentionOrdersHref } from "@/lib/attention-queue";
 
 const ActivityChart = dynamic(() => import("./overview-activity-chart"), {
   ssr: false,
-  loading: () => (
-    <div
-      role="status"
-      className="flex h-56 items-center justify-center text-xs text-muted-foreground"
-    >
-      Loading activity chart…
-    </div>
-  ),
+  loading: () => <ChartSkeleton />,
 });
 const inspectClass =
   "inline-flex min-h-8 items-center gap-1 rounded text-xs text-link enabled:hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:text-muted-foreground";
@@ -87,7 +89,7 @@ export function OverviewMonitoring() {
         description="Order processing is assessed separately from API connectivity."
       >
         <div
-          role={isError ? "alert" : "status"}
+          role={isError ? "alert" : undefined}
           className="flex min-h-40 flex-col items-center justify-center gap-3 text-center text-sm"
         >
           {isError ? (
@@ -101,10 +103,7 @@ export function OverviewMonitoring() {
               </Button>
             </>
           ) : (
-            <>
-              <Spinner className="size-6 text-primary" />
-              <p className="text-muted-foreground">Loading order activity…</p>
-            </>
+            <ChartSkeleton label="Loading order activity" />
           )}
         </div>
       </Panel>
@@ -163,30 +162,33 @@ export function OverviewMonitoring() {
               <div className="space-y-2">
                 {data.networks.length ? (
                   <div className="max-h-64 overflow-auto rounded-lg">
-                    <table className="w-full text-left text-xs tabular-nums">
-                      <thead className="sticky top-0 bg-card text-[11px] text-muted-foreground">
-                        <tr>
-                          <th scope="col" className="p-2">
+                    <Table
+                      containerProps={{ className: "overflow-visible" }}
+                      className="w-full text-left text-xs tabular-nums"
+                    >
+                      <TableHeader className="sticky top-0 bg-card text-[11px] text-muted-foreground">
+                        <TableRow>
+                          <TableHead scope="col" className="p-2">
                             Network
-                          </th>
-                          <th scope="col" className="p-2 text-right">
+                          </TableHead>
+                          <TableHead scope="col" className="p-2 text-left">
                             Orders
-                          </th>
-                          <th scope="col" className="p-2 text-right">
+                          </TableHead>
+                          <TableHead scope="col" className="p-2 text-left">
                             Failed
-                          </th>
-                          <th scope="col" className="p-2 text-right">
+                          </TableHead>
+                          <TableHead scope="col" className="p-2 text-left">
                             Latest attempt failed
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody>
+                          </TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
                         {data.networks.map((network) => (
-                          <tr
+                          <TableRow
                             key={network.chainId}
                             className="border-t border-border"
                           >
-                            <th
+                            <TableHead
                               scope="row"
                               className="p-2 text-left font-normal"
                             >
@@ -200,8 +202,8 @@ export function OverviewMonitoring() {
                                     : undefined
                                 }
                               />
-                            </th>
-                            <td className="p-2 text-right">
+                            </TableHead>
+                            <TableCell className="p-2 text-left">
                               <Link
                                 prefetch={false}
                                 href={attentionOrdersHref(
@@ -214,8 +216,8 @@ export function OverviewMonitoring() {
                               >
                                 {network.orders.length}
                               </Link>
-                            </td>
-                            <td className="p-2 text-right">
+                            </TableCell>
+                            <TableCell className="p-2 text-left">
                               <Link
                                 prefetch={false}
                                 href={attentionOrdersHref(
@@ -228,8 +230,8 @@ export function OverviewMonitoring() {
                               >
                                 {network.failed.length}
                               </Link>
-                            </td>
-                            <td className="p-2 text-right">
+                            </TableCell>
+                            <TableCell className="p-2 text-left">
                               <Link
                                 prefetch={false}
                                 href={attentionOrdersHref(
@@ -242,11 +244,11 @@ export function OverviewMonitoring() {
                               >
                                 {network.latestErrors.length}
                               </Link>
-                            </td>
-                          </tr>
+                            </TableCell>
+                          </TableRow>
                         ))}
-                      </tbody>
-                    </table>
+                      </TableBody>
+                    </Table>
                   </div>
                 ) : (
                   <p className="py-6 text-center text-sm text-muted-foreground">

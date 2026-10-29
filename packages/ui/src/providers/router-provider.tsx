@@ -46,9 +46,15 @@ function RouterProviderInner({ children }: { children: React.ReactNode }) {
   );
 }
 
-export function RouterProvider({ children }: { children: React.ReactNode }) {
+export function RouterProvider({
+  children,
+  fallback = null,
+}: {
+  children: React.ReactNode;
+  fallback?: React.ReactNode;
+}) {
   return (
-    <Suspense fallback={null}>
+    <Suspense fallback={fallback}>
       <RouterProviderInner>{children}</RouterProviderInner>
     </Suspense>
   );

@@ -7,7 +7,10 @@ import { OrderFilters } from "@/components/order-filters";
 import { useOrderScope } from "@/hooks/use-order-scope";
 import { useSpotOverview } from "@/hooks/use-spot-overview";
 import { Button } from "@orbs/ui/controls/button";
-import { Spinner } from "@orbs/ui/controls/spinner";
+import {
+  AnalyticsSkeleton,
+  InlineSkeleton,
+} from "@/components/loading-skeletons";
 import { ExportOrders } from "@/components/orders-overview/export-orders";
 import { SnapshotFreshness } from "@/components/operations/snapshot-freshness";
 import { OperationsDataProvider } from "@/components/operations/operations-view";
@@ -15,14 +18,7 @@ import { InfoHint } from "@/components/info-hint";
 
 const OrderCharts = dynamic(() => import("@/components/charts/order-charts"), {
   ssr: false,
-  loading: () => (
-    <p
-      role="status"
-      className="py-16 text-center text-sm text-muted-foreground"
-    >
-      Preparing charts…
-    </p>
-  ),
+  loading: () => <AnalyticsSkeleton label="Loading activity charts" />,
 });
 
 export default function ChartsPage() {
@@ -48,7 +44,17 @@ export default function ChartsPage() {
                 failed={overview.isRefreshError}
               />
             )}
-            <ExportOrders orders={overview.orders} />
+            {overview.isLoading ? (
+              <InlineSkeleton
+                label="Preparing order export"
+                className="h-8 w-24"
+              />
+            ) : (
+              <ExportOrders
+                orders={overview.orders}
+                snapshotAt={overview.updatedAt}
+              />
+            )}
             <Button
               variant="outline"
               size="icon"
@@ -65,6 +71,7 @@ export default function ChartsPage() {
           </div>
         </header>
         <OrderFilters
+          isLoading={overview.isLoading}
           scope={scope}
           networkOptions={overview.networkOptions}
           partnerOptions={overview.partnerOptions}
@@ -73,21 +80,13 @@ export default function ChartsPage() {
           <p
             key={warning}
             role="status"
-            className="rounded-lg bg-amber-500/10 p-3 text-sm"
+            className="rounded-lg bg-warning-surface p-3 text-sm"
           >
             {warning}
           </p>
         ))}
         {overview.isLoading ? (
-          <div
-            role="status"
-            className="flex min-h-64 flex-col items-center justify-center gap-3"
-          >
-            <Spinner className="size-8 text-primary" />
-            <p className="text-sm text-muted-foreground">
-              Loading order activity…
-            </p>
-          </div>
+          <AnalyticsSkeleton label="Loading order activity" />
         ) : overview.isError ? (
           <div role="alert" className="rounded-xl bg-destructive/10 p-6">
             <h2 className="font-semibold">Activity is unavailable</h2>

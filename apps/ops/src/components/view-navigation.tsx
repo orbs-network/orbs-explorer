@@ -58,7 +58,12 @@ export function ViewNavigation({
             aria-label={label}
             className="order-3 col-span-2 min-w-0 border-t border-border/60 lg:order-none lg:col-span-1 lg:border-0"
           >
-            <ul className="grid grid-cols-4 gap-1 py-1 lg:flex">
+            <ul
+              className="grid gap-1 py-1 lg:flex"
+              style={{
+                gridTemplateColumns: `repeat(${sections.length}, minmax(0, 1fr))`,
+              }}
+            >
               {sections.map((section) => {
                 const destination =
                   section.items.find((item) => item.current) ??
@@ -98,7 +103,10 @@ export function ViewNavigation({
               {hasTabs && (
                 <TabsList
                   aria-label={`${section.label} pages`}
-                  className="grid h-auto min-h-0 w-full grid-cols-3 gap-1 rounded-none bg-transparent p-0 sm:flex sm:w-auto"
+                  className="grid h-auto min-h-0 w-full gap-1 rounded-none bg-transparent p-0 sm:flex sm:w-auto"
+                  style={{
+                    gridTemplateColumns: `repeat(${section.items.length}, minmax(0, 1fr))`,
+                  }}
                 >
                   {section.items.map((item) => (
                     <TabsTrigger

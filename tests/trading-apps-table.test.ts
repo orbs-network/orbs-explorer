@@ -800,7 +800,6 @@ test("network drilldowns replace global network selections and hidden facets, in
     [
       ["period", "30"],
       ["chain_id", "0"],
-      ["partner_id", "quickswap"],
     ],
   );
   for (const href of [

@@ -157,10 +157,14 @@ async function fetchAllOrders(
   filters: Filters,
   signal?: AbortSignal,
   limit = 400,
+  source?: "v1" | "v2",
 ): Promise<ListOrder[]> {
   signal?.throwIfAborted();
   const results = await Promise.allSettled(
-    endpoints().map(async (endpoint) => {
+    (source
+      ? [source === "v2" ? CURRENT_SINK_API_URL : SINK_API_URLS.prod]
+      : endpoints()
+    ).map(async (endpoint) => {
       const orders = await fetchOrders<ListOrder>(
         endpoint,
         orderQuery(filters, 0, limit),
@@ -198,6 +202,90 @@ async function fetchAllOrders(
   return deduplicateOrders(successfulResults(results, signal).flat());
 }
 
+export type SpotOrderHistoryScope = {
+  fromTimestamp?: number;
+  untilTimestamp?: number;
+  chainIds?: number[];
+  exchange?: string;
+  swapper?: string;
+  source?: "v1" | "v2";
+};
+
+/** Both services page newest first. Stop at the requested placement boundary;
+ * never send unsupported date parameters or expose an incomplete scoped total.
+ */
+export async function getSpotOrdersForScope({
+  signal,
+  limit = 100,
+  ...scope
+}: SpotOrderHistoryScope & { signal?: AbortSignal; limit?: number }): Promise<
+  ListOrder[]
+> {
+  signal?.throwIfAborted();
+  if (!Number.isSafeInteger(limit) || limit < 1)
+    throw new Error("Invalid order page size");
+  for (const boundary of [scope.fromTimestamp, scope.untilTimestamp])
+    if (boundary !== undefined && !Number.isFinite(boundary))
+      throw new Error("Invalid order placement range");
+  if (
+    scope.fromTimestamp !== undefined &&
+    scope.untilTimestamp !== undefined &&
+    scope.fromTimestamp > scope.untilTimestamp
+  )
+    return [];
+  const filters: Filters = {
+    chainIds: scope.chainIds,
+    exchange: scope.exchange,
+    account: scope.swapper,
+  };
+  if (scope.fromTimestamp === undefined && scope.untilTimestamp === undefined)
+    return fetchAllOrders(filters, signal, 400, scope.source);
+  const sources = scope.source
+    ? [scope.source === "v2" ? CURRENT_SINK_API_URL : SINK_API_URLS.prod]
+    : endpoints();
+  const results = await Promise.allSettled(
+    sources.map(async (endpoint) => {
+      const orders: ListOrder[] = [];
+      let previousTime = Infinity;
+      let ordered = true;
+      for (let page = 0; ; page++) {
+        signal?.throwIfAborted();
+        const batch = await fetchOrders<ListOrder>(
+          endpoint,
+          orderQuery(filters, page, limit),
+          signal,
+        );
+        signal?.throwIfAborted();
+        for (const order of batch) {
+          const time = Date.parse(order.timestamp);
+          // If a source violates its ordering, keep paging rather than silently
+          // treating the remaining history as outside the requested range.
+          if (!Number.isFinite(time) || time > previousTime) ordered = false;
+          previousTime = time;
+          if (
+            Number.isFinite(time) &&
+            (scope.fromTimestamp === undefined ||
+              time >= scope.fromTimestamp) &&
+            (scope.untilTimestamp === undefined || time <= scope.untilTimestamp)
+          )
+            orders.push(order);
+        }
+        if (
+          batch.length < limit ||
+          (ordered &&
+            scope.fromTimestamp !== undefined &&
+            previousTime < scope.fromTimestamp)
+        )
+          return orders;
+      }
+    }),
+  );
+  signal?.throwIfAborted();
+  const failure = results.find((result) => result.status === "rejected");
+  if (failure) throw failure.reason;
+  return deduplicateOrders(successfulResults(results, signal).flat());
+}
+
 export const getAllOrdersForExchange = ({
   exchange,
   signal,
@@ -207,6 +295,17 @@ export const getAllOrdersForExchange = ({
   signal?: AbortSignal;
   limit?: number;
 }): Promise<ListOrder[]> => fetchAllOrders({ exchange }, signal, limit);
+
+/** The list view omits wallet addresses; use the services' exact swapper filter. */
+export const getAllOrdersForSwapper = ({
+  swapper,
+  signal,
+  limit,
+}: {
+  swapper: string;
+  signal?: AbortSignal;
+  limit?: number;
+}): Promise<ListOrder[]> => fetchAllOrders({ account: swapper }, signal, limit);
 
 export const getAllOrdersForExchangeAndChain = ({
   exchange,

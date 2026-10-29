@@ -6,12 +6,14 @@ import {
   buildOrderSearchLabels,
   fullOrderToInspectionOrder,
   getUsdRangeError,
+  getSwapperAddressError,
   investigateOrders,
   isOrderHash,
   orderDetailHref,
   ordersScopeHref,
   type InvestigationFilters,
 } from "../apps/ops/src/lib/order-investigation";
+import { orderIdentity } from "../apps/ops/src/lib/order-selection";
 
 function order(hash: string, overrides: Partial<ListOrder> = {}): ListOrder {
   return {
@@ -30,6 +32,77 @@ function order(hash: string, overrides: Partial<ListOrder> = {}): ListOrder {
 
 const find = (orders: ListOrder[], filters: Partial<InvestigationFilters>) =>
   investigateOrders(orders, { ...DEFAULT_INVESTIGATION_FILTERS, ...filters });
+
+test("swapper matching is exact, case insensitive, and never borrows another wallet's order", () => {
+  const swapper = `0x${"ab".repeat(20)}`;
+  const match = order("wallet-match", {
+    order: { witness: { chainId: 137, swapper } } as ListOrder["order"],
+  });
+  const other = order("other-wallet", {
+    order: {
+      witness: { chainId: 137, swapper: `0x${"cd".repeat(20)}` },
+    } as ListOrder["order"],
+  });
+  const missing = order("missing-wallet");
+  assert.deepEqual(
+    find([match, other, missing], {
+      swapper: ` ${swapper.toUpperCase().replace("0X", "0x")} `,
+    }),
+    [match],
+  );
+  assert.deepEqual(
+    find([match, other, missing], { swapper: swapper.slice(0, -1) }),
+    [],
+  );
+  assert.ok(getSwapperAddressError("0x123"));
+  assert.equal(getSwapperAddressError(""), undefined);
+});
+
+test("swapper service membership matches list rows by service, network, and hash while retaining other filters", () => {
+  const swapper = `0x${"a".repeat(40)}`;
+  const match = order("0xshared");
+  const legacy = order("0xshared", { source: "v1" });
+  const otherChain = order("0xshared", {
+    order: { witness: { chainId: 1 } } as ListOrder["order"],
+  });
+  const filters = { ...DEFAULT_INVESTIGATION_FILTERS, swapper };
+  const keys = new Set([orderIdentity(match)]);
+  assert.deepEqual(
+    investigateOrders(
+      [match, legacy, otherChain],
+      filters,
+      undefined,
+      Date.now(),
+      keys,
+    ),
+    [match],
+  );
+  assert.deepEqual(
+    investigateOrders(
+      [match],
+      { ...filters, status: "active" },
+      undefined,
+      Date.now(),
+      keys,
+    ),
+    [],
+  );
+  assert.deepEqual(investigateOrders([match], filters), []);
+  const url = new URL(
+    orderDetailHref(match.hash, match.source, {
+      query: `order_swapper=${swapper}&period=30`,
+    }),
+    "https://ops.example",
+  );
+  assert.equal(url.searchParams.get("order_swapper"), swapper);
+  assert.equal(
+    new URL(
+      ordersScopeHref({ query: url.search }),
+      "https://ops.example",
+    ).searchParams.get("order_swapper"),
+    swapper,
+  );
+});
 
 test("investigation searches across fields and requires every query term", () => {
   const match = order("0xFirst", {

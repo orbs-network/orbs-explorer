@@ -1,11 +1,21 @@
 "use client";
 
+import {
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
+} from "@orbs/ui/controls/table";
+
+import { Button } from "@orbs/ui/controls/button";
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { ArrowDown, ArrowUp, ArrowUpDown } from "lucide-react";
 import { NetworkIcon } from "@orbs/ui/controls/network";
 import { useOperationsData } from "@/components/operations/operations-view";
+import { orderPeriodRange } from "@/lib/order-period";
 import {
   EmptyState,
   Panel,
@@ -88,13 +98,13 @@ export function PartnerNetworks({ partnerId }: { partnerId: string }) {
 
   return (
     <Panel
-      title={`Network breakdown · orders placed in ${scope.period === "all" ? "all history" : `the last ${scope.period} days`}`}
+      title={`Network breakdown · orders placed in ${orderPeriodRange(scope.period)}`}
       description={`${activeNetworks} ${activeNetworks === 1 ? "network has" : "networks have"} orders in this placement cohort${unattributedOrders ? `; ${unattributedOrders} orders without a reported network` : ""}. Failure rate is currently failed / all placed orders. Latest attempt error counts orders, not attempts, and can overlap any current outcome.`}
     >
       {visibleRows.length ? (
         <TableFrame label={`Network triage for ${partnerName}`}>
-          <thead>
-            <tr>
+          <TableHeader>
+            <TableRow>
               {columns.map(({ key, label }) => {
                 const active = sort.key === key;
                 const descending = active
@@ -106,7 +116,7 @@ export function PartnerNetworks({ partnerId }: { partnerId: string }) {
                     : ArrowUp
                   : ArrowUpDown;
                 return (
-                  <th
+                  <TableHead
                     key={key}
                     scope="col"
                     aria-sort={
@@ -117,7 +127,9 @@ export function PartnerNetworks({ partnerId }: { partnerId: string }) {
                         : undefined
                     }
                   >
-                    <button
+                    <Button
+                      variant="ghost"
+                      size="content"
                       type="button"
                       onClick={() => setSort({ key, descending })}
                       aria-label={`${label}, sort ${descending ? "descending" : "ascending"}`}
@@ -128,18 +140,18 @@ export function PartnerNetworks({ partnerId }: { partnerId: string }) {
                         aria-hidden
                         className={`size-3 ${active ? "text-primary" : "opacity-50"}`}
                       />
-                    </button>
-                  </th>
+                    </Button>
+                  </TableHead>
                 );
               })}
-            </tr>
-          </thead>
-          <tbody>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
             {visibleRows.map((network) => {
               const networks = [String(network.chainId)];
               return (
-                <tr key={network.chainId}>
-                  <th scope="row">
+                <TableRow key={network.chainId}>
+                  <TableHead scope="row">
                     <Link
                       href={partnerOrdersHref(partnerId, search, {}, networks)}
                       prefetch={false}
@@ -151,8 +163,8 @@ export function PartnerNetworks({ partnerId }: { partnerId: string }) {
                       />
                       {network.chainName}
                     </Link>
-                  </th>
-                  <td>
+                  </TableHead>
+                  <TableCell>
                     <Link
                       href={partnerOrdersHref(partnerId, search, {}, networks)}
                       prefetch={false}
@@ -161,8 +173,8 @@ export function PartnerNetworks({ partnerId }: { partnerId: string }) {
                     >
                       {network.orders.length.toLocaleString()}
                     </Link>
-                  </td>
-                  <td>
+                  </TableCell>
+                  <TableCell>
                     <Link
                       href={partnerOrdersHref(
                         partnerId,
@@ -185,8 +197,8 @@ export function PartnerNetworks({ partnerId }: { partnerId: string }) {
                         </span>
                       )}
                     </Link>
-                  </td>
-                  <td>
+                  </TableCell>
+                  <TableCell>
                     <Link
                       href={partnerOrdersHref(
                         partnerId,
@@ -200,8 +212,8 @@ export function PartnerNetworks({ partnerId }: { partnerId: string }) {
                     >
                       {network.overdue.toLocaleString()}
                     </Link>
-                  </td>
-                  <td>
+                  </TableCell>
+                  <TableCell>
                     <Link
                       href={partnerOrdersHref(
                         partnerId,
@@ -215,14 +227,14 @@ export function PartnerNetworks({ partnerId }: { partnerId: string }) {
                     >
                       {network.latestErrors.toLocaleString()}
                     </Link>
-                  </td>
-                  <td className="whitespace-nowrap text-muted-foreground">
+                  </TableCell>
+                  <TableCell className="whitespace-nowrap text-muted-foreground">
                     {formatOrderDate(network.latestPlaced)}
-                  </td>
-                </tr>
+                  </TableCell>
+                </TableRow>
               );
             })}
-          </tbody>
+          </TableBody>
         </TableFrame>
       ) : (
         <EmptyState

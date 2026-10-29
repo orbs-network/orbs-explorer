@@ -9,8 +9,9 @@
   }
 }
 
-/* Orbs.com palette: neutral surfaces, indigo interaction, and restrained
-   cyan/lilac/coral data accents. Keep these overrides local to Operations. */
+/* Matched to Orbs.com in both themes: neutral surfaces/actions, indigo links,
+   cyan success, pink attention, and coral failures. Darker brand shades keep
+   small text readable in light mode. Keep these overrides local to Operations. */
 :root {
   --radius: 0.5rem;
   --background: var(--orbs-light);
@@ -32,12 +33,14 @@
   --destructive: #664344;
   --destructive-foreground: #ffffff;
   --border: #e2e2e2;
-  --input: transparent;
+  /* shadcn uses this for the unchecked switch track as well as input borders. */
+  --input: #59595a;
   --navigation: var(--orbs-light);
   --control-border: transparent;
   --control-background: rgb(18 18 20 / 4%);
   --control-hover: rgb(18 18 20 / 8%);
   --action-gradient: none;
+  --action-background: var(--orbs-dark);
   --action-foreground: #ffffff;
   --panel-shadow: 0 8px 28px rgb(18 18 20 / 4%);
   --ring: var(--orbs-indigo);
@@ -47,6 +50,8 @@
   --chart-4: #a153a6;
   --chart-5: #664344;
   --status-success: #017d86;
+  --status-warning: #8b4590;
+  --status-warning-surface: #f8edf9;
 }
 .dark {
   --background: var(--orbs-dark);
@@ -68,12 +73,13 @@
   --destructive: var(--orbs-coral);
   --destructive-foreground: var(--orbs-dark);
   --border: #414142;
-  --input: transparent;
+  --input: #59595a;
   --navigation: var(--orbs-dark);
   --control-border: transparent;
   --control-background: rgb(255 255 255 / 6%);
   --control-hover: rgb(255 255 255 / 10%);
   --action-gradient: none;
+  --action-background: var(--orbs-light);
   --action-foreground: var(--orbs-dark);
   --panel-shadow: 0 8px 28px rgb(0 0 0 / 16%);
   --ring: var(--orbs-periwinkle);
@@ -82,12 +88,35 @@
   --chart-3: var(--orbs-lilac);
   --chart-4: var(--orbs-pink);
   --chart-5: var(--orbs-coral);
-  --status-success: #67e9f4;
+  --status-success: var(--orbs-cyan);
+  --status-warning: var(--orbs-pink);
+  --status-warning-surface: #2c1c2d;
 }
 
 @theme inline {
   --color-success: var(--status-success);
+  --color-warning: var(--status-warning);
+  --color-warning-surface: var(--status-warning-surface);
 }
+
+/* Keep browser chrome neutral alongside the branded application surfaces. */
+*,
+.dark * {
+  scrollbar-color: var(--border) transparent;
+}
+*::-webkit-scrollbar-thumb,
+.dark *::-webkit-scrollbar-thumb {
+  background: var(--border);
+}
+*::-webkit-scrollbar-thumb:hover,
+.dark *::-webkit-scrollbar-thumb:hover {
+  background: var(--muted-foreground);
+}
+::selection {
+  background: var(--accent);
+  color: var(--accent-foreground);
+}
+
 [data-slot="card"],
 [data-slot="input"],
 [data-slot="select-trigger"],
@@ -100,7 +129,7 @@
 /* Radix triggers replace data-slot, and bg-action supersedes bg-primary in
    merged classes. Supply the solid brand fill independently of either slot. */
 :is(button, a)[data-variant="default"] {
-  background-color: var(--primary);
+  background-color: var(--action-background);
 }
 [data-slot="select-trigger"] {
   background-color: var(--control-background);
@@ -108,6 +137,11 @@
 }
 [data-slot="select-trigger"]:hover {
   background-color: var(--control-hover);
+}
+[data-slot="select-item"],
+[data-slot="filter-option"] {
+  font-size: 0.75rem;
+  line-height: 1.25rem;
 }
 [data-slot="input"]:focus-visible,
 [data-slot="select-trigger"]:focus-visible {
@@ -127,6 +161,8 @@
 }
 
 [data-slot="dialog-content"],
+[data-slot="select-content"],
+[data-slot="filter-options"],
 [data-slot="drawer-content"],
 [data-slot="dropdown-menu-content"],
 [data-slot="dropdown-menu-sub-content"] {
@@ -146,6 +182,7 @@
   :is(button, a)[data-variant],
   [data-slot="input"],
   [data-slot="select-trigger"],
+  [data-slot="select-item"],
   [data-slot="tabs-trigger"],
   [data-slot="dropdown-menu-item"],
   [data-slot="dropdown-menu-radio-item"],
@@ -162,28 +199,50 @@
   }
 }
 
-/* One table rhythm across record lists, analytics, and monitoring. */
-.ops-data-table {
-  width: 100%;
+/* Consistent shadcn tables: compact single-line headers and quiet row separators. */
+[data-slot="table"] {
   text-align: left;
-  font-size: 14px;
   font-variant-numeric: tabular-nums;
 }
-.ops-data-table th,
-.ops-data-table td {
-  padding: 12px 16px;
+[data-slot="table-cell"],
+[data-slot="table-body"] [data-slot="table-head"] {
+  padding: 12px;
   vertical-align: middle;
 }
-.ops-data-table th {
-  color: var(--muted-foreground);
+[data-slot="table-header"] {
   background: var(--control-background);
+}
+[data-slot="table-head"] {
+  height: 44px;
+  padding: 0 12px;
   font-size: 12px;
   font-weight: 500;
+  letter-spacing: normal;
+  text-transform: none;
 }
-.ops-data-table tbody tr + tr {
-  border-top: 1px solid var(--border);
+[data-slot="table-header"] [data-slot="table-head"] [data-slot="button"] {
+  white-space: nowrap;
 }
-.ops-data-table tbody tr:hover,
-.ops-data-table tbody tr:focus-within {
+[data-slot="table-body"] [data-slot="table-head"] {
+  height: auto;
+  color: var(--foreground);
+}
+[data-slot="table-row"] {
+  cursor: default;
+  transition-property: background-color;
+}
+[data-slot="table-row"][data-clickable="true"] {
+  cursor: pointer;
+}
+[data-slot="table-header"] [data-slot="table-row"]:hover {
+  background: transparent;
+}
+[data-slot="table-body"] [data-slot="table-row"]:hover,
+[data-slot="table-body"] [data-slot="table-row"]:focus-within {
   background: var(--control-background);
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-slot="table-row"] {
+    transition: none;
+  }
 }

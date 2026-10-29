@@ -1,5 +1,6 @@
 "use client";
 
+import { Button } from "./button";
 import { useCopy } from "@orbs/domain/hooks/use-copy";
 import { CopyIcon } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "./tooltip";
@@ -26,7 +27,9 @@ export function Copy({
       ) : (
         <span className="min-w-0 break-all text-sm font-mono">{text}</span>
       )}
-      <button
+      <Button
+        variant="ghost"
+        size="content"
         type="button"
         onClick={() => copy(value)}
         aria-label="Copy value"
@@ -34,7 +37,7 @@ export function Copy({
         className="grid h-7 w-7 shrink-0 place-items-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
       >
         <CopyIcon aria-hidden className="size-3.5" />
-      </button>
+      </Button>
     </span>
   );
 }

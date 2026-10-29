@@ -1,19 +1,20 @@
 "use client";
 
-import { useDeferredValue, useId, useMemo, useSyncExternalStore } from "react";
+import {
+  useDeferredValue,
+  useEffect,
+  useMemo,
+  useSyncExternalStore,
+  type ReactNode,
+} from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { readOrderSelection, selectionOrders } from "@/lib/order-selection";
-import { Search } from "lucide-react";
-import { Button } from "@orbs/ui/controls/button";
-import { Input } from "@orbs/ui/controls/input";
 import {
-  Select,
-  SelectTrigger,
-  SelectValue,
-  SelectContent,
-  SelectItem,
-} from "@orbs/ui/controls/select";
+  readOrderSelection,
+  selectionOrders,
+  orderIdentity,
+} from "@/lib/order-selection";
+import { Button } from "@orbs/ui/controls/button";
 import { OrderFilters } from "@/components/order-filters";
 import { useOperationsData } from "@/components/operations/operations-view";
 import { EmptyState } from "@/components/operations/primitives";
@@ -28,46 +29,22 @@ import {
   investigateOrders,
   getUsdRangeError,
   getPlacementRangeError,
+  getSwapperAddressError,
   type InvestigationSort,
 } from "@/lib/order-investigation";
 import { reportedNumber } from "@/lib/order-diagnostics";
-import {
-  buildOrderFacets,
-  matchingOrderQuickView,
-  orderHashSearchHref,
-  orderQuickViewFilters,
-  ORDER_QUICK_VIEWS,
-  type OrderQuickView,
-} from "@/lib/order-quick-views";
 import { OrdersTable } from "./orders-table";
-import { OrderStatusFilters } from "./order-status-filters";
-
-function RowsSkeleton() {
-  return (
-    <div
-      role="status"
-      aria-label="Loading order history"
-      className="overflow-hidden rounded-xl bg-card"
-    >
-      <span className="sr-only">Loading order history…</span>
-      <div className="h-10 border-b border-border bg-muted/30" />
-      {Array.from({ length: 8 }, (_, index) => (
-        <div
-          key={index}
-          className="flex h-14 items-center gap-4 border-b border-border px-4 last:border-0 motion-safe:animate-pulse"
-        >
-          <span className="h-3 w-1/4 rounded bg-muted" />
-          <span className="h-3 w-1/3 rounded bg-muted" />
-          <span className="ml-auto h-3 w-16 rounded bg-muted" />
-        </div>
-      ))}
-    </div>
-  );
-}
+import { InlineSkeleton, TableSkeleton } from "@/components/loading-skeletons";
 
 const subscribeSelection = () => () => {};
 
-export function OrdersList({ embedded = false }: { embedded?: boolean } = {}) {
+export function OrdersList({
+  embedded = false,
+  header,
+}: {
+  embedded?: boolean;
+  header?: (exportAction: ReactNode) => ReactNode;
+} = {}) {
   const {
     orders,
     partnerCards,
@@ -75,21 +52,41 @@ export function OrdersList({ embedded = false }: { embedded?: boolean } = {}) {
     isHistoryLoading,
     isCatalogLoading,
     isMetadataLoading,
-    isError,
-    retry,
+    isError: isHistoryError,
+    retry: retryHistory,
     scope,
+    historyScope,
     networkOptions,
     partnerOptions,
   } = useOperationsData();
   const { filters, setFilters, applyFilters } = useInvestigationFilters();
+  const hasSwapper = Boolean(filters.swapper.trim());
+  const waitingForSwapper =
+    hasSwapper && !getSwapperAddressError(filters.swapper) && isHistoryLoading;
+  const swapperFailed = hasSwapper && isHistoryError;
+  const isError = isHistoryError || swapperFailed;
+  const retry = () => {
+    retryHistory();
+  };
   const waitingForScope =
-    !isError &&
-    (isHistoryLoading || (isCatalogLoading && scope.partnerIds.length > 0));
+    !isError && (isHistoryLoading || isCatalogLoading || waitingForSwapper);
   const router = useRouter(),
     pathname = usePathname(),
     search = useSearchParams();
-  const id = useId();
   const query = useDeferredValue(filters.query);
+  useEffect(() => {
+    const next = new URLSearchParams(search.toString());
+    if (
+      !next.has("table_page_order_investigation_results") &&
+      !next.has("table_size_order_investigation_results")
+    )
+      return;
+    next.delete("table_page_order_investigation_results");
+    next.delete("table_size_order_investigation_results");
+    router.replace(`${pathname}${next.size ? `?${next}` : ""}`, {
+      scroll: false,
+    });
+  }, [pathname, router, search]);
   const resolvingSearchLabels = Boolean(query.trim()) && isMetadataLoading;
   const names = useMemo(
     () =>
@@ -141,13 +138,23 @@ export function OrdersList({ embedded = false }: { embedded?: boolean } = {}) {
   };
   const labels = useOrderSearchLabels(orders, names);
   const effective = useMemo(() => ({ ...filters, query }), [filters, query]);
-  const results = useMemo(
-    () => investigateOrders(selectedOrders, effective, labels, updatedAt),
-    [selectedOrders, effective, labels, updatedAt],
+  const swapperMatches = useMemo(
+    () =>
+      historyScope.swapper === filters.swapper.trim().toLowerCase()
+        ? new Set(orders.map(orderIdentity))
+        : undefined,
+    [historyScope.swapper, filters.swapper, orders],
   );
-  const facets = useMemo(
-    () => buildOrderFacets(selectedOrders, effective, labels, updatedAt),
-    [selectedOrders, effective, labels, updatedAt],
+  const results = useMemo(
+    () =>
+      investigateOrders(
+        selectedOrders,
+        effective,
+        labels,
+        updatedAt,
+        swapperMatches,
+      ),
+    [selectedOrders, effective, labels, updatedAt, swapperMatches],
   );
   const value = useMemo(
     () =>
@@ -163,12 +170,23 @@ export function OrdersList({ embedded = false }: { embedded?: boolean } = {}) {
       ),
     [results],
   );
-  const rangeError =
+  const filterError =
+    getSwapperAddressError(filters.swapper) ||
     getUsdRangeError(filters.minUsd, filters.maxUsd) ||
     getPlacementRangeError(filters.placedSince, filters.placedUntil);
-  const quickView = matchingOrderQuickView(filters);
+  const waitingForResults =
+    waitingForScope ||
+    query !== filters.query ||
+    selectionState === "loading" ||
+    (!isError && !filterError && resolvingSearchLabels);
+  const exportAction = waitingForResults ? (
+    <InlineSkeleton label="Preparing order export" className="h-8 w-24" />
+  ) : (
+    <ExportOrders orders={results} snapshotAt={updatedAt} />
+  );
   return (
     <div className="min-w-0 space-y-3">
+      {header?.(exportAction)}
       {selectionId && (
         <section
           className="flex flex-wrap items-center justify-between gap-3 rounded-lg bg-primary/5 p-4 text-sm"
@@ -177,9 +195,14 @@ export function OrdersList({ embedded = false }: { embedded?: boolean } = {}) {
           <div>
             <p className="font-medium">
               {selection?.label ??
-                (selectionState === "loading"
-                  ? "Opening selected orders…"
-                  : "Selection unavailable in this browser session")}
+                (selectionState === "loading" ? (
+                  <InlineSkeleton
+                    label="Opening selected orders"
+                    className="w-52"
+                  />
+                ) : (
+                  "Selection unavailable in this browser session"
+                ))}
             </p>
             <p className="mt-1 text-xs text-muted-foreground">
               {selection
@@ -203,17 +226,26 @@ export function OrdersList({ embedded = false }: { embedded?: boolean } = {}) {
       {selection &&
         !waitingForScope &&
         selectedOrders.length < selection.keys.length && (
-          <p role="status" className="rounded-lg bg-amber-500/10 p-3 text-xs">
+          <p
+            role="status"
+            className="rounded-lg bg-warning-surface p-3 text-xs"
+          >
             {selection.keys.length - selectedOrders.length} selected records are
             absent from the latest scoped history. The totals below include only
             available records.
           </p>
         )}
-      <div className="space-y-3 border-b border-border bg-background py-3 shadow-[0_1px_0_var(--border)]">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          {!embedded && (
+      <div className="space-y-3 bg-background py-1">
+        {!embedded && (
+          <div
+            className={
+              header
+                ? "min-w-0"
+                : "flex flex-wrap items-center justify-between gap-2"
+            }
+          >
             <OrderFilters
-              omitStatus
+              isLoading={isHistoryLoading || isCatalogLoading}
               scope={scope}
               networkOptions={networkOptions}
               partnerOptions={partnerOptions}
@@ -225,134 +257,96 @@ export function OrdersList({ embedded = false }: { embedded?: boolean } = {}) {
                 ),
               ].sort()}
             />
-          )}
-          <div className="flex items-center gap-2 text-xs">
-            <label htmlFor={`${id}-view`} className="text-muted-foreground">
-              Quick filters
-            </label>
-            <Select
-              value={quickView}
-              onValueChange={(next) => {
-                if (next !== "custom")
-                  applyFilters(orderQuickViewFilters(next as OrderQuickView));
-              }}
-            >
-              <SelectTrigger id={`${id}-view`} className="h-8 w-44 text-xs">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {quickView === "custom" && (
-                  <SelectItem value="custom">Custom filters</SelectItem>
-                )}
-                {ORDER_QUICK_VIEWS.map((view) => (
-                  <SelectItem key={view.value} value={view.value}>
-                    {view.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            {!header && exportAction}
           </div>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="relative min-w-48 flex-1">
-            <label htmlFor={`${id}-search`} className="sr-only">
-              Search orders
-            </label>
-            <Search
-              aria-hidden
-              className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
-            />
-            <Input
-              id={`${id}-search`}
-              name="order_search"
-              type="search"
-              autoComplete="off"
-              spellCheck={false}
-              value={filters.query}
-              onChange={(event) => {
-                const href = orderHashSearchHref(event.target.value, scope);
-                if (href) router.push(href);
-                else
-                  setFilters((previous) => ({
-                    ...previous,
-                    query: event.target.value,
-                  }));
-              }}
-              placeholder="Order ID, app, token, address, or error…"
-              className="h-9 pl-9"
-            />
-          </div>
-          <ExportOrders orders={results} context="matching" />
-        </div>
-        {!waitingForScope && !isError && (
-          <OrderStatusFilters
-            facets={facets}
-            filters={filters}
-            onChange={applyFilters}
-          />
         )}
-        <div
-          role="status"
-          aria-live="polite"
-          aria-busy={
-            waitingForScope || query !== filters.query || resolvingSearchLabels
-          }
-          className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground tabular-nums"
-        >
-          {waitingForScope || selectionState === "loading" ? (
-            <span>
-              {isHistoryLoading
-                ? "Loading matching orders…"
-                : "Resolving the trading app selection…"}
-            </span>
-          ) : isError ? (
-            <span>Matching totals unavailable</span>
-          ) : (
-            <>
-              <strong className="font-medium text-foreground">
-                {results.length.toLocaleString()} matching{" "}
-                {results.length === 1 ? "order" : "orders"}
-                {query !== filters.query ? " · Searching…" : ""}
-              </strong>
-              <span
-                title={`${value.reported}/${results.length} matching orders report valid USD`}
-              >
-                Placed value{" "}
+        <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+          <div
+            role={
+              waitingForResults || resolvingSearchLabels ? undefined : "status"
+            }
+            aria-live={
+              waitingForResults || resolvingSearchLabels ? undefined : "polite"
+            }
+            aria-busy={
+              waitingForResults ||
+              query !== filters.query ||
+              resolvingSearchLabels
+            }
+            className="flex min-w-0 flex-1 flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground tabular-nums"
+          >
+            {waitingForResults ? (
+              <InlineSkeleton
+                label={
+                  waitingForSwapper
+                    ? "Loading orders for this swapper"
+                    : isHistoryLoading
+                      ? "Loading matching orders"
+                      : resolvingSearchLabels
+                        ? "Resolving token names"
+                        : "Resolving the trading app selection"
+                }
+                className="w-72"
+              />
+            ) : isError ? (
+              <span>Matching totals unavailable</span>
+            ) : (
+              <>
                 <strong className="font-medium text-foreground">
-                  {value.reported || !results.length
-                    ? formatOrderUsd(value.sum)
-                    : "—"}
+                  {results.length.toLocaleString()} matching{" "}
+                  {results.length === 1 ? "order" : "orders"}
                 </strong>
-              </span>
-              {value.reported < results.length && (
-                <span>
-                  {value.reported}/{results.length} report USD
+                <span
+                  title={`${value.reported}/${results.length} matching orders report valid USD`}
+                >
+                  Placed value{" "}
+                  <strong className="font-medium text-foreground">
+                    {value.reported || !results.length
+                      ? formatOrderUsd(value.sum)
+                      : "—"}
+                  </strong>
                 </span>
-              )}
-              {resolvingSearchLabels && <span>Resolving token names…</span>}
-            </>
-          )}
+                {value.reported < results.length && (
+                  <span>
+                    {value.reported}/{results.length} report USD
+                  </span>
+                )}
+                {resolvingSearchLabels && (
+                  <InlineSkeleton label="Resolving token names" />
+                )}
+              </>
+            )}
+          </div>
+          {embedded && !header && exportAction}
         </div>
       </div>
       {isCatalogLoading && !waitingForScope && (
-        <p role="status" className="text-xs text-muted-foreground">
-          Trading app names are loading. Order records and totals are already
-          available.
-        </p>
+        <InlineSkeleton label="Loading trading app names" className="w-52" />
       )}
-      {rangeError && (
+      {filterError && (
         <p role="alert" className="text-xs text-destructive">
-          {rangeError} Open Filters to correct the range.
+          {filterError} Open Filters to correct the value.
         </p>
       )}
-      {waitingForScope || selectionState === "loading" ? (
-        <RowsSkeleton />
+      {waitingForResults ? (
+        <TableSkeleton
+          label={
+            resolvingSearchLabels
+              ? "Resolving token names"
+              : "Loading order history"
+          }
+        />
       ) : isError ? (
         <div role="alert" className="rounded-lg bg-destructive/10 p-5">
-          <h2 className="font-medium">Order history is unavailable</h2>
+          <h2 className="font-medium">
+            {swapperFailed
+              ? "Swapper orders could not be loaded"
+              : "Order history is unavailable"}
+          </h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            Order history must finish loading before complete results can be
-            shown.
+            {swapperFailed
+              ? "The swapper lookup must finish successfully before matching orders can be shown."
+              : "Order history must finish loading before complete results can be shown."}
           </p>
           <Button variant="outline" className="mt-3" onClick={retry}>
             Try again
@@ -369,17 +363,17 @@ export function OrdersList({ embedded = false }: { embedded?: boolean } = {}) {
         <div>
           <EmptyState
             title={
-              rangeError
-                ? "Check the USD range"
+              filterError
+                ? "Check filters"
                 : resolvingSearchLabels
                   ? "Resolving token names…"
                   : "No matching orders"
             }
             description={
-              rangeError ??
+              filterError ??
               (resolvingSearchLabels
                 ? "Address and raw-field results are available; token-name results may update as metadata loads."
-                : "Change the status chips, search, quick filters, or page filters.")
+                : "Change the search or open Filters to adjust the order criteria.")
             }
           />
           <div className="mt-3 flex justify-center gap-2">
@@ -403,6 +397,7 @@ export function OrdersList({ embedded = false }: { embedded?: boolean } = {}) {
                   type: "all",
                   errors: "all",
                   token: "",
+                  swapper: "",
                   adapter: "",
                   activeAge: "all",
                   deadline: "all",

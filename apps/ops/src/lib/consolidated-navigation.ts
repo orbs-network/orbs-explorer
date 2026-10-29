@@ -12,6 +12,15 @@ export function consolidatedViewHref(
       url.searchParams.set(key, value);
     return `${url.pathname}${url.search}`;
   };
+  if (
+    [
+      "/security",
+      "/adapters",
+      "/data-quality",
+      "/run-telegram-alerts",
+    ].includes(pathname)
+  )
+    return target("/");
   if (pathname === "/health") {
     const fields: Record<string, string> = { order_status: "active" };
     if (current.get("active_scope") !== "placement") fields.period = "all";
@@ -58,10 +67,10 @@ export function consolidatedViewHref(
       performance_view: current.get("failure_view")!,
       cohort_view: "errors",
     });
+  if (pathname === "/failures")
+    return target("/orders", { order_status: "failed" });
   if (pathname === "/markets" && current.get("market_view") === "coverage")
-    return target("/data-quality", { data_view: "fields" });
+    return target("/");
   if (pathname === "/markets" && current.get("market_view") === "demand")
     return target("/markets", { market_view: "tokens" });
-  if (pathname === "/security" && current.get("security_view") === "orders")
-    return target("/charts");
 }

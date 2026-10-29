@@ -3,8 +3,34 @@ import { test } from "node:test";
 import {
   getOrderConditionComparison,
   getOrderCheckTiming,
+  getTargetDifferenceLabel,
 } from "../packages/domain/src/activity/order-condition";
 import { SpotOrderType } from "../packages/domain/src/twap/types";
+
+test("target differences preserve precision, direction, and invalid baselines", () => {
+  assert.equal(
+    getTargetDifferenceLabel("178267679", "190177833"),
+    "6.26% below target",
+  );
+  assert.equal(
+    getTargetDifferenceLabel("1,000.01", "1,000"),
+    "<0.01% above target",
+  );
+  assert.equal(
+    getTargetDifferenceLabel(
+      "99999999999999999999999999999999",
+      "100000000000000000000000000000000",
+    ),
+    "<0.01% below target",
+  );
+  assert.equal(getTargetDifferenceLabel("0", "100"), "100% below target");
+  assert.equal(
+    getTargetDifferenceLabel("100", "100"),
+    "0% difference from target",
+  );
+  for (const target of ["0", "-1", "NaN", "Infinity", "1,00", ""])
+    assert.equal(getTargetDifferenceLabel("10", target), undefined);
+});
 
 const limit = (expected: string, current: string) =>
   `Price can't meet condition: expected ${expected}, got ${current} (1 vs. 2) - 99.0%`;

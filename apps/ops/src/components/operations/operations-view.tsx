@@ -9,7 +9,10 @@ import { useOrderDrilldown } from "@/hooks/use-order-drilldown";
 import { useOrderScope } from "@/hooks/use-order-scope";
 import { useSpotOverview } from "@/hooks/use-spot-overview";
 import { Button } from "@orbs/ui/controls/button";
-import { Spinner } from "@orbs/ui/controls/spinner";
+import {
+  AnalyticsSkeleton,
+  InlineSkeleton,
+} from "@/components/loading-skeletons";
 import type { ListOrder } from "@orbs/domain/twap/types";
 import { SnapshotFreshness } from "./snapshot-freshness";
 import { useOperationalScope } from "@/hooks/use-operational-scope";
@@ -95,22 +98,16 @@ export function OperationsView({
     >
       {children}
     </OperationsDataProvider>
-  ) : data.isLoading ? (
-    <div
-      role="status"
-      className="flex min-h-40 items-center justify-center gap-3 rounded-xl bg-card p-5"
-    >
-      <Spinner className="size-6 text-primary" />
-      <p className="text-sm text-muted-foreground">Loading order history…</p>
-    </div>
-  ) : data.isError ? (
+  ) : viewData.isLoading ? (
+    <AnalyticsSkeleton label={`Loading ${title.toLowerCase()}`} />
+  ) : viewData.isError ? (
     <div role="alert" className="rounded-xl bg-destructive/10 p-6">
       <h2 className="font-semibold">{title} is unavailable</h2>
       <p className="mt-2 text-sm text-muted-foreground">
         Complete order history could not be loaded. Try again to retrieve the
         data.
       </p>
-      <Button variant="outline" className="mt-4" onClick={data.retry}>
+      <Button variant="outline" className="mt-4" onClick={viewData.retry}>
         Try again
       </Button>
     </div>
@@ -138,14 +135,24 @@ export function OperationsView({
             {dataContext === "orders" && data.updatedAt > 0 && (
               <SnapshotFreshness
                 updatedAt={data.updatedAt}
-                refreshing={data.isRefreshing}
-                failed={data.isRefreshError}
+                refreshing={viewData.isRefreshing}
+                failed={viewData.isRefreshError}
               />
             )}
             {dataContext === "orders" &&
               filterFields !== "orders" &&
               (exportAction === undefined ? (
-                <ExportOrders orders={viewData.orders} />
+                viewData.isLoading ? (
+                  <InlineSkeleton
+                    label="Preparing order export"
+                    className="h-8 w-24"
+                  />
+                ) : (
+                  <ExportOrders
+                    orders={viewData.orders}
+                    snapshotAt={viewData.updatedAt}
+                  />
+                )
               ) : (
                 exportAction
               ))}
@@ -155,12 +162,12 @@ export function OperationsView({
                 size="icon"
                 aria-label={`Refresh ${title.toLowerCase()}`}
                 title="Refresh data"
-                disabled={data.isRefreshing}
-                onClick={data.refresh}
+                disabled={viewData.isRefreshing}
+                onClick={viewData.refresh}
               >
                 <RefreshCw
                   aria-hidden
-                  className={`size-4 ${data.isRefreshing ? "animate-spin motion-reduce:animate-none" : ""}`}
+                  className={`size-4 ${viewData.isRefreshing ? "animate-spin motion-reduce:animate-none" : ""}`}
                 />
               </Button>
             )}
@@ -168,10 +175,11 @@ export function OperationsView({
         </header>
         {dataContext === "orders" && (
           <OrderFilters
+            isLoading={data.isLoading}
             periodLabel={
               timeBasis === "current" && operational.placement === "all"
                 ? null
-                : "Order placement period"
+                : "Order period"
             }
             scope={scope}
             networkOptions={data.networkOptions}
@@ -194,8 +202,8 @@ export function OperationsView({
           <OperationalScopeControl
             {...operational}
             period={scope.period}
-            isLoading={data.isLoading}
-            isUnavailable={data.isError}
+            isLoading={viewData.isLoading}
+            isUnavailable={viewData.isError}
           />
         )}
         {dataContext === "orders" &&
@@ -203,7 +211,7 @@ export function OperationsView({
             <p
               role="status"
               key={warning}
-              className="rounded-lg bg-amber-500/10 p-3 text-sm"
+              className="rounded-lg bg-warning-surface p-3 text-sm"
             >
               {warning}
             </p>

@@ -10,10 +10,11 @@ import {
   type ReactNode,
 } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { previousPageIndex, type PagePosition } from "@/lib/page-history";
 
 const ENTRY_KEY = "orbsPageHistoryIndex";
 const STORAGE_KEY = "orbs-ops-page-history-v1";
-type Position = { href: string; top: number };
+type Position = PagePosition;
 const PageHistory = createContext<((fallbackHref: string) => void) | null>(
   null,
 );
@@ -56,7 +57,7 @@ function readPositions(): Record<number, Position> {
   }
 }
 
-/** Keep browser Back semantics, with app-entry detection and virtual-list scroll restoration. */
+/** Return to the previous page, retaining its filters and virtual-list position. */
 export function PageHistoryProvider({ children }: { children: ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -178,7 +179,12 @@ export function PageHistoryProvider({ children }: { children: ReactNode }) {
 
   const goBack = useCallback(
     (fallbackHref: string) => {
-      if (index.current > 0) router.back();
+      const previous = previousPageIndex(
+        positions.current,
+        index.current,
+        currentHref(),
+      );
+      if (previous !== undefined) window.history.go(previous - index.current);
       else router.replace(fallbackHref);
     },
     [router],

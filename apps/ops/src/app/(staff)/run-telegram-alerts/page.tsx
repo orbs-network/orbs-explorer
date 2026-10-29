@@ -1,5 +1,1 @@
-import { redirect } from "next/navigation";
-
-export default function RunTelegramAlertsPage() {
-  redirect("/security");
-}
+export { RetiredMonitoringPage as default } from "@/components/retired-monitoring-page";

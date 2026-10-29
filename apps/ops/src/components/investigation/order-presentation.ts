@@ -1,10 +1,15 @@
 import { formatUnits } from "viem";
+import { getTargetDifferenceLabel } from "@orbs/domain/activity/order-condition";
 import type { ListOrder, Order, OrderChunk } from "@orbs/domain/twap/types";
 import { getOverviewOrderStatus } from "@orbs/domain/twap/utils/orders-overview";
 import { hasLastExecutionError } from "../../lib/order-diagnostics";
 import { getChainName } from "@orbs/domain/utils/utils";
 import { OVERVIEW_STATUSES } from "@orbs/domain/twap/utils/orders-overview";
-import { listOrderMessage, parseReportedTime } from "../../lib/order-evidence";
+import {
+  isExecutionErrorChunk,
+  listOrderMessage,
+  parseReportedTime,
+} from "../../lib/order-evidence";
 
 /** Keep reported status text separate from evidence of the latest chunk failure. */
 export function orderListMessage(order: ListOrder): {
@@ -14,11 +19,34 @@ export function orderListMessage(order: ListOrder): {
   return listOrderMessage(order);
 }
 
-/** Historical error counts alone never make an active order currently erroring. */
+/** Describe the current lifecycle without promoting a historical error to a failure. */
+export function orderSummaryHeading(
+  order: ListOrder,
+  message: string,
+  executionError: boolean,
+): string {
+  const status = getOverviewOrderStatus(order);
+  if (status === "active") {
+    if (executionError) return "Latest attempt failed";
+    if (/price.*(?:condition|target)|trigger price not met/i.test(message))
+      return "Waiting for target price";
+    return "Order is active";
+  }
+  return {
+    completed: "Order completed",
+    partial: "Order partly completed",
+    cancelled: "Order cancelled",
+    expired: "Order expired",
+    failed: "Order failed",
+    unknown: "Order status unavailable",
+  }[status];
+}
+
+/** Execution errors have their own column; keep the current outcome concise. */
 export function orderRowStatus(order: ListOrder): string {
   const status = getOverviewOrderStatus(order);
   if (status !== "active") return OVERVIEW_STATUSES[status].label;
-  if (hasLastExecutionError(order)) return "Active · latest attempt failed";
+  if (hasLastExecutionError(order)) return "Active";
   const metadata = order.metadata;
   const states = [
     metadata.status,
@@ -116,8 +144,8 @@ export function sortedOrderChunks(chunks: OrderChunk[]): OrderChunk[] {
 }
 
 export function latestOrderError(order: Order): OrderChunk | undefined {
-  return sortedOrderChunks(order.metadata.chunks ?? []).find((chunk) =>
-    /^(error|failed)$/i.test(chunk.status),
+  return sortedOrderChunks(order.metadata.chunks ?? []).find(
+    isExecutionErrorChunk,
   );
 }
 
@@ -138,16 +166,23 @@ export function tokenUnits(
   return formatUnits(BigInt(raw.trim()), decimals);
 }
 
-/** Short decimal display without converting exact raw units through Number. */
+/** Round to four decimals (four significant digits below one), keeping exact integer precision. */
 export function compactTokenAmount(amount: string): string {
   const [integer, fraction = ""] = amount.split(".");
-  const grouped = integer.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
-  if (!fraction) return grouped;
   const leadingZeros = fraction.match(/^0*/)?.[0].length ?? 0;
   const precision = integer === "0" ? Math.min(leadingZeros + 4, 12) : 4;
-  const short = fraction.slice(0, precision).replace(/0+$/, "");
-  if (!short && /[1-9]/.test(fraction)) return "<0.000000000001";
-  return `${grouped}${short ? `.${short}` : ""}${fraction.length > precision ? "…" : ""}`;
+  if (integer === "0" && leadingZeros >= 12 && /[1-9]/.test(fraction))
+    return "<0.000000000001";
+  const kept = fraction.slice(0, precision).padEnd(precision, "0");
+  const roundUp = (fraction[precision] ?? "0") >= "5";
+  const rounded = (BigInt(`${integer}${kept}`) + BigInt(roundUp ? 1 : 0))
+    .toString()
+    .padStart(precision + 1, "0");
+  const grouped = rounded
+    .slice(0, -precision)
+    .replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  const short = rounded.slice(-precision).replace(/0+$/, "");
+  return `${grouped}${short ? `.${short}` : ""}`;
 }
 
 /** Keep raw service values in the disclosure, never infer units or a cause. */
@@ -156,8 +191,20 @@ export function conciseOrderMessage(message: string): string {
   const condition = firstLine.match(
     /^Price can't meet condition: expected ([\d.,]+), got ([\d.,]+)/i,
   );
-  if (condition)
-    return `Trading condition not met: expected ${condition[1]}, currently ${condition[2]}.`;
+  if (condition) {
+    const raw = firstLine.match(/\((\d+)\s+vs\.?\s+(\d+)\)/i);
+    const difference = raw
+      ? getTargetDifferenceLabel(raw[1], raw[2])
+      : getTargetDifferenceLabel(condition[2], condition[1]);
+    return `Trading condition not met: expected ${condition[1]}, currently ${condition[2]}${difference ? ` (${difference})` : ""}.`;
+  }
+  const trigger = firstLine.match(
+    /^Trigger price not met,\s*current output\s+([\d.,]+)\s*[<>]\s*trigger(?:Lower|Upper)?\s+([\d.,]+)/i,
+  );
+  if (trigger) {
+    const difference = getTargetDifferenceLabel(trigger[1], trigger[2]);
+    return `Trigger condition not met: target ${trigger[2]}, currently ${trigger[1]}${difference ? ` (${difference})` : ""}.`;
+  }
   const readable = firstLine.replace(/\s*\(\d{16,}\s+vs\.?\s+\d{16,}\)/g, "");
   return readable.length > 240 ? `${readable.slice(0, 237)}…` : readable;
 }

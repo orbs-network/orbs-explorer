@@ -53,7 +53,7 @@ export function useOverviewErrorToasts({ orders, config }: ErrorStates) {
             onClick: () => {
               void queryClient.refetchQueries({
                 queryKey: notice.queryKey,
-                exact: true,
+                type: "active",
               });
             },
           },

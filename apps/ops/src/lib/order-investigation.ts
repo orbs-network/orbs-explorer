@@ -1,5 +1,7 @@
 import type { ListOrder, Order } from "@orbs/domain/twap/types";
 import type { Token } from "@orbs/domain/types";
+import { isAddress } from "viem";
+import { orderIdentity } from "./order-selection";
 import { getTwapOrderChainId } from "@orbs/domain/twap/utils";
 import {
   getOverviewOrderStatus,
@@ -9,10 +11,16 @@ import { getChain } from "@orbs/domain/utils/utils";
 import {
   hasExecutionErrors,
   hasLastExecutionError,
+  executionErrorCount,
   reportedNumber,
 } from "./order-diagnostics";
 import { activeOrderReviewState, deadlineTime } from "./execution-analytics";
-import { chunkReason, parseReportedTime } from "./order-evidence";
+import {
+  chunkReason,
+  isCancellationChunk,
+  isExecutionErrorChunk,
+  parseReportedTime,
+} from "./order-evidence";
 
 export type OrderErrorFilter =
   | "all"
@@ -34,6 +42,7 @@ export type InvestigationFilters = {
   query: string;
   adapter: string;
   token: string;
+  swapper: string;
   status: "all" | OverviewOrderStatus;
   type: string;
   source: "all" | "v1" | "v2" | "unreported";
@@ -52,6 +61,7 @@ export const DEFAULT_INVESTIGATION_FILTERS: InvestigationFilters = {
   query: "",
   adapter: "",
   token: "",
+  swapper: "",
   status: "all",
   type: "all",
   source: "all",
@@ -133,7 +143,7 @@ function matchesErrorFilter(
   order: ListOrder,
   filter: OrderErrorFilter,
 ): boolean {
-  const errorCount = reportedNumber(order.metadata.chunkSummary?.error);
+  const errorCount = executionErrorCount(order);
   switch (filter) {
     case "any":
       return hasExecutionErrors(order);
@@ -195,19 +205,27 @@ export function getPlacementRangeError(
     return "Placement start must be at or before the end.";
 }
 
-/** Filters the entire scoped dataset; source arrays are never mutated. */
+export function getSwapperAddressError(value: string): string | undefined {
+  if (value.trim() && !isAddress(value.trim(), { strict: false }))
+    return "Enter a complete swapper address (0x followed by 40 hexadecimal characters).";
+}
+
+/** Filters scoped records without mutation; list rows use service-proven swapper membership. */
 export function investigateOrders(
   orders: ListOrder[],
   filters: InvestigationFilters,
   searchLabels?: Map<ListOrder, string>,
   snapshot = Date.now(),
+  swapperMatches?: ReadonlySet<string>,
 ): ListOrder[] {
+  if (getSwapperAddressError(filters.swapper)) return [];
   if (getUsdRangeError(filters.minUsd, filters.maxUsd)) return [];
   if (getPlacementRangeError(filters.placedSince, filters.placedUntil))
     return [];
   const terms = filters.query.trim().toLowerCase().split(/\s+/).filter(Boolean);
   const adapter = filters.adapter.trim().toLowerCase();
   const token = filters.token.trim().toLowerCase();
+  const swapper = filters.swapper.trim().toLowerCase();
   const address = (value: unknown) =>
     typeof value === "string" ? value.trim().toLowerCase() : "";
   const minUsd = reportedNumber(filters.minUsd);
@@ -219,6 +237,15 @@ export function investigateOrders(
     ? Date.parse(filters.placedUntil)
     : undefined;
   const result = orders.filter((order) => {
+    if (swapper) {
+      const reportedSwapper = address(order.order.witness.swapper);
+      if (
+        reportedSwapper
+          ? reportedSwapper !== swapper
+          : !swapperMatches?.has(orderIdentity(order))
+      )
+        return false;
+    }
     if (adapter && address(order.exchangeAdapter) !== adapter) return false;
     if (
       token &&
@@ -318,8 +345,8 @@ export function investigateOrders(
       filters.sort === "errors-asc"
     ) {
       comparison = compareReportedNumbers(
-        reportedNumber(a.metadata.chunkSummary?.error),
-        reportedNumber(b.metadata.chunkSummary?.error),
+        executionErrorCount(a),
+        executionErrorCount(b),
         filters.sort === "errors-desc",
       );
     }
@@ -340,6 +367,8 @@ export function isOrderHash(value: string): boolean {
 }
 
 export type OrderNavigationScope = {
+  /** Present only when inspecting within a partner workspace, not a global app filter. */
+  partnerId?: string;
   query?: string;
   period?: string;
   chainIds?: string[];
@@ -366,13 +395,12 @@ function navigationSearch(scope?: OrderNavigationScope): URLSearchParams {
     "order_until",
     "order_raw",
     "order_set",
-    "table_page_order_investigation_results",
-    "table_size_order_investigation_results",
     "min_usd",
     "max_usd",
     "order_sort",
     "order_adapter",
     "order_token",
+    "order_swapper",
   ]) {
     for (const value of query.getAll(key)) search.append(key, value);
   }
@@ -401,6 +429,12 @@ export function orderDetailHref(
 ): string {
   const search = navigationSearch(scope);
   if (source === "v1" || source === "v2") search.set("source", source);
+  if (scope?.partnerId) {
+    search.delete("partner_id");
+    search.set("view", "orders");
+    search.set("order_hash", hash);
+    return `/partners/${encodeURIComponent(scope.partnerId)}?${search}`;
+  }
   const query = search.toString();
   return `/orders/${encodeURIComponent(hash)}${query ? `?${query}` : ""}`;
 }
@@ -429,6 +463,7 @@ export function fullOrderToInspectionOrder(
     totalUSDAmount: "",
     order: {
       witness: {
+        swapper: order.order.witness.swapper,
         chainId: getTwapOrderChainId(order) ?? 0,
         deadline: order.order.witness.deadline,
         epoch: order.order.witness.epoch,
@@ -447,12 +482,13 @@ export function fullOrderToInspectionOrder(
         success: chunks.filter((chunk) =>
           /^(success|completed|succeeded)$/i.test(chunk.status),
         ).length,
-        error: chunks.filter((chunk) => /^(error|failed)$/i.test(chunk.status))
-          .length,
+        error: chunks.filter(isExecutionErrorChunk).length,
         total: chunks.length,
         lastChunkDescription: chunkReason(latest) ?? "",
         lastChunkDueTime: latest?.displayOnlyDueTime ?? "",
-        lastChunkStatus: latest?.status ?? "",
+        lastChunkStatus: isCancellationChunk(latest)
+          ? "cancelled"
+          : (latest?.status ?? ""),
         lastChunkExtraError: false,
       },
     },

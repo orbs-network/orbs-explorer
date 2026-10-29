@@ -1,9 +1,11 @@
 import { PARTNERS } from "@orbs/domain/partners";
+import { isOrderPeriod } from "./order-period";
 import type { SpotConfig } from "@orbs/domain/twap/types";
 import { getPartnerByAdapter } from "@orbs/domain/twap/utils/orders-overview";
 import {
   ordersScopeHref,
   type InvestigationFilters,
+  type OrderNavigationScope,
 } from "./order-investigation";
 
 export const PARTNER_VIEWS = [
@@ -18,23 +20,12 @@ export const PARTNER_VIEWS = [
     label: "Orders",
     description: "Search and filter this app’s order history.",
   },
-  {
-    value: "routes",
-    label: "Swap pairs",
-    description: "Explore which token pairs are traded most often.",
-  },
-  {
-    value: "tokens",
-    label: "Tokens",
-    description: "See individual tokens and their order activity.",
-  },
 ] as const;
 
 export type PartnerView = (typeof PARTNER_VIEWS)[number]["value"];
 export const PARTNER_TABS = [
   { value: "overview", label: "Overview", views: ["overview"] },
   { value: "orders", label: "Orders", views: ["orders"] },
-  { value: "markets", label: "Markets", views: ["routes", "tokens"] },
 ] as const satisfies readonly {
   value: string;
   label: string;
@@ -82,15 +73,16 @@ export type LegacyPartnerView =
   | "outcomes"
   | "networks"
   | "charts"
-  | "markets";
+  | "markets"
+  | "routes"
+  | "tokens";
 
 export function getPartnerView(value?: string | null): PartnerView {
-  const canonical =
-    value === "markets"
-      ? "routes"
-      : ["health", "progress", "failures", "lookup"].includes(value ?? "")
-        ? "orders"
-        : value;
+  const canonical = ["health", "progress", "failures", "lookup"].includes(
+    value ?? "",
+  )
+    ? "orders"
+    : value;
   return (
     PARTNER_VIEWS.find((view) => view.value === canonical)?.value ?? "overview"
   );
@@ -122,6 +114,7 @@ export function legacyPartnerOrdersHref(
       else if (review !== "all") params.set("order_review", "attention");
     }
   } else if (view === "failures") params.set("order_status", "failed");
+  params.delete("partner_id");
   return `/partners/${encodeURIComponent(resolvePartnerId(partnerId))}?${params}`;
 }
 
@@ -151,7 +144,7 @@ function globalScopeSearch(
     typeof search === "string" ? new URLSearchParams(search) : search;
   const params = new URLSearchParams();
   const period = current.get("period");
-  if (period === "7" || period === "30" || period === "all") {
+  if (isOrderPeriod(period)) {
     params.set("period", period);
   }
   for (const chainId of normalizedChainIds(
@@ -179,6 +172,17 @@ export function partnerScopeSearch(
   return globalScopeSearch(search, partnerId, chainIdsOverride);
 }
 
+/** Open the shared list within its partner, retaining explicit cohort facets. */
+export function partnerOrdersTabHref(
+  partnerId: string,
+  scope: OrderNavigationScope,
+): string {
+  const params = new URLSearchParams(ordersScopeHref(scope).split("?")[1]);
+  params.delete("partner_id");
+  params.set("view", "orders");
+  return `/partners/${encodeURIComponent(resolvePartnerId(partnerId))}?${params}`;
+}
+
 /** A partner drilldown describes the displayed cohort, not hidden Orders facets. */
 export function partnerOrdersHref(
   partnerId: string,
@@ -194,7 +198,7 @@ export function partnerOrdersHref(
   if (filters.errors && filters.errors !== "all")
     params.set("order_errors", filters.errors);
   if (filters.deadline) params.set("order_deadline", filters.deadline);
-  return ordersScopeHref({ query: params.toString() });
+  return partnerOrdersTabHref(partnerId, { query: params.toString() });
 }
 
 export function partnerHref(
@@ -212,10 +216,12 @@ export function partnerHref(
   if (legacy) return legacy;
   const selectedView = getPartnerView(view);
   if (selectedView !== "overview") params.set("view", selectedView);
-  return `/partners/${encodeURIComponent(id)}?${params.toString()}`;
+  // The route owns this scope; query partners are needed only on global pages.
+  params.delete("partner_id");
+  return `/partners/${encodeURIComponent(id)}${params.size ? `?${params}` : ""}`;
 }
 
-/** A route-level partner always takes precedence over unrelated query partners. */
+/** Entering All orders from a partner clears the app scope; other links retain it. */
 export function globalScopeHref(
   pathname: string,
   search: ScopeSearch,
@@ -229,5 +235,7 @@ export function globalScopeHref(
     throw new TypeError("Operational navigation requires a local pathname.");
   }
   const params = globalScopeSearch(search, partnerIdOverride);
+  if (pathname === "/orders" && partnerIdOverride !== undefined)
+    params.delete("partner_id");
   return `${pathname}${params.size ? `?${params.toString()}` : ""}`;
 }

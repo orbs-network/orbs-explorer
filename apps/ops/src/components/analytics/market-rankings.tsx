@@ -1,5 +1,8 @@
 "use client";
 
+import { TableRow, TableHead, TableCell } from "@orbs/ui/controls/table";
+
+import { Button } from "@orbs/ui/controls/button";
 import { useMemo, useState } from "react";
 import { ArrowRight, Search } from "lucide-react";
 import { Input } from "@orbs/ui/controls/input";
@@ -174,7 +177,7 @@ export function RouteRankings({
           itemKey={(route) => route.key}
           minWidth={1040}
           header={
-            <tr>
+            <TableRow>
               {[
                 "Route",
                 "Network",
@@ -185,24 +188,26 @@ export function RouteRankings({
                 "Failed",
                 "With errors",
               ].map((label) => (
-                <th
+                <TableHead
                   key={label}
                   scope="col"
                   className={`${cellClass} font-medium text-muted-foreground`}
                 >
                   {label}
-                </th>
+                </TableHead>
               ))}
-            </tr>
+            </TableRow>
           }
           rowContent={(route) => {
             const { summary } = route;
             const title = `${route.input.token?.symbol ?? route.input.address} → ${route.output.token?.symbol ?? route.output.address}`;
             return (
               <>
-                <th scope="row" className={cellClass}>
+                <TableHead scope="row" className={cellClass}>
                   <div className="group/route flex items-center gap-1">
-                    <button
+                    <Button
+                      variant="ghost"
+                      size="content"
                       type="button"
                       className={`flex items-center gap-3 ${inspectClass}`}
                       onClick={() => inspect(title, summary.orders)}
@@ -213,28 +218,32 @@ export function RouteRankings({
                         className="size-3 shrink-0 text-muted-foreground"
                       />
                       <TokenIdentity reference={route.output} />
-                    </button>
+                    </Button>
                     {/* Copy actions stay out of the way until the row is in use. */}
                     <span className="flex opacity-0 transition-opacity focus-within:opacity-100 group-hover/route:opacity-100 motion-reduce:transition-none [@media(hover:none)]:opacity-100">
                       <TokenReferenceCopy reference={route.input} />
                       <TokenReferenceCopy reference={route.output} />
                     </span>
                   </div>
-                </th>
-                <td className={cellClass}>
+                </TableHead>
+                <TableCell className={cellClass}>
                   <NetworkLabel chainId={route.chainId} />
-                </td>
-                <td className={cellClass}>
-                  <button
+                </TableCell>
+                <TableCell className={cellClass}>
+                  <Button
+                    variant="ghost"
+                    size="content"
                     type="button"
                     className={inspectClass}
                     onClick={() => inspect(title, summary.orders)}
                   >
                     {summary.orders.length.toLocaleString()}
-                  </button>
-                </td>
-                <td className={cellClass}>
-                  <button
+                  </Button>
+                </TableCell>
+                <TableCell className={cellClass}>
+                  <Button
+                    variant="ghost"
+                    size="content"
                     type="button"
                     className={inspectClass}
                     onClick={() => inspect(title, summary.orders)}
@@ -245,11 +254,13 @@ export function RouteRankings({
                         {summary.pricedCount}/{summary.orders.length} reported
                       </span>
                     )}
-                  </button>
-                </td>
+                  </Button>
+                </TableCell>
                 {(["completed", "active", "failed"] as const).map((status) => (
-                  <td key={status} className={cellClass}>
-                    <button
+                  <TableCell key={status} className={cellClass}>
+                    <Button
+                      variant="ghost"
+                      size="content"
                       type="button"
                       disabled={!summary.outcomes[status].length}
                       className={`${inspectClass} ${status === "failed" && summary.outcomes.failed.length ? "text-destructive" : ""}`}
@@ -261,21 +272,23 @@ export function RouteRankings({
                       }
                     >
                       {summary.outcomes[status].length.toLocaleString()}
-                    </button>
-                  </td>
+                    </Button>
+                  </TableCell>
                 ))}
-                <td className={cellClass}>
-                  <button
+                <TableCell className={cellClass}>
+                  <Button
+                    variant="ghost"
+                    size="content"
                     type="button"
                     disabled={!summary.withErrors.length}
-                    className={`${inspectClass} ${summary.withErrors.length ? "text-amber-700 dark:text-amber-400" : ""}`}
+                    className={`${inspectClass} ${summary.withErrors.length ? "text-warning" : ""}`}
                     onClick={() =>
                       inspect(`${title} · execution errors`, summary.withErrors)
                     }
                   >
                     {summary.withErrors.length.toLocaleString()}
-                  </button>
-                </td>
+                  </Button>
+                </TableCell>
               </>
             );
           }}
@@ -348,7 +361,7 @@ export function TokenRankings({
           itemKey={(token) => token.key}
           minWidth={1120}
           header={
-            <tr>
+            <TableRow>
               {[
                 "Token",
                 "Network",
@@ -359,23 +372,25 @@ export function TokenRankings({
                 "Active",
                 "With errors",
               ].map((label) => (
-                <th
+                <TableHead
                   key={label}
                   scope="col"
                   className={`${cellClass} font-medium text-muted-foreground`}
                 >
                   {label}
-                </th>
+                </TableHead>
               ))}
-            </tr>
+            </TableRow>
           }
           rowContent={(token) => {
             const label = token.token?.symbol ?? token.address;
             return (
               <>
-                <th scope="row" className={cellClass}>
+                <TableHead scope="row" className={cellClass}>
                   <div className="flex items-center gap-1">
-                    <button
+                    <Button
+                      variant="ghost"
+                      size="content"
                       type="button"
                       className={inspectClass}
                       onClick={() =>
@@ -386,15 +401,17 @@ export function TokenRankings({
                       }
                     >
                       <TokenIdentity reference={token} />
-                    </button>
+                    </Button>
                     <TokenReferenceCopy reference={token} />
                   </div>
-                </th>
-                <td className={cellClass}>
+                </TableHead>
+                <TableCell className={cellClass}>
                   <NetworkLabel chainId={token.chainId} />
-                </td>
-                <td className={cellClass}>
-                  <button
+                </TableCell>
+                <TableCell className={cellClass}>
+                  <Button
+                    variant="ghost"
+                    size="content"
                     type="button"
                     className={inspectClass}
                     onClick={() =>
@@ -405,10 +422,12 @@ export function TokenRankings({
                     }
                   >
                     {token.summary.orders.length.toLocaleString()}
-                  </button>
-                </td>
-                <td className={cellClass}>
-                  <button
+                  </Button>
+                </TableCell>
+                <TableCell className={cellClass}>
+                  <Button
+                    variant="ghost"
+                    size="content"
                     type="button"
                     className={inspectClass}
                     onClick={() =>
@@ -425,11 +444,13 @@ export function TokenRankings({
                       {token.summary.pricedCount}/{token.summary.orders.length}{" "}
                       reported
                     </span>
-                  </button>
-                </td>
+                  </Button>
+                </TableCell>
                 {(["input", "output"] as const).map((side) => (
-                  <td key={side} className={cellClass}>
-                    <button
+                  <TableCell key={side} className={cellClass}>
+                    <Button
+                      variant="ghost"
+                      size="content"
                       type="button"
                       disabled={!token[side].orders.length}
                       className={inspectClass}
@@ -450,11 +471,13 @@ export function TokenRankings({
                           </span>
                         )}
                       </span>
-                    </button>
-                  </td>
+                    </Button>
+                  </TableCell>
                 ))}
-                <td className={cellClass}>
-                  <button
+                <TableCell className={cellClass}>
+                  <Button
+                    variant="ghost"
+                    size="content"
                     type="button"
                     disabled={!token.summary.outcomes.active.length}
                     className={inspectClass}
@@ -466,10 +489,12 @@ export function TokenRankings({
                     }
                   >
                     {token.summary.outcomes.active.length.toLocaleString()}
-                  </button>
-                </td>
-                <td className={cellClass}>
-                  <button
+                  </Button>
+                </TableCell>
+                <TableCell className={cellClass}>
+                  <Button
+                    variant="ghost"
+                    size="content"
                     type="button"
                     disabled={!token.summary.withErrors.length}
                     className={inspectClass}
@@ -481,8 +506,8 @@ export function TokenRankings({
                     }
                   >
                     {token.summary.withErrors.length.toLocaleString()}
-                  </button>
-                </td>
+                  </Button>
+                </TableCell>
               </>
             );
           }}

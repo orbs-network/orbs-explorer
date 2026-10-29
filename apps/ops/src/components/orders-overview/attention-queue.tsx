@@ -15,17 +15,25 @@ import {
   attentionOrderContext,
 } from "@/lib/attention-queue";
 import { snapshotFreshness } from "@/lib/overview-freshness";
+import { orderPeriodRange } from "@/lib/order-period";
 import { getOverviewOrderStatus } from "@orbs/domain/twap/utils/orders-overview";
 import { hasExecutionErrors } from "@/lib/order-diagnostics";
 import { MonitoringRulesEditor, useMonitoringRules } from "./monitoring-rules";
 import { useOperationalScope } from "@/hooks/use-operational-scope";
 import { OperationalScopeControl } from "@/components/operations/operational-scope-control";
+import {
+  EventListSkeleton,
+  InlineSkeleton,
+} from "@/components/loading-skeletons";
 
 export function AttentionQueue() {
   const data = useOperationsData();
   const operational = useOperationalScope(data, data.scope);
   const current = operational.data;
   const health = useSystemHealth();
+  const checkingServices = health.services.some(
+    (service) => service.isPending && !service.snapshot,
+  );
   const { rules, saveRules } = useMonitoringRules();
   const attention = useMemo(
     () =>
@@ -61,15 +69,7 @@ export function AttentionQueue() {
     detail: string;
     severity: "warning" | "unknown";
   }>((service) => {
-    if (service.isPending)
-      return [
-        {
-          id: `${service.id}-loading`,
-          title: `${service.label} · checking telemetry`,
-          detail: "Service and worker checks are loading.",
-          severity: "unknown" as const,
-        },
-      ];
+    if (service.isPending) return [];
     const coverage = summarizeSystemCoverage(
       service.snapshot,
       service.assessment,
@@ -109,14 +109,15 @@ export function AttentionQueue() {
       });
     return issues;
   });
-  const orderIssues = data.isLoading || data.isError ? [] : attention.issues;
+  const orderIssues =
+    current.isLoading || current.isError ? [] : attention.issues;
   const stale =
     data.updatedAt > 0 &&
     snapshotFreshness({
       updatedAt: data.updatedAt,
       now: health.evaluatedAt,
       refreshing: data.isRefreshing,
-      failed: data.isRefreshError,
+      failed: current.isRefreshError,
     }).stale;
   const recovered = data.orders.filter(
     (order) =>
@@ -145,14 +146,14 @@ export function AttentionQueue() {
   const scopeNote =
     operational.placement === "all"
       ? "All placement dates · selected networks and trading apps"
-      : `Placed in ${data.scope.period === "all" ? "all available history" : `the last ${data.scope.period} days`} · selected networks and trading apps`;
+      : `Placed in ${orderPeriodRange(data.scope.period)} · selected networks and trading apps`;
 
   return (
     <Panel
       title={
-        data.isLoading
-          ? "Needs attention · checking orders…"
-          : data.isError || stale
+        current.isLoading
+          ? "Needs attention"
+          : current.isError || stale
             ? "Needs attention · fresh snapshot required"
             : activeReview.length
               ? `Needs attention · ${activeReview.length} active orders to review`
@@ -162,8 +163,8 @@ export function AttentionQueue() {
       description="Current review signals and coverage gaps. Counts can overlap; a failed execution attempt is not a terminal order failure. Rate rules use orders placed in the selected window."
       action={
         <div className="flex flex-wrap items-center gap-2">
-          {!data.isLoading &&
-            !data.isError &&
+          {!current.isLoading &&
+            !current.isError &&
             !stale &&
             activeReview.length > 0 && (
               <Button asChild size="sm">
@@ -182,10 +183,22 @@ export function AttentionQueue() {
       }
     >
       <p className="text-xs text-muted-foreground">{scopeNote}</p>
+      {current.isLoading && (
+        <InlineSkeleton
+          label="Loading order review signals"
+          className="mt-2 w-56"
+        />
+      )}
+      {checkingServices && (
+        <InlineSkeleton
+          label="Checking service signals"
+          className="mt-2 w-56"
+        />
+      )}
       {serviceIssues.length > 0 && (
         <Link
           href={monitoringHref}
-          className="mt-2 inline-flex min-h-8 items-center gap-1 rounded-sm text-xs text-amber-800 hover:underline focus-visible:ring-2 focus-visible:ring-ring dark:text-amber-300"
+          className="mt-2 inline-flex min-h-8 items-center gap-1 rounded-sm text-xs text-warning hover:underline focus-visible:ring-2 focus-visible:ring-ring"
         >
           <AlertTriangle aria-hidden className="size-3.5" />
           {serviceIssues.length} service{" "}
@@ -203,33 +216,38 @@ export function AttentionQueue() {
             <OperationalScopeControl
               {...operational}
               period={data.scope.period}
-              isLoading={data.isLoading}
-              isUnavailable={data.isError}
+              isLoading={current.isLoading}
+              isUnavailable={current.isError}
             />
           </div>
-          {data.isLoading && (
-            <p role="status" className="mb-3 text-xs text-muted-foreground">
-              Loading order review signals… Service checks are independent.
-            </p>
+          {current.isLoading && (
+            <EventListSkeleton label="Loading order review signals" />
           )}
-          {(data.isError || stale) && (
+          {checkingServices && (
+            <EventListSkeleton label="Loading service checks" />
+          )}
+          {(current.isError || stale) && (
             <Link
               prefetch={false}
               href={attentionOrdersHref(data.scope)}
-              className="mb-3 block rounded-lg bg-amber-500/10 p-3 text-xs text-amber-800 dark:text-amber-300"
+              className="mb-3 block rounded-lg bg-warning-surface p-3 text-xs text-warning"
             >
-              {data.isError
+              {current.isError
                 ? "Order signals unavailable: complete history could not be loaded."
                 : "Order snapshot is stale: current execution health is unknown."}{" "}
               Open Orders to review or retry.
             </Link>
           )}
-          {!anyIssues && !data.isLoading && !data.isError && !stale && (
-            <p role="status" className="flex items-center gap-2 py-2 text-sm">
-              <Check aria-hidden className="size-4" />
-              No actionable issues detected under current rules.
-            </p>
-          )}
+          {!anyIssues &&
+            !checkingServices &&
+            !current.isLoading &&
+            !current.isError &&
+            !stale && (
+              <p role="status" className="flex items-center gap-2 py-2 text-sm">
+                <Check aria-hidden className="size-4" />
+                No actionable issues detected under current rules.
+              </p>
+            )}
           <div className="grid gap-x-6 md:grid-cols-2">
             {(["warning", "unknown"] as const).map((severity) => {
               const orders = orderIssues.filter(
@@ -252,7 +270,7 @@ export function AttentionQueue() {
                   <h3 className="mb-1 flex items-center gap-1.5 text-xs font-medium">
                     <Icon
                       aria-hidden
-                      className={`size-3.5 ${severity === "warning" ? "text-amber-600 dark:text-amber-400" : "text-muted-foreground"}`}
+                      className={`size-3.5 ${severity === "warning" ? "text-warning" : "text-muted-foreground"}`}
                     />
                     {severity === "warning" ? "Review" : "Unknown"}
                   </h3>

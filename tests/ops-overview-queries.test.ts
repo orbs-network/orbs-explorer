@@ -2,11 +2,13 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import axios from "axios";
 import { QueryClient } from "@tanstack/react-query";
-import type { ListOrder } from "../packages/domain/src/twap/types";
+import type { ListOrder, SpotConfig } from "../packages/domain/src/twap/types";
+import { historyExchangeForPartners } from "../apps/ops/src/lib/spot-history-scope";
 import { tokenQueryKey } from "../packages/domain/src/token-metadata";
 import {
   spotOverviewOrdersQueryOptions,
   spotOverviewTokensQueryOptions,
+  spotSwapperOrdersQueryOptions,
 } from "../apps/ops/src/lib/spot-overview-queries";
 
 const address = (letter: string) => `0x${letter.repeat(40)}`;
@@ -22,6 +24,75 @@ const client = () =>
   new QueryClient({
     defaultOptions: { queries: { gcTime: Infinity, retry: false } },
   });
+
+test("partner requests include historical adapters and respect selected networks", () => {
+  const config = {
+    "1": {
+      dex: { sushiswap: { adapter: address("a") } },
+      partnerAdapters: [
+        {
+          partnerId: "sushiswap",
+          partnerName: "SushiSwap",
+          adapter: address("b"),
+        },
+      ],
+    },
+    "137": {
+      dex: {
+        sushiswap: { adapter: address("c") },
+        quickswap: { adapter: address("d") },
+      },
+    },
+  } as unknown as SpotConfig;
+  assert.equal(
+    historyExchangeForPartners(config, ["sushiswap"]),
+    [address("a"), address("b"), address("c")].join(","),
+  );
+  assert.equal(
+    historyExchangeForPartners(config, ["sushiswap"], ["1"]),
+    [address("a"), address("b")].join(","),
+  );
+  assert.equal(
+    historyExchangeForPartners(config, [`adapter-${address("e")}`]),
+    address("e"),
+  );
+  assert.equal(historyExchangeForPartners(null, ["unresolved"]), undefined);
+});
+
+test("swapper membership queries normalize addresses and isolate cache by wallet and history snapshot", async (t) => {
+  const cache = client();
+  const requests: string[] = [];
+  t.mock.method(axios, "get", async (url: string) => {
+    requests.push(url);
+    const parsed = new URL(url);
+    assert.equal(parsed.searchParams.get("view"), "list");
+    assert.ok(
+      [address("a"), address("b")].includes(
+        parsed.searchParams.get("swapper")!,
+      ),
+    );
+    return { data: { orders: [row(address("c"), address("d"))] } };
+  });
+  const options = spotSwapperOrdersQueryOptions(
+    ` ${address("a").toUpperCase().replace("0X", "0x")} `,
+    100,
+  );
+  const same = spotSwapperOrdersQueryOptions(address("a"), 100);
+  assert.deepEqual(options.queryKey, same.queryKey);
+  const [first, second] = await Promise.all([
+    cache.fetchQuery(options),
+    cache.fetchQuery(same),
+  ]);
+  assert.equal(first, second);
+  assert.equal(requests.length, 2);
+  await cache.fetchQuery(spotSwapperOrdersQueryOptions(address("b"), 100));
+  await cache.fetchQuery(spotSwapperOrdersQueryOptions(address("a"), 200));
+  assert.equal(requests.length, 6);
+  assert.equal(spotSwapperOrdersQueryOptions("", 100).enabled, false);
+  assert.equal(spotSwapperOrdersQueryOptions("0x123", 100).enabled, false);
+  assert.equal(spotSwapperOrdersQueryOptions(address("a"), 0).enabled, false);
+  cache.clear();
+});
 
 test("routes share a fresh history snapshot without waiting for token metadata", async (t) => {
   const cache = client();
@@ -51,6 +122,84 @@ test("routes share a fresh history snapshot without waiting for token metadata",
     requests.length,
     4,
     "explicit refresh still retrieves both sources",
+  );
+  cache.clear();
+});
+
+test("history caches isolate periods and filters while equivalent scopes reuse requests", async (t) => {
+  const cache = client();
+  const requests: URL[] = [];
+  t.mock.method(axios, "get", async (raw: string) => {
+    requests.push(new URL(raw));
+    return {
+      data: {
+        orders: [
+          {
+            ...row(address("a"), address("b")),
+            timestamp: new Date().toISOString(),
+          },
+        ],
+      },
+    };
+  });
+  const day = spotOverviewOrdersQueryOptions({
+    days: 1,
+    chainIds: ["137", "1", "137"],
+    exchange: `${address("B")},${address("a")}`,
+  });
+  const equivalent = spotOverviewOrdersQueryOptions({
+    days: 1,
+    chainIds: ["1", "137"],
+    exchange: `${address("a")},${address("b")}`,
+  });
+  assert.deepEqual(day.queryKey, equivalent.queryKey);
+  await Promise.all([cache.fetchQuery(day), cache.fetchQuery(equivalent)]);
+  assert.equal(requests.length, 2);
+  await cache.fetchQuery(spotOverviewOrdersQueryOptions({ days: 7 }));
+  assert.equal(requests.length, 4, "a different period has its own snapshot");
+  await cache.fetchQuery(
+    spotOverviewOrdersQueryOptions({
+      days: 1,
+      swapper: address("c"),
+      source: "v2",
+    }),
+  );
+  assert.equal(
+    requests.length,
+    5,
+    "an explicit source requests only that service",
+  );
+  assert.equal(requests[4].searchParams.get("swapper"), address("c"));
+  assert.equal(requests[0].searchParams.get("chainId"), "1,137");
+  cache.clear();
+});
+
+test("24-hour history excludes older records while the overview can request its two-day comparison window", async (t) => {
+  const now = Date.parse("2026-10-26T12:00:00Z");
+  t.mock.method(Date, "now", () => now);
+  t.mock.method(axios, "get", async () => ({
+    data: {
+      orders: [0.5, 1.5, 3].map((age, index) => ({
+        ...row(address("a"), address("b")),
+        hash: `0x${index}`,
+        timestamp: new Date(now - age * 86_400_000).toISOString(),
+      })),
+    },
+  }));
+  const cache = client();
+  assert.equal(
+    (await cache.fetchQuery(spotOverviewOrdersQueryOptions({ days: 1 })))
+      .length,
+    1,
+  );
+  assert.equal(
+    (await cache.fetchQuery(spotOverviewOrdersQueryOptions({ days: 2 })))
+      .length,
+    2,
+  );
+  assert.equal(
+    (await cache.fetchQuery(spotOverviewOrdersQueryOptions())).length,
+    3,
   );
   cache.clear();
 });
@@ -124,7 +273,9 @@ test("embedded token symbols avoid redundant metadata requests only for matching
     missing.queryKey,
     "a symbol without an address cannot satisfy another token's metadata",
   );
-  order.metadata.srcToken = {} as NonNullable<ListOrder["metadata"]["srcToken"]>;
+  order.metadata.srcToken = {} as NonNullable<
+    ListOrder["metadata"]["srcToken"]
+  >;
   assert.deepEqual(
     spotOverviewTokensQueryOptions(cache, [order]).queryKey,
     missing.queryKey,

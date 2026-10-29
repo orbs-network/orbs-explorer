@@ -10,6 +10,7 @@ export function useOrderNavigationScope() {
   const { partnerId } = useParams<{ partnerId?: string }>();
   return {
     ...scope,
+    partnerId: partnerId ? resolvePartnerId(partnerId) : undefined,
     partnerIds: partnerId ? [resolvePartnerId(partnerId)] : scope.partnerIds,
   };
 }

@@ -12,9 +12,10 @@ import { OrderTokenLabel } from "../apps/ops/src/components/orders-overview/orde
 Object.assign(globalThis, { React });
 
 const address = `0x${"a".repeat(40)}`;
-function render(embedded?: Token, cached?: Token): string {
+function render(embedded?: Token, cached?: Token | null): string {
   const client = new QueryClient();
-  if (cached) client.setQueryData(tokenQueryKey(address, 137), cached);
+  if (cached !== undefined)
+    client.setQueryData(tokenQueryKey(address, 137), cached);
   try {
     const markup = renderToStaticMarkup(
       createElement(
@@ -41,8 +42,15 @@ test("order token labels accept embedded symbols only for the actual token addre
     address: `0x${"b".repeat(40)}`,
     symbol: "WRONG",
   };
-  assert.match(render(mismatched), />Unknown token</);
+  assert.match(render(mismatched), /aria-label="Loading token name"/);
   assert.doesNotMatch(render(mismatched), /WRONG/);
   assert.match(render(mismatched, actual), />USDC</);
   assert.match(render({ ...actual, symbol: " " }, actual), />USDC</);
+});
+
+test("token labels use a skeleton while pending and an explicit fallback after unavailable metadata settles", () => {
+  assert.match(render(), /data-slot="skeleton"/);
+  const unavailable = render(undefined, null);
+  assert.match(unavailable, />Unknown token</);
+  assert.doesNotMatch(unavailable, /data-slot="skeleton"/);
 });

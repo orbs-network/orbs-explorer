@@ -28,8 +28,14 @@ import { ROUTES } from "@/routes";
 import { formatNumber, formatUsdCompact } from "@orbs/domain/explorer/format";
 import { Badge } from "@orbs/ui/controls/badge";
 import { Button } from "@orbs/ui/controls/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@orbs/ui/controls/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@orbs/ui/controls/card";
 import { Spinner } from "@orbs/ui/controls/spinner";
+import { JsonPreviewDialog } from "@orbs/ui/json-preview-dialog";
 import { cn, shortenAddress } from "@orbs/domain/utils/utils";
 
 function toNumber(value: unknown) {
@@ -453,22 +459,23 @@ export function PerpetualHubEventView({ id }: { id: string }) {
         </Card>
       </div>
 
-      <details className="rounded-lg border border-border bg-card p-4">
-        <summary className="cursor-pointer text-sm font-medium">
-          Technical event payload
-        </summary>
-        <p className="mt-3 break-all text-xs text-muted-foreground">
-          State verification ID: {event.stateRoot || "Not reported"}
-        </p>
-        <pre
-          tabIndex={0}
-          role="region"
-          aria-label="Raw event data"
-          className="mt-3 max-h-[520px] overflow-auto rounded-md bg-muted/30 p-4 text-xs leading-5"
+      <section className="flex flex-wrap items-center justify-between gap-3 rounded-lg bg-card p-4">
+        <div className="min-w-0 flex-1">
+          <h2 className="text-sm font-medium">Technical event payload</h2>
+          <p className="mt-2 break-all text-xs text-muted-foreground">
+            State verification ID: {event.stateRoot || "Not reported"}
+          </p>
+        </div>
+        <JsonPreviewDialog
+          data={event}
+          title="Technical event payload"
+          description="Original fields returned for this Perpetual Hub event."
         >
-          {JSON.stringify(event, null, 2)}
-        </pre>
-      </details>
+          <Button variant="secondary" size="sm">
+            View event JSON
+          </Button>
+        </JsonPreviewDialog>
+      </section>
     </div>
   );
 }

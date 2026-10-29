@@ -64,7 +64,7 @@ export function TradingAppCount({
     </>
   );
   const className = cn(
-    "inline-flex min-h-8 items-center justify-end gap-1 rounded-sm px-1 font-medium tabular-nums [@media(pointer:coarse)]:min-h-11",
+    "inline-flex min-h-8 items-center justify-start gap-1 rounded-sm -ml-1 px-1 font-medium tabular-nums [@media(pointer:coarse)]:min-h-11",
     count
       ? "hover:bg-muted hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       : "text-muted-foreground",
@@ -76,7 +76,7 @@ export function TradingAppCount({
           : "text-foreground"),
   );
   return (
-    <div className="flex flex-col items-end">
+    <div className="flex flex-col items-start">
       {count ? (
         <Link
           href={tradingAppOrdersHref(row, query, { status })}
@@ -90,11 +90,11 @@ export function TradingAppCount({
       )}
       {status === "active" &&
         (row.activePastDeadline > 0 || row.activeLatestErrors > 0) && (
-          <span className="flex flex-col items-end gap-0.5 whitespace-nowrap text-[10px]">
+          <span className="flex flex-col items-start gap-0.5 whitespace-nowrap text-[10px]">
             {row.activePastDeadline > 0 && (
               <Link
                 href={tradingAppOrdersHref(row, query, { deadline: "past" })}
-                className="rounded-sm text-amber-700 dark:text-amber-400 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                className="rounded-sm text-warning hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
                 {row.activePastDeadline} past deadline
               </Link>

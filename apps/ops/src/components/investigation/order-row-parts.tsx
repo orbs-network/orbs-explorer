@@ -16,12 +16,13 @@ import {
 import { shortenAddress } from "@orbs/domain/utils/utils";
 import { NetworkIcon } from "@orbs/ui/controls/network";
 import { Button } from "@orbs/ui/controls/button";
+import { InlineSkeleton } from "../loading-skeletons";
 import {
+  executionErrorCount,
   hasLastExecutionError,
   reportedNumber,
 } from "../../lib/order-diagnostics";
 import { deadlineTime } from "../../lib/execution-analytics";
-import { getOrderStatusConflict } from "../../lib/order-evidence";
 import {
   formatOrderDate,
   STATUS_COLORS,
@@ -56,7 +57,11 @@ function RowToken({
     hasTokenSymbol(token)
       ? token
       : undefined;
-  const { data } = useToken(address, chainId, !!embedded || !resolveMetadata);
+  const { data, isLoading } = useToken(
+    address,
+    chainId,
+    !!embedded || !resolveMetadata,
+  );
   const copy = useCopy();
   const symbol =
     embedded?.symbol || (hasTokenSymbol(data) ? data?.symbol : undefined);
@@ -66,6 +71,8 @@ function RowToken({
         {symbol}
       </span>
     );
+  if (isLoading)
+    return <InlineSkeleton label={`Loading ${label} token`} className="w-12" />;
   return (
     <span className="inline-flex min-w-0 items-center gap-0.5">
       <span
@@ -184,7 +191,6 @@ export function OrderRowStatus({
 }) {
   const status = getOverviewOrderStatus(order);
   const message = orderListMessage(order);
-  const conflict = getOrderStatusConflict(order);
   const executionError =
     status === "failed" ||
     (status === "active" && hasLastExecutionError(order));
@@ -198,22 +204,19 @@ export function OrderRowStatus({
     >
       <span
         className={`inline-flex shrink-0 items-center gap-1 whitespace-nowrap text-xs font-medium ${status === "failed" ? ORDER_ERROR_CLASS : STATUS_COLORS[status]}`}
-        title={`Service status: ${order.metadata.status || "Not provided"}`}
+        title={
+          `Service status: ${order.metadata.status || "Not provided"}` +
+          (compact && message.text
+            ? `\n${orderReasonSummary(message.text)}`
+            : "")
+        }
       >
-        {executionError && (
+        {status === "failed" && (
           <AlertTriangle aria-hidden className="size-3.5 shrink-0" />
         )}
         {orderRowStatus(order)}
       </span>
-      {conflict && (
-        <span
-          className="shrink-0 rounded bg-amber-500/15 px-1 text-[10px] text-amber-800 dark:text-amber-300"
-          title={conflict.message}
-        >
-          Status needs review
-        </span>
-      )}
-      {message.text && (
+      {!compact && message.text && (
         <p
           className={`min-w-0 text-xs leading-relaxed ${compact ? "basis-full" : ""} ${executionError ? ORDER_ERROR_CLASS : "text-muted-foreground"}`}
           title="Open order details for the full reported reason"
@@ -257,13 +260,29 @@ export function OrderRowDeadline({
   const active = getOverviewOrderStatus(order) === "active";
   return (
     <span
-      className={`whitespace-nowrap text-xs ${active && deadline !== undefined && deadline <= now ? "text-amber-700 dark:text-amber-400" : "text-muted-foreground"}`}
+      className={`whitespace-nowrap text-xs ${active && deadline !== undefined && deadline <= now ? "text-warning" : "text-muted-foreground"}`}
     >
       {deadline === undefined ? (
         "Not reported"
       ) : (
         <>
-          <span className="block">{formatOrderDate(deadline)}</span>
+          <time
+            dateTime={new Date(deadline).toISOString()}
+            title={formatOrderDate(deadline)}
+          >
+            <span className="block">
+              {new Intl.DateTimeFormat(undefined, {
+                dateStyle: "medium",
+              }).format(deadline)}
+            </span>
+            <span className="block text-[11px]">
+              {new Intl.DateTimeFormat(undefined, {
+                hour: "numeric",
+                minute: "2-digit",
+                timeZoneName: "short",
+              }).format(deadline)}
+            </span>
+          </time>
           {active && deadline <= now && (
             <span className="block text-[10px]">
               Past deadline · still active
@@ -276,7 +295,7 @@ export function OrderRowDeadline({
 }
 
 export function OrderRowErrors({ order }: { order: ListOrder }) {
-  const errors = reportedNumber(order.metadata.chunkSummary?.error);
+  const errors = executionErrorCount(order);
   return (
     <span
       className={`inline-flex items-center gap-1 whitespace-nowrap text-xs tabular-nums ${errors && errors > 0 ? ORDER_ERROR_CLASS : "text-muted-foreground"}`}

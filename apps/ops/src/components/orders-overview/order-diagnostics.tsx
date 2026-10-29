@@ -1,5 +1,6 @@
 "use client";
 
+import { Button } from "@orbs/ui/controls/button";
 import { useMemo } from "react";
 import { ChevronRight } from "lucide-react";
 import type { ListOrder } from "@orbs/domain/twap/types";
@@ -100,7 +101,7 @@ export function OrderDiagnostics({
                 <strong
                   className={
                     metric.orders.length
-                      ? "font-semibold text-amber-700 dark:text-amber-400"
+                      ? "font-semibold text-warning"
                       : "font-medium text-muted-foreground"
                   }
                 >
@@ -118,7 +119,9 @@ export function OrderDiagnostics({
           const row =
             "flex min-h-10 w-full items-center justify-between gap-3 rounded-[4px] px-1 text-left text-xs";
           return metric.orders.length ? (
-            <button
+            <Button
+              variant="ghost"
+              size="content"
               key={metric.label}
               type="button"
               onClick={(event) => open(event, metric.title, metric.orders)}
@@ -126,7 +129,7 @@ export function OrderDiagnostics({
               className={`${row} transition-colors hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none`}
             >
               {content}
-            </button>
+            </Button>
           ) : (
             <div key={metric.label} className={row}>
               {content}
@@ -204,7 +207,9 @@ export function OrderDiagnostics({
             Order types · orders · placed value
           </p>
           {data.types.map((type) => (
-            <button
+            <Button
+              variant="ghost"
+              size="content"
               key={type.label}
               type="button"
               onClick={(event) => open(event, type.label, type.orders)}
@@ -214,7 +219,7 @@ export function OrderDiagnostics({
               <span className="shrink-0 tabular-nums">
                 {type.orders.length} · {formatOrderUsd(type.value)}
               </span>
-            </button>
+            </Button>
           ))}
         </div>
       </CardDisclosure>
@@ -229,7 +234,9 @@ export function OrderDiagnostics({
           </p>
           <div className="mt-2 max-h-72 space-y-2 overflow-y-auto overscroll-contain">
             {data.reasons.map((reason) => (
-              <button
+              <Button
+                variant="ghost"
+                size="content"
                 key={reason.reason}
                 type="button"
                 onClick={(event) =>
@@ -244,7 +251,7 @@ export function OrderDiagnostics({
                   {reason.orders.length} orders · latest order{" "}
                   {formatOrderDate(reason.latest)}
                 </span>
-              </button>
+              </Button>
             ))}
           </div>
         </CardDisclosure>

@@ -20,14 +20,48 @@ import {
   conciseOrderMessage,
   isZeroOutputLimit,
   orderScheduleLabel,
+  orderSummaryHeading,
 } from "../apps/ops/src/components/investigation/order-presentation";
+
+test("summary headings prioritize lifecycle over historical reasons and distinguish active failures", () => {
+  const order = (status: string) => ({ metadata: { status } }) as ListOrder;
+  const waiting = "Price can't meet condition: expected 480.00, got 411.62";
+  assert.equal(
+    orderSummaryHeading(order("pending"), waiting, false),
+    "Waiting for target price",
+  );
+  assert.equal(
+    orderSummaryHeading(order("pending"), waiting, true),
+    "Latest attempt failed",
+  );
+  assert.equal(
+    orderSummaryHeading(order("pending"), "Scheduled for later", false),
+    "Order is active",
+  );
+  assert.equal(
+    orderSummaryHeading(order("completed"), waiting, true),
+    "Order completed",
+  );
+  assert.equal(
+    orderSummaryHeading(order("cancelled"), waiting, true),
+    "Order cancelled",
+  );
+  assert.equal(
+    orderSummaryHeading(order("expired"), waiting, true),
+    "Order expired",
+  );
+  assert.equal(
+    orderSummaryHeading(order("failed"), waiting, false),
+    "Order failed",
+  );
+});
 
 test("order summary keeps service amounts exact while moving raw integer comparisons out of the readable reason", () => {
   const raw =
     "Price can't meet condition: expected 146258.50, got 70951.12 (70951120361712178198254 vs. 146258503401360544217690) - 48.51%";
   assert.equal(
     conciseOrderMessage(raw),
-    "Trading condition not met: expected 146258.50, currently 70951.12.",
+    "Trading condition not met: expected 146258.50, currently 70951.12 (51.49% below target).",
   );
   assert.equal(
     conciseOrderMessage("RPC Request failed.\nDetailed payload"),
@@ -38,6 +72,39 @@ test("order summary keeps service amounts exact while moving raw integer compari
     "Chunk executed successfully (fill event)",
   );
   assert.ok(conciseOrderMessage("x".repeat(400)).length <= 240);
+});
+
+test("condition messages show target-relative differences instead of the reported ratio", () => {
+  const message =
+    "Price can't meet condition: expected 190.18, got 178.27 (178267679 vs. 190177833) - 93.74%";
+  assert.equal(
+    conciseOrderMessage(message),
+    "Trading condition not met: expected 190.18, currently 178.27 (6.26% below target).",
+  );
+  assert.equal(
+    conciseOrderMessage(
+      "Price can't meet condition: expected 100, got 110 - 999%",
+    ),
+    "Trading condition not met: expected 100, currently 110 (10% above target).",
+  );
+  assert.equal(
+    conciseOrderMessage(
+      "Price can't meet condition: expected 0.00, got 0.00 (99 vs. 100) - 99%",
+    ),
+    "Trading condition not met: expected 0.00, currently 0.00 (1% below target).",
+  );
+  assert.equal(
+    conciseOrderMessage(
+      "Price can't meet condition: expected 0, got 10 (10 vs. 0) - 0%",
+    ),
+    "Trading condition not met: expected 0, currently 10.",
+  );
+  assert.equal(
+    conciseOrderMessage(
+      "Trigger price not met, current output 147.39 > triggerLower 139.73 - 94.80%",
+    ),
+    "Trigger condition not met: target 139.73, currently 147.39 (5.48% above target).",
+  );
 });
 
 test("an explicit zero output limit stays distinct from missing, invalid, and positive limits", () => {
@@ -200,10 +267,10 @@ test("schedule presentation tolerates numeric epochs and malformed optional serv
   assert.equal(reportedScheduleValue(null, false, NaN), undefined);
 });
 
-test("active row status uses the latest attempt and explicit waiting reports, never cumulative error history", () => {
+test("active row status keeps attempt failures in the errors column and retains explicit waiting reports", () => {
   assert.equal(
     orderRowStatus(list("pending", "error", "TakerError reverted")),
-    "Active · latest attempt failed",
+    "Active",
   );
   assert.equal(orderRowStatus(list("pending", "", "")), "Active · waiting");
   assert.equal(
@@ -246,17 +313,26 @@ test("compact type and network labels retain exact full-name context without inv
   assert.equal(compactOrderNetwork(undefined).label, "Chain unreported");
 });
 
-test("token quantities are readable without losing the exact precision string", () => {
-  assert.equal(
-    compactTokenAmount("138842.918482003921833501"),
-    "138,842.9184…",
-  );
+test("token quantities round without ellipses or loss of integer precision", () => {
+  assert.equal(compactTokenAmount("138842.918482003921833501"), "138,842.9185");
   assert.equal(
     compactTokenAmount("9007199254740993.123456"),
-    "9,007,199,254,740,993.1234…",
+    "9,007,199,254,740,993.1235",
   );
-  assert.equal(compactTokenAmount("0.000000001234567"), "0.000000001234…");
+  assert.equal(compactTokenAmount("217.741123456"), "217.7411");
+  assert.equal(compactTokenAmount("52911.0943789"), "52,911.0944");
+  assert.equal(compactTokenAmount("14588.6556211"), "14,588.6556");
+  assert.equal(compactTokenAmount("0.000000001234567"), "0.000000001235");
+  assert.equal(compactTokenAmount("0.001234567"), "0.001235");
   assert.equal(compactTokenAmount("0.0000000000000001"), "<0.000000000001");
+  assert.equal(compactTokenAmount("0.0000000000009"), "<0.000000000001");
+  assert.equal(compactTokenAmount("999.99995"), "1,000");
+  assert.equal(compactTokenAmount("0.99999"), "1");
+  assert.equal(
+    compactTokenAmount("9007199254740999.99999"),
+    "9,007,199,254,741,000",
+  );
+  assert.equal(compactTokenAmount("42.120000"), "42.12");
   assert.equal(compactTokenAmount("42"), "42");
   assert.equal(compactTokenAmount("0"), "0");
 });

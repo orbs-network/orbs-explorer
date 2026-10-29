@@ -1,8 +1,18 @@
 "use client";
 
+import { TableRow, TableHead, TableCell } from "@orbs/ui/controls/table";
+
+import { Button } from "@orbs/ui/controls/button";
 import { useMemo, useState } from "react";
 import type { ListOrder } from "@orbs/domain/twap/types";
 import { Input } from "@orbs/ui/controls/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@orbs/ui/controls/select";
 import { EmptyState } from "@/components/operations/primitives";
 import { ContinuousTable } from "@/components/operations/continuous-table";
 import { useOperationsData } from "@/components/operations/operations-view";
@@ -133,23 +143,29 @@ export function CohortTable({
       </p>
       {filtered.length ? (
         <div className="space-y-4">
-          <label className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
-            Measure
-            <select
-              aria-label={`${label} measure`}
+          <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+            <span>Measure</span>
+            <Select
               value={measure}
-              onChange={(event) => {
+              onValueChange={(value) => {
                 const next = new URLSearchParams(params.toString());
-                next.set("cohort_view", event.target.value);
+                next.set("cohort_view", value);
                 navigation.push(`${pathname}?${next}`, { scroll: false });
               }}
-              className="h-10 rounded-md bg-control-background px-3 text-foreground"
             >
-              <option value="outcomes">Current outcomes</option>
-              <option value="sizes">Order sizes</option>
-              <option value="errors">Execution error history</option>
-            </select>
-          </label>
+              <SelectTrigger
+                aria-label={`${label} measure`}
+                className="h-10 w-full border-0 bg-control-background text-xs shadow-none sm:w-56"
+              >
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="outcomes">Current outcomes</SelectItem>
+                <SelectItem value="sizes">Order sizes</SelectItem>
+                <SelectItem value="errors">Execution error history</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
           <CohortResults rows={filtered} label={label} mode={measure} />
         </div>
       ) : (
@@ -181,7 +197,7 @@ function CohortResults({
       itemKey={(row) => row.key}
       minWidth={mode === "outcomes" ? 880 : mode === "sizes" ? 760 : 420}
       header={
-        <tr>
+        <TableRow>
           {[
             label,
             "Orders",
@@ -205,22 +221,24 @@ function CohortResults({
                   ]
                 : ["With errors"]),
           ].map((heading) => (
-            <th
+            <TableHead
               scope="col"
               key={heading}
               className={`${cellClass} font-medium text-muted-foreground`}
             >
               {heading}
-            </th>
+            </TableHead>
           ))}
-        </tr>
+        </TableRow>
       }
       rowContent={(row) => {
         const { summary } = row;
         return (
           <>
-            <th scope="row" className={cellClass}>
-              <button
+            <TableHead scope="row" className={cellClass}>
+              <Button
+                variant="ghost"
+                size="content"
                 type="button"
                 className={`${inspectClass} font-medium`}
                 onClick={() => inspectOrders(row.label, row.orders)}
@@ -230,21 +248,25 @@ function CohortResults({
                 ) : (
                   row.label
                 )}
-              </button>
-            </th>
-            <td className={cellClass}>
-              <button
+              </Button>
+            </TableHead>
+            <TableCell className={cellClass}>
+              <Button
+                variant="ghost"
+                size="content"
                 type="button"
                 className={inspectClass}
                 onClick={() => inspectOrders(row.label, row.orders)}
               >
                 {row.orders.length.toLocaleString()}
-              </button>
-            </td>
+              </Button>
+            </TableCell>
             {mode === "outcomes" ? (
               <>
-                <td className={cellClass}>
-                  <button
+                <TableCell className={cellClass}>
+                  <Button
+                    variant="ghost"
+                    size="content"
                     type="button"
                     disabled={!summary.outcomes.completed.length}
                     className={`${inspectClass} text-success`}
@@ -263,8 +285,8 @@ function CohortResults({
                       {summary.outcomes.completed.length.toLocaleString()} /{" "}
                       {row.orders.length.toLocaleString()}
                     </span>
-                  </button>
-                </td>
+                  </Button>
+                </TableCell>
                 {(
                   [
                     "partial",
@@ -275,8 +297,10 @@ function CohortResults({
                     ...(showUnknown ? (["unknown"] as const) : []),
                   ] as const
                 ).map((status) => (
-                  <td key={status} className={cellClass}>
-                    <button
+                  <TableCell key={status} className={cellClass}>
+                    <Button
+                      variant="ghost"
+                      size="content"
                       type="button"
                       disabled={!summary.outcomes[status].length}
                       className={`${inspectClass} ${status === "failed" && summary.outcomes.failed.length ? "text-destructive" : status === "active" && summary.outcomes.active.length ? "text-link" : ""}`}
@@ -288,43 +312,47 @@ function CohortResults({
                       }
                     >
                       {summary.outcomes[status].length.toLocaleString()}
-                    </button>
-                  </td>
+                    </Button>
+                  </TableCell>
                 ))}
               </>
             ) : mode === "sizes" ? (
               <>
-                <td className={cellClass}>
-                  <button
+                <TableCell className={cellClass}>
+                  <Button
+                    variant="ghost"
+                    size="content"
                     type="button"
                     className={inspectClass}
                     onClick={() => inspectOrders(row.label, row.orders)}
                   >
                     {formatOrderUsd(summary.value)}
-                  </button>
-                </td>
+                  </Button>
+                </TableCell>
                 {[summary.mean, summary.median, summary.p90].map(
                   (value, index) => (
-                    <td key={index} className={cellClass}>
+                    <TableCell key={index} className={cellClass}>
                       {value === undefined ? "—" : formatOrderUsd(value)}
-                    </td>
+                    </TableCell>
                   ),
                 )}
-                <td className={`${cellClass} text-muted-foreground`}>
+                <TableCell className={`${cellClass} text-muted-foreground`}>
                   {formatShare(summary.pricedCount, row.orders.length)}
                   <span className="block text-[10px]">
                     {summary.pricedCount.toLocaleString()} /{" "}
                     {row.orders.length.toLocaleString()}
                   </span>
-                </td>
+                </TableCell>
               </>
             ) : (
               <>
-                <td className={cellClass}>
-                  <button
+                <TableCell className={cellClass}>
+                  <Button
+                    variant="ghost"
+                    size="content"
                     type="button"
                     disabled={!summary.withErrors.length}
-                    className={`${inspectClass} ${summary.withErrors.length ? "text-amber-700 dark:text-amber-400" : ""}`}
+                    className={`${inspectClass} ${summary.withErrors.length ? "text-warning" : ""}`}
                     onClick={() =>
                       inspectOrders(
                         `${row.label} · execution errors`,
@@ -339,8 +367,8 @@ function CohortResults({
                         row.orders.length,
                       )}
                     </span>
-                  </button>
-                </td>
+                  </Button>
+                </TableCell>
               </>
             )}
           </>

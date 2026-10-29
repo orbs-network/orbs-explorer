@@ -1,5 +1,6 @@
 "use client";
 
+import { Button } from "@orbs/ui/controls/button";
 import { useMemo } from "react";
 import type { EChartsOption } from "echarts";
 import { ChartPlot } from "@/components/charts/chart-plot";
@@ -154,7 +155,9 @@ function MarketConcentration() {
         </summary>
         <div className="mt-3 space-y-2">
           {concentration.map((entry) => (
-            <button
+            <Button
+              variant="ghost"
+              size="content"
               key={entry.label}
               type="button"
               className={`block w-full ${inspectClass}`}
@@ -177,7 +180,7 @@ function MarketConcentration() {
                   </span>
                 </span>
               </span>
-            </button>
+            </Button>
           ))}
         </div>
       </details>

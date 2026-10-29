@@ -1,6 +1,8 @@
 "use client";
 
-import Link from "next/link";
+import { TableRow, TableHead, TableCell } from "@orbs/ui/controls/table";
+
+import { Button } from "@orbs/ui/controls/button";
 import { ArrowDown, ArrowUp, ArrowUpDown } from "lucide-react";
 import type { ListOrder } from "@orbs/domain/twap/types";
 import {
@@ -10,9 +12,9 @@ import {
 import { orderIdentity } from "@/lib/order-selection";
 import { reportedNumber } from "@/lib/order-diagnostics";
 import { useOperationsData } from "@/components/operations/operations-view";
-import { ContinuousTable } from "@/components/operations/continuous-table";
+import { useOrderNavigationScope } from "@/hooks/use-order-navigation-scope";
+import { VirtualTable } from "@/components/operations/virtual-table";
 import { formatOrderUsd } from "@/components/orders-overview/overview-display";
-import { InfoHint } from "@/components/info-hint";
 import { compactOrderType } from "./order-presentation";
 import {
   OrderIdentityCell,
@@ -23,6 +25,18 @@ import {
   OrderRowStatus,
   OrderRowTime,
 } from "./order-row-parts";
+
+const COLUMN_WIDTHS = [
+  "17%",
+  "13%",
+  "12%",
+  "8%",
+  "13%",
+  "10%",
+  "12%",
+  "9%",
+  "6%",
+];
 
 export function OrdersTable({
   orders,
@@ -37,7 +51,8 @@ export function OrdersTable({
   sort?: InvestigationSort;
   onSort?: (sort: InvestigationSort) => void;
 }) {
-  const { scope, updatedAt } = useOperationsData();
+  const { updatedAt } = useOperationsData();
+  const scope = useOrderNavigationScope();
   function sortHeader(
     label: string,
     descending: InvestigationSort,
@@ -48,85 +63,82 @@ export function OrdersTable({
     const next = active && !ascendingActive ? ascending : descending;
     const Icon = active ? (ascendingActive ? ArrowUp : ArrowDown) : ArrowUpDown;
     return (
-      <th
+      <TableHead
         scope="col"
-        className="text-right"
+        className="text-left"
         aria-sort={
           active ? (ascendingActive ? "ascending" : "descending") : undefined
         }
       >
         {onSort ? (
-          <button
+          <Button
+            variant="ghost"
+            size="content"
             type="button"
             onClick={() => onSort(next)}
             aria-label={`${label}, sort ${next === ascending ? "ascending" : "descending"}`}
-            className="inline-flex min-h-9 items-center gap-1 rounded-sm hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="inline-flex min-h-8 items-center gap-1.5 whitespace-nowrap rounded-sm hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
             {label}
             <Icon aria-hidden className="size-3" />
-          </button>
+          </Button>
         ) : (
           label
         )}
-      </th>
+      </TableHead>
     );
   }
   return (
-    <div className="rounded-xl bg-card p-3">
-      <ContinuousTable
+    <div className="rounded-xl bg-card">
+      <VirtualTable
         label="Order investigation results"
         items={orders}
         itemKey={orderIdentity}
-        minWidth={1280}
+        rowHref={(order) => orderDetailHref(order.hash, order.source, scope)}
+        minWidth={1180}
+        columnCount={9}
+        columnWidths={COLUMN_WIDTHS}
+        contextKey={`${scope.partnerId ?? "global"}:${scope.query}:${sort}`}
         header={
-          <tr>
-            <th scope="col">Order{showApp ? " · trading app" : ""}</th>
-            <th scope="col">Current outcome</th>
-            <th scope="col">Network</th>
-            <th scope="col">
-              Order type{" "}
-              <InfoHint>
-                TWAP (time-weighted average price) splits an order into planned
-                trades. Stop loss and take profit describe its trading
-                condition.
-              </InfoHint>
-            </th>
+          <TableRow>
+            <TableHead scope="col">
+              Order{showApp ? " · trading app" : ""}
+            </TableHead>
+            <TableHead scope="col">Current outcome</TableHead>
+            <TableHead scope="col">Network</TableHead>
+            <TableHead scope="col">Order type</TableHead>
             {sortHeader("Placed value (USD)", "value-desc", "value-asc")}
-            <th scope="col" className="text-right">
-              Trade progress{" "}
-              <InfoHint>
-                Successful executions out of planned trades. This count does not
-                measure the value filled.
-              </InfoHint>
-            </th>
+            <TableHead scope="col" className="text-left">
+              Trade progress
+            </TableHead>
             {sortHeader("Execution errors", "errors-desc", "errors-asc")}
-            <th scope="col">Deadline</th>
+            <TableHead scope="col">Deadline</TableHead>
             {sortHeader("Placed", "newest", "oldest")}
-          </tr>
+          </TableRow>
         }
         rowContent={(order) => {
           const href = orderDetailHref(order.hash, order.source, scope);
           const usd = reportedNumber(order.totalUSDAmount);
           return (
             <>
-              <td>
+              <TableCell>
                 <OrderIdentityCell
                   order={order}
                   partner={showApp ? partners.get(order) : undefined}
                   scope={scope}
                 />
-              </td>
-              <td className="min-w-64 max-w-80">
+              </TableCell>
+              <TableCell className="min-w-56 max-w-72 whitespace-normal">
                 <OrderRowStatus order={order} href={href} compact />
-              </td>
-              <td>
+              </TableCell>
+              <TableCell>
                 <OrderRowNetwork order={order} />
-              </td>
-              <td className="text-xs" title={order.metadata.orderType}>
+              </TableCell>
+              <TableCell className="text-xs" title={order.metadata.orderType}>
                 {compactOrderType(order.metadata.orderType)}
-              </td>
-              <td
-                className="text-right"
+              </TableCell>
+              <TableCell
+                className="text-left"
                 title={
                   usd === undefined
                     ? "Placed value unavailable"
@@ -138,19 +150,19 @@ export function OrdersTable({
                 }
               >
                 {usd === undefined ? "—" : formatOrderUsd(usd)}
-              </td>
-              <td className="text-right">
+              </TableCell>
+              <TableCell className="text-left">
                 <OrderRowProgress order={order} />
-              </td>
-              <td className="text-right">
+              </TableCell>
+              <TableCell className="text-left">
                 <OrderRowErrors order={order} />
-              </td>
-              <td>
+              </TableCell>
+              <TableCell>
                 <OrderRowDeadline order={order} now={updatedAt} />
-              </td>
-              <td>
+              </TableCell>
+              <TableCell className="text-left">
                 <OrderRowTime order={order} now={updatedAt} />
-              </td>
+              </TableCell>
             </>
           );
         }}

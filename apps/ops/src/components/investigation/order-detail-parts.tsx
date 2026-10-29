@@ -1,22 +1,25 @@
 "use client";
 import { reportedNumber } from "@/lib/order-diagnostics";
+import { InlineSkeleton } from "@/components/loading-skeletons";
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import {
   ArrowRight,
   CircleAlert,
-  Clock3,
   Copy as CopyIcon,
   ExternalLink,
   Info,
 } from "lucide-react";
-import { isAddress } from "viem";
+import { isAddress, maxUint256 } from "viem";
 import type { ListOrder, Order, OrderChunk } from "@orbs/domain/twap/types";
 import { useToken } from "@orbs/domain/hooks/use-token";
 import { useCopy } from "@orbs/domain/hooks/use-copy";
 import { getChain, shortenAddress } from "@orbs/domain/utils/utils";
-import { getTwapOrderChainId } from "@orbs/domain/twap/utils";
+import {
+  getTwapOrderChainId,
+  getSpotOrderLimitPrice,
+} from "@orbs/domain/twap/utils";
 import { CURRENT_SINK_API_URL, SINK_API_URLS } from "@orbs/domain/twap/api";
 import {
   getOverviewOrderStatus,
@@ -24,6 +27,7 @@ import {
 } from "@orbs/domain/twap/utils/orders-overview";
 import { Button } from "@orbs/ui/controls/button";
 import { Badge } from "@orbs/ui/controls/badge";
+import { Card, CardContent, CardHeader } from "@orbs/ui/controls/card";
 import { Network } from "@orbs/ui/controls/network";
 import {
   Tooltip,
@@ -42,20 +46,26 @@ import {
   compactTokenAmount,
   compactOrderType,
   orderListMessage,
-  reportedScheduleValue,
+  orderSummaryHeading,
   reportedTime,
   sortedOrderChunks,
   tokenUnits,
   conciseOrderMessage,
   isZeroOutputLimit,
-  orderScheduleLabel,
 } from "./order-presentation";
 import {
   chunkReason,
+  isCancellationChunk,
+  isExecutionErrorChunk,
   detailReasonObservations,
   getOrderStatusConflict,
   reportedExecutionInput,
+  reportedExecutionOutput,
 } from "@/lib/order-evidence";
+import { ChunkPayloadDialog } from "./chunk-payload-dialog";
+import { RawExecutionReasonDialog } from "./raw-execution-reason-dialog";
+import { OrderTradeSummary } from "./order-trade-summary";
+import { OrderReasonDialog } from "./order-reason-dialog";
 
 export function OrderAddress({
   value,
@@ -121,20 +131,27 @@ function TokenAmount({
   chainId,
   raw,
   label,
+  note,
 }: {
   address: string;
   chainId?: number;
   raw?: string;
   label: string;
+  note?: string;
 }) {
-  const { data } = useToken(address, chainId);
+  const { data, isLoading } = useToken(address, chainId);
   const amount = tokenUnits(raw, data?.decimals);
   const compact = amount === undefined ? undefined : compactTokenAmount(amount);
   return (
     <div className="min-w-0">
-      <dt className="text-xs text-muted-foreground">{label}</dt>
-      <dd className="mt-1 break-all font-medium tabular-nums">
-        {amount !== undefined ? (
+      <dt className="text-[13px] leading-5 text-muted-foreground">{label}</dt>
+      <dd className="mt-1.5 break-words font-medium leading-relaxed tabular-nums">
+        {isLoading && raw?.trim() ? (
+          <InlineSkeleton
+            label={`Loading ${label.toLowerCase()}`}
+            className="h-5 w-32"
+          />
+        ) : amount !== undefined ? (
           compact !== amount ? (
             <Tooltip>
               <TooltipTrigger asChild>
@@ -163,29 +180,87 @@ function TokenAmount({
           </>
         ) : (
           <span className="text-sm font-normal text-muted-foreground">
-            Unreported
+            Not reported
           </span>
+        )}
+        {note && (
+          <p className="mt-1 text-xs font-normal text-muted-foreground">
+            {note}
+          </p>
         )}
       </dd>
     </div>
   );
 }
 
-export function OrderSummary({
+export function OrderIdentity({
   full,
   list,
   appName,
   appId,
   queryString,
-  cachedList,
-  listUpdatedAt,
-  retrievedAt,
 }: {
   full: Order;
   list: ListOrder;
   appName: string;
   appId?: string;
   queryString: string;
+}) {
+  const chainId = getTwapOrderChainId(full);
+  const witness = full.order.witness;
+  const status = getOverviewOrderStatus(list);
+  return (
+    <section
+      aria-label="Order overview"
+      className="min-w-0 rounded-xl bg-card p-4 sm:p-5"
+    >
+      <div className="flex items-start justify-between gap-x-4 gap-y-2">
+        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-5 gap-y-2">
+          <h2 className="inline-flex min-w-0 max-w-full items-center gap-3 text-xl font-semibold tracking-tight sm:text-2xl">
+            <OrderTokenName address={witness.input?.token} chainId={chainId} />
+            <ArrowRight
+              aria-hidden
+              className="size-4 shrink-0 text-muted-foreground"
+            />
+            <OrderTokenName address={witness.output?.token} chainId={chainId} />
+          </h2>
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-xs text-muted-foreground">
+            <Network chainId={chainId} variant="inline" showChainId={false} />
+            {appId ? (
+              <Link
+                href={partnerHref(appId, queryString)}
+                className="rounded text-link hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                {appName}
+              </Link>
+            ) : (
+              <span>{appName}</span>
+            )}
+            <span className="text-xs text-muted-foreground">
+              {compactOrderType(full.metadata.orderType)}
+            </span>
+          </div>
+        </div>
+        <Badge
+          variant="outline"
+          className={`mt-1 shrink-0 ${STATUS_COLORS[status]}`}
+        >
+          {OVERVIEW_STATUSES[status].label}
+        </Badge>
+      </div>
+    </section>
+  );
+}
+
+export function OrderSummary({
+  full,
+  list,
+  cachedList,
+  listUpdatedAt,
+  retrievedAt,
+}: {
+  full: Order;
+  list: ListOrder;
   cachedList?: ListOrder;
   listUpdatedAt?: number;
   retrievedAt: number;
@@ -208,6 +283,11 @@ export function OrderSummary({
       : undefined;
   const conflict = getOrderStatusConflict(list);
   const executedInput = reportedExecutionInput(full);
+  const executedOutput = reportedExecutionOutput(full);
+  const placedUsd = reportedNumber(cachedList?.totalUSDAmount);
+  const minimumOutput = /^\d+$/.test(witness.output?.limit?.trim() ?? "")
+    ? getSpotOrderLimitPrice(full)
+    : undefined;
   const maximum = witness.input?.maxAmount;
   const remainingInput =
     executedInput !== undefined &&
@@ -215,25 +295,12 @@ export function OrderSummary({
     BigInt(maximum) >= BigInt(executedInput)
       ? (BigInt(maximum) - BigInt(executedInput)).toString()
       : undefined;
-  const nextEligible = reportedScheduleValue(full.metadata.nextEligibleTime);
-  const nextPriceCheck = reportedScheduleValue(
-    full.metadata.displayOnlyPriceCheckNextTime,
-  );
-  const nextRetry = reportedScheduleValue(
-    chunks[0]?.displayOnlyBackoffNextTime,
-  );
-  const deadline = reportedTime(witness.deadline);
   const sourceLabel = full.source
     ? `Service ${full.source}`
     : "Service unreported";
-  const successfulChunks = list.metadata.chunkSummary.success;
-  const plannedChunks = full.metadata.expectedChunks;
-  const hasProgress =
-    Number.isSafeInteger(plannedChunks) &&
-    plannedChunks > 0 &&
-    Number.isSafeInteger(successfulChunks) &&
-    successfulChunks >= 0 &&
-    successfulChunks <= plannedChunks;
+  const currentIssue =
+    status === "failed" ||
+    (status === "active" && Boolean(primary?.error || fallback.error));
   const summary =
     status === "active"
       ? fallback.error
@@ -248,66 +315,12 @@ export function OrderSummary({
             : status === "expired"
               ? "The service reports that the order expired before all planned trades completed."
               : status === "failed"
-                ? "The service reports that the order ended as Failed. Review the reported reasons below."
+                ? undefined
                 : "The service returned an unrecognized outcome. Review its raw status in Technical details.";
   return (
-    <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_20rem]">
-      <section
-        aria-label="Order summary"
-        className="min-w-0 rounded-xl bg-card p-4 sm:p-5"
-      >
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <h2 className="inline-flex min-w-0 max-w-full items-center gap-3 text-xl font-semibold tracking-tight sm:text-2xl">
-            <OrderTokenName address={witness.input?.token} chainId={chainId} />
-            <ArrowRight
-              aria-hidden
-              className="size-4 shrink-0 text-muted-foreground"
-            />
-            <OrderTokenName address={witness.output?.token} chainId={chainId} />
-          </h2>
-          <Badge variant="outline" className={STATUS_COLORS[status]}>
-            {OVERVIEW_STATUSES[status].label}
-          </Badge>
-        </div>
-        <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-2 text-xs text-muted-foreground">
-          <Network chainId={chainId} variant="inline" showChainId={false} />
-          {appId ? (
-            <Link
-              href={partnerHref(appId, queryString)}
-              className="rounded text-link hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            >
-              {appName}
-            </Link>
-          ) : (
-            <span>{appName}</span>
-          )}
-          <span className="text-xs text-muted-foreground">
-            {compactOrderType(full.metadata.orderType)}
-          </span>
-        </div>
-        <p className="mt-3 max-w-3xl text-sm leading-relaxed text-muted-foreground">
-          {status === "active" && hasProgress && successfulChunks > 0
-            ? `${successfulChunks.toLocaleString()} of ${plannedChunks?.toLocaleString()} planned chunks completed. `
-            : ""}
-          {summary}
-        </p>
-        {conflict && (
-          <div
-            role="note"
-            aria-label="Outcome needs review"
-            className="mt-3 rounded-lg bg-amber-500/10 p-3 text-sm"
-          >
-            <p className="font-medium">
-              {conflict.kind === "structured"
-                ? "Conflicting status fields"
-                : "Termination reason needs review"}
-            </p>
-            <p className="mt-1 text-xs text-muted-foreground">
-              {conflict.message}
-            </p>
-          </div>
-        )}
-        {message && (
+    <div className="space-y-4">
+      <section aria-label="Order summary" className="min-w-0 space-y-5">
+        {(message || summary) && (
           <div
             role="note"
             aria-label={
@@ -316,10 +329,10 @@ export function OrderSummary({
                 ? "Latest execution error"
                 : "Latest reported message")
             }
-            className={`mt-4 rounded-lg p-3 text-sm ${primary?.error || fallback.error ? "bg-destructive/10" : "bg-muted/40"}`}
+            className={`rounded-xl p-5 text-sm leading-6 sm:p-6 ${currentIssue ? "bg-destructive/10" : "bg-card"}`}
           >
             <div className="flex items-start gap-2">
-              {primary?.error || fallback.error ? (
+              {currentIssue ? (
                 <CircleAlert
                   aria-hidden
                   className="mt-0.5 size-4 shrink-0 text-destructive"
@@ -331,36 +344,44 @@ export function OrderSummary({
                 />
               )}
               <div className="min-w-0 flex-1">
-                <p
-                  className={`text-xs font-medium ${primary?.error || fallback.error ? "text-destructive" : "text-muted-foreground"}`}
+                <h3
+                  className={`text-base font-semibold ${currentIssue ? "text-destructive" : "text-foreground"}`}
                 >
-                  {primary?.label ||
-                    (fallback.error
-                      ? "Latest execution error"
-                      : "Latest reported message")}
-                </p>
+                  {orderSummaryHeading(
+                    list,
+                    message,
+                    Boolean(primary?.error || fallback.error),
+                  )}
+                </h3>
                 <p className="mt-1 whitespace-pre-wrap break-words [overflow-wrap:anywhere]">
-                  {conciseOrderMessage(message)}
+                  {conciseOrderMessage(message || summary || "")}
                 </p>
-                <p className="mt-1 text-[11px] text-muted-foreground">
-                  {primary?.timestamp
-                    ? `Reported ${formatOrderDate(reportedTime(primary.timestamp))}`
-                    : "Report time unreported"}
-                </p>
-                <details className="mt-2 text-xs">
-                  <summary className="w-fit cursor-pointer rounded text-link focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-                    Full reason & source
-                  </summary>
-                  <p className="mt-2 text-muted-foreground">
-                    {sourceLabel} ·{" "}
-                    {primary?.field || "No reason field returned"}. A chunk
-                    timestamp is its last reported time; it does not establish
-                    an actual transaction execution time.
+                {primary?.timestamp && (
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    {primary?.timestamp
+                      ? `Reported ${formatOrderDate(reportedTime(primary.timestamp))}`
+                      : "Report time unreported"}
                   </p>
-                  <p className="mt-2 whitespace-pre-wrap break-words [overflow-wrap:anywhere]">
-                    {message}
+                )}
+                {message && (
+                  <div className="-ml-2 mt-1">
+                    <OrderReasonDialog
+                      reason={message}
+                      source={sourceLabel}
+                      field={primary?.field}
+                      reportedAt={
+                        primary?.timestamp
+                          ? formatOrderDate(reportedTime(primary.timestamp))
+                          : "Unreported"
+                      }
+                    />
+                  </div>
+                )}
+                {status === "active" && currentIssue && (
+                  <p className="mt-2 text-sm text-muted-foreground">
+                    The order is still active and can try again when eligible.
                   </p>
-                </details>
+                )}
                 {error && status === "completed" && (
                   <p className="mt-1 text-xs text-muted-foreground">
                     The order is completed; this error is retained in its
@@ -371,110 +392,126 @@ export function OrderSummary({
             </div>
           </div>
         )}
-        <div className="mt-5 grid gap-4 rounded-lg bg-muted/40 p-4 sm:grid-cols-2">
-          <dl className="min-w-0 [&_dd]:text-lg sm:[&_dd]:text-xl">
-            <TokenAmount
-              address={witness.input?.token}
-              chainId={chainId}
-              raw={maximum}
-              label="Maximum requested input"
-            />
-          </dl>
-          <dl className="min-w-0 [&_dd]:text-lg sm:[&_dd]:text-xl">
-            {isZeroOutputLimit(witness.output?.limit) ? (
-              <div>
-                <dt className="text-xs text-muted-foreground">Output limit</dt>
-                <dd className="mt-1 font-medium">Minimum output not set</dd>
-                <dd className="mt-1 text-xs! text-muted-foreground">
-                  The reported order has no positive minimum output. This is not
-                  an estimated return.
-                </dd>
-              </div>
-            ) : (
-              <TokenAmount
-                address={witness.output?.token}
-                chainId={chainId}
-                raw={witness.output?.limit}
-                label="Output limit · order condition"
-              />
-            )}
-          </dl>
-        </div>
-        {cachedList &&
-          reportedNumber(cachedList.totalUSDAmount) !== undefined && (
-            <div className="mt-4 text-sm">
-              <span className="text-muted-foreground">Placed value (USD)</span>
-              <p className="mt-1 text-lg font-semibold tabular-nums">
-                {new Intl.NumberFormat(undefined, {
-                  style: "currency",
-                  currency: "USD",
-                  maximumFractionDigits: 2,
-                }).format(reportedNumber(cachedList.totalUSDAmount)!)}
-              </p>
-              <p className="mt-1 text-xs text-muted-foreground">
-                Reported submitted value from the order-history snapshot
-                {listUpdatedAt ? ` · ${formatOrderDate(listUpdatedAt)}` : ""};
-                not executed volume.
-              </p>
-            </div>
-          )}
-        <dl className="mt-4 grid gap-x-6 gap-y-4 empty:hidden sm:grid-cols-2 xl:grid-cols-3">
-          {witness.input?.amount !== maximum && (
+        {conflict?.kind === "structured" && (
+          <div
+            role="note"
+            aria-label="Outcome needs review"
+            className="mt-3 rounded-lg bg-warning-surface p-3 text-sm"
+          >
+            <p className="font-medium">Conflicting status fields</p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              {conflict.message}
+            </p>
+          </div>
+        )}
+        <section
+          aria-label="Order amounts"
+          className="space-y-4 rounded-xl bg-card p-4 sm:p-5"
+        >
+          <h3 className="text-sm font-semibold">Order amounts</h3>
+          <dl className="grid grid-cols-2 gap-x-6 gap-y-4 lg:grid-cols-4 [&_dd]:mt-1 [&_dd]:text-lg [&_dd]:leading-6 [&_dt]:min-h-10 sm:[&_dt]:min-h-5">
             <TokenAmount
               address={witness.input?.token}
               chainId={chainId}
               raw={witness.input?.amount}
-              label="Requested input per trade"
+              label="Spend per trade"
             />
-          )}
-          {/* Fill amounts are often absent; a pair of "Unreported" values adds nothing. */}
-          {executedInput !== undefined && (
-            <>
+            <TokenAmount
+              address={witness.output?.token}
+              chainId={chainId}
+              raw={minimumOutput}
+              label="Minimum receive per trade"
+              note={
+                isZeroOutputLimit(minimumOutput)
+                  ? "No minimum output set."
+                  : undefined
+              }
+            />
+            <TokenAmount
+              address={witness.input?.token}
+              chainId={chainId}
+              raw={maximum}
+              label="Maximum total spend"
+            />
+            <div className="min-w-0">
+              <dt className="text-[13px] leading-5 text-muted-foreground">
+                Value when placed (USD)
+              </dt>
+              <dd className="mt-1.5 font-medium leading-relaxed tabular-nums">
+                {placedUsd === undefined ? (
+                  <span className="text-sm font-normal text-muted-foreground">
+                    Not reported
+                  </span>
+                ) : (
+                  new Intl.NumberFormat(undefined, {
+                    style: "currency",
+                    currency: "USD",
+                    maximumFractionDigits: 2,
+                  }).format(placedUsd)
+                )}
+              </dd>
+            </div>
+          </dl>
+          <div className="space-y-2.5 border-t border-border/60 pt-3">
+            <h4 className="text-[13px] font-medium">Reported execution</h4>
+            <dl className="grid grid-cols-2 gap-x-6 gap-y-3 text-sm sm:grid-cols-3 [&_dd]:mt-1 [&_dd]:text-sm [&_dd]:leading-5">
               <TokenAmount
                 address={witness.input?.token}
                 chainId={chainId}
                 raw={executedInput}
-                label="Reported successful input"
+                label="Spent"
+              />
+              <TokenAmount
+                address={witness.output?.token}
+                chainId={chainId}
+                raw={executedOutput}
+                label="Received"
               />
               <TokenAmount
                 address={witness.input?.token}
                 chainId={chainId}
                 raw={remainingInput}
-                label="Remaining against input maximum"
+                label="Input budget remaining"
               />
-            </>
+              {[
+                ["Lower trigger per trade", witness.output?.triggerLower],
+                ["Upper trigger per trade", witness.output?.triggerUpper],
+                ["Stop output per trade", witness.output?.stop],
+                ...(minimumOutput !== undefined &&
+                minimumOutput !== witness.output?.limit &&
+                BigInt(witness.output.limit) > BigInt(1)
+                  ? [["Reported output condition", witness.output?.limit]]
+                  : []),
+              ]
+                .filter(
+                  ([, raw]) =>
+                    /^\d+$/.test(raw ?? "") &&
+                    BigInt(raw!) > BigInt(0) &&
+                    BigInt(raw!) < maxUint256,
+                )
+                .map(([label, raw]) => (
+                  <TokenAmount
+                    key={label}
+                    address={witness.output?.token}
+                    chainId={chainId}
+                    raw={raw}
+                    label={label!}
+                  />
+                ))}
+            </dl>
+          </div>
+          {placedUsd !== undefined && (
+            <p className="max-w-4xl text-xs leading-5 text-muted-foreground">
+              Placed value is the reported submitted value, not executed volume.
+              {listUpdatedAt
+                ? ` Snapshot ${formatOrderDate(listUpdatedAt)}.`
+                : ""}
+            </p>
           )}
-        </dl>
-        {observations.length > 1 && (
-          <details className="mt-3 text-xs">
-            <summary className="w-fit cursor-pointer rounded text-link focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-              Other reported reasons ({observations.length - 1})
-            </summary>
-            <div className="mt-2 space-y-3 rounded-lg bg-muted/40 p-3">
-              {observations.slice(1).map((observation) => (
-                <div key={observation.text}>
-                  <p className="font-medium">
-                    {observation.label}
-                    {observation.timestamp
-                      ? ` · Reported ${formatOrderDate(reportedTime(observation.timestamp))}`
-                      : " · Report time unreported"}
-                  </p>
-                  <p className="mt-1 whitespace-pre-wrap break-words [overflow-wrap:anywhere]">
-                    {observation.text}
-                  </p>
-                  <p className="mt-1 text-muted-foreground">
-                    {sourceLabel} · {observation.field}
-                    {observation.historical
-                      ? " · Historical error; current outcome is shown above."
-                      : ""}
-                  </p>
-                </div>
-              ))}
-            </div>
-          </details>
-        )}
+        </section>
+        <OrderTradeSummary full={full} list={list} retrievedAt={retrievedAt} />
         {differingListMessage && (
-          <details className="mt-3 rounded-lg bg-amber-500/10 p-3 text-xs">
+          <details className="mt-3 rounded-lg bg-warning-surface p-3 text-xs">
             <summary className="cursor-pointer rounded font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
               List and detail reasons differ
             </summary>
@@ -490,9 +527,9 @@ export function OrderSummary({
             </p>
           </details>
         )}
-        <dl className="mt-5 grid gap-4 border-t border-border pt-4 sm:grid-cols-2">
+        <dl className="grid grid-cols-1 gap-x-8 gap-y-5 rounded-xl bg-card p-5 text-sm sm:grid-cols-2 sm:p-6">
           <div className="min-w-0">
-            <dt className="text-xs text-muted-foreground">Wallet</dt>
+            <dt className="text-[13px] text-muted-foreground">Wallet</dt>
             <dd className="mt-1">
               <OrderAddress
                 value={witness.swapper}
@@ -501,85 +538,20 @@ export function OrderSummary({
               />
             </dd>
           </div>
-          <div>
-            <dt className="text-xs text-muted-foreground">Placed</dt>
-            <dd className="mt-1 text-sm">{formatOrderDate(full.timestamp)}</dd>
+          <div className="min-w-0">
+            <dt className="text-[13px] text-muted-foreground">
+              Output recipient
+            </dt>
+            <dd className="mt-1">
+              <OrderAddress
+                value={witness.output?.recipient}
+                chainId={chainId}
+                label="Output recipient"
+              />
+            </dd>
           </div>
         </dl>
       </section>
-      <aside aria-label="Execution details" className="min-w-0">
-        <Panel title="Execution">
-          <div className="flex flex-wrap items-end justify-between gap-3">
-            <div>
-              <p className="text-3xl font-semibold tracking-tight tabular-nums">
-                {successfulChunks}
-                <span className="ml-1.5 text-lg font-normal text-muted-foreground">
-                  / {plannedChunks ?? "?"}
-                </span>
-              </p>
-              <p className="mt-1 text-xs text-muted-foreground">
-                Trades completed / planned
-              </p>
-            </div>
-            {list.metadata.chunkSummary.error > 0 && (
-              <p className="flex items-center gap-1.5 text-xs text-destructive">
-                <CircleAlert aria-hidden className="size-3.5" />
-                {list.metadata.chunkSummary.error} chunk{" "}
-                {list.metadata.chunkSummary.error === 1 ? "error" : "errors"}
-              </p>
-            )}
-          </div>
-          {hasProgress && (
-            <progress
-              value={successfulChunks}
-              max={plannedChunks}
-              aria-label="Successful chunks"
-              className="mt-4 block h-1.5 w-full overflow-hidden rounded-full bg-muted [&::-webkit-progress-bar]:bg-muted [&::-webkit-progress-value]:rounded-full [&::-webkit-progress-value]:bg-primary [&::-moz-progress-bar]:bg-primary"
-            />
-          )}
-          <div className="mt-5 border-t border-border pt-4">
-            <h3 className="flex items-center gap-2 text-sm font-medium">
-              <Clock3 aria-hidden className="size-4 text-muted-foreground" />
-              Schedule
-            </h3>
-            <dl className="mt-4 space-y-4">
-              {/* Upcoming check times only apply while the order can still execute. */}
-              {(status === "active"
-                ? [
-                    [
-                      orderScheduleLabel("eligible", nextEligible, retrievedAt),
-                      nextEligible,
-                    ],
-                    [
-                      orderScheduleLabel("price", nextPriceCheck, retrievedAt),
-                      nextPriceCheck,
-                    ],
-                    [
-                      orderScheduleLabel("retry", nextRetry, retrievedAt),
-                      nextRetry,
-                    ],
-                  ]
-                : []
-              )
-                .filter(([, value]) => value)
-                .map(([label, value]) => (
-                  <div key={label}>
-                    <dt className="text-xs text-muted-foreground">{label}</dt>
-                    <dd className="mt-1 text-sm">
-                      {reportedTime(value)
-                        ? formatOrderDate(reportedTime(value))
-                        : value || "Not reported"}
-                    </dd>
-                  </div>
-                ))}
-              <div>
-                <dt className="text-xs text-muted-foreground">Deadline</dt>
-                <dd className="mt-1 text-sm">{formatOrderDate(deadline)}</dd>
-              </div>
-            </dl>
-          </div>
-        </Panel>
-      </aside>
     </div>
   );
 }
@@ -805,136 +777,162 @@ export function OrderTerms({
 }
 
 function ChunkRecord({ chunk, full }: { chunk: OrderChunk; full: Order }) {
-  const [raw, setRaw] = useState(false);
   const chainId = getTwapOrderChainId(full);
-  const failed = /^(error|failed)$/i.test(chunk.status);
+  const cancelled = isCancellationChunk(chunk);
+  const failed = isExecutionErrorChunk(chunk);
+  const succeeded = /^success$/i.test(chunk.status);
   const message = chunkReason(chunk);
+  const readableMessage = message ? conciseOrderMessage(message) : undefined;
+  const rawReason = chunk.extraTitle?.trim() || message;
   return (
-    <article className="rounded-lg bg-muted/40 p-3">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <h3 className="text-sm font-medium">Chunk {chunk.index}</h3>
-        <Badge
-          variant="outline"
-          className={
-            failed
-              ? "border-transparent bg-destructive/10 text-destructive"
-              : /^success$/i.test(chunk.status)
-                ? "border-transparent bg-success/10 text-success"
-                : "border-transparent bg-muted"
-          }
-        >
-          {chunk.status || "Status not reported"}
-        </Badge>
-      </div>
-      <dl className="mt-2 grid gap-3 text-xs sm:grid-cols-2 lg:grid-cols-4">
-        <div>
-          <dt className="text-muted-foreground">Reported due time</dt>
-          <dd className="mt-1">
-            {formatOrderDate(reportedTime(chunk.displayOnlyDueTime))}
-          </dd>
+    <Card
+      role="article"
+      aria-label={`Chunk ${chunk.index}`}
+      className="gap-4 border-0 bg-muted/30 p-4 shadow-none"
+    >
+      <CardHeader className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 p-0">
+        <div className="flex items-center gap-2.5">
+          <h3 className="text-sm font-semibold">Chunk {chunk.index}</h3>
+          <Badge
+            variant="outline"
+            className={`gap-1.5 border-0 capitalize ${
+              failed
+                ? "bg-destructive/10 text-destructive"
+                : succeeded
+                  ? "bg-success/10 text-success"
+                  : "bg-muted text-muted-foreground"
+            }`}
+          >
+            <span aria-hidden className="size-1.5 rounded-full bg-current" />
+            {cancelled ? "Cancelled" : chunk.status || "Status not reported"}
+          </Badge>
         </div>
-        {chunk.displayOnlyBackoffNextTime && (
+        <div className="-ml-2 flex flex-wrap items-center gap-1">
+          {rawReason && rawReason !== readableMessage && (
+            <RawExecutionReasonDialog
+              reason={rawReason}
+              chunkIndex={chunk.index}
+            />
+          )}
+          <ChunkPayloadDialog chunk={chunk} />
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-4 p-0">
+        {message && (
+          <p
+            className={`flex items-start gap-2 whitespace-pre-wrap break-words text-xs leading-relaxed [overflow-wrap:anywhere] ${failed ? "text-destructive" : "text-muted-foreground"}`}
+          >
+            {failed && (
+              <CircleAlert aria-hidden className="mt-0.5 size-3.5 shrink-0" />
+            )}
+            <span className="min-w-0">{readableMessage}</span>
+          </p>
+        )}
+        <dl className="grid gap-x-6 gap-y-3 text-xs sm:grid-cols-3">
           <div>
-            <dt className="text-muted-foreground">Retry eligible after</dt>
+            <dt className="text-muted-foreground">Reported due time</dt>
             <dd className="mt-1">
-              {formatOrderDate(reportedTime(chunk.displayOnlyBackoffNextTime))}
+              {formatOrderDate(reportedTime(chunk.displayOnlyDueTime))}
             </dd>
           </div>
-        )}
-        <div>
-          <dt className="text-muted-foreground">Last reported</dt>
-          <dd className="mt-1">
-            {formatOrderDate(
-              reportedTime(chunk.timestamp) ?? reportedTime(chunk.createdAt),
-            )}
-          </dd>
-        </div>
-        <div>
-          <dt className="text-muted-foreground">Transaction</dt>
-          <dd>
-            <OrderAddress
-              value={chunk.txHash}
-              chainId={chainId}
-              label={`Chunk ${chunk.index} transaction`}
-              transaction
-            />
-          </dd>
-        </div>
-        <div>
-          <dt className="text-muted-foreground">Executor</dt>
-          <dd>
-            <OrderAddress
-              value={chunk.executor}
-              chainId={chainId}
-              label={`Chunk ${chunk.index} executor`}
-            />
-          </dd>
-        </div>
-      </dl>
-      {message && (
-        <p
-          className={`mt-2 whitespace-pre-wrap break-words text-xs [overflow-wrap:anywhere] ${failed ? "text-destructive" : "text-muted-foreground"}`}
-        >
-          {message}
-        </p>
-      )}
-      {chunk.extraTitle && chunk.extraTitle.trim() !== message && (
-        <details className="mt-3 text-xs">
-          <summary className="w-fit cursor-pointer rounded text-link focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-            Full raw execution reason
-          </summary>
-          <p className="mt-2 max-h-64 overflow-auto whitespace-pre-wrap break-words [overflow-wrap:anywhere]">
-            {chunk.extraTitle}
-          </p>
-        </details>
-      )}
-      <details className="mt-3 text-xs">
-        <summary className="cursor-pointer rounded font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-          Amounts & reported fields
-        </summary>
-        <dl className="mt-3 grid gap-4 sm:grid-cols-2">
-          <TokenAmount
-            address={chunk.inToken || full.order.witness.input.token}
-            chainId={chainId}
-            raw={chunk.inAmount}
-            label="Reported input"
-          />
-          <TokenAmount
-            address={chunk.outToken || full.order.witness.output.token}
-            chainId={chainId}
-            raw={chunk.outAmount}
-            label="Reported output"
-          />
-          {[
-            ["Solver", chunk.solverReportedOutput?.solverName],
-            ["Reported fee", chunk.displayOnlyFee],
-            [
-              "Settled",
-              chunk.settled == null ? undefined : String(chunk.settled),
-            ],
-            ["Transfer fee error", chunk.transferFeeEstimation?.error],
-          ].map(([label, value]) => (
-            <div key={label}>
-              <dt className="text-muted-foreground">{label}</dt>
-              <dd className="mt-1 break-words">{value || "Not provided"}</dd>
+          <div>
+            <dt className="text-muted-foreground">Last reported</dt>
+            <dd className="mt-1">
+              {formatOrderDate(
+                reportedTime(chunk.timestamp) ?? reportedTime(chunk.createdAt),
+              )}
+            </dd>
+          </div>
+          {!cancelled && chunk.displayOnlyBackoffNextTime && (
+            <div>
+              <dt className="text-muted-foreground">Retry eligible after</dt>
+              <dd className="mt-1">
+                {formatOrderDate(
+                  reportedTime(chunk.displayOnlyBackoffNextTime),
+                )}
+              </dd>
             </div>
-          ))}
+          )}
         </dl>
-      </details>
-      <details
-        onToggle={(event) => setRaw(event.currentTarget.open)}
-        className="mt-3 text-xs"
-      >
-        <summary className="cursor-pointer rounded text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-          Chunk service payload
-        </summary>
-        {raw && (
-          <pre className="mt-2 max-h-72 overflow-auto whitespace-pre-wrap break-all rounded bg-muted p-2">
-            {JSON.stringify(chunk, null, 2)}
-          </pre>
-        )}
-      </details>
-    </article>
+        <div className="grid gap-5 rounded-lg bg-background/40 p-3 text-xs lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
+          <section className="min-w-0 space-y-2.5">
+            <h4 className="text-xs font-medium">Amounts & reported fields</h4>
+            <dl className="grid grid-cols-2 gap-x-4 gap-y-3">
+              <TokenAmount
+                address={chunk.inToken || full.order.witness.input.token}
+                chainId={chainId}
+                raw={chunk.inAmount}
+                label="Reported input"
+              />
+              <TokenAmount
+                address={chunk.outToken || full.order.witness.output.token}
+                chainId={chainId}
+                raw={chunk.outAmount}
+                label="Reported output"
+              />
+              {chunk.minOut != null && (
+                <TokenAmount
+                  address={chunk.outToken || full.order.witness.output.token}
+                  chainId={chainId}
+                  raw={chunk.minOut}
+                  label="Minimum output for this trade"
+                />
+              )}
+              {chunk.solverReportedOutput?.outputAmount != null && (
+                <TokenAmount
+                  address={chunk.outToken || full.order.witness.output.token}
+                  chainId={chainId}
+                  raw={chunk.solverReportedOutput.outputAmount}
+                  label="Solver reported output"
+                />
+              )}
+            </dl>
+          </section>
+          <section className="min-w-0 space-y-2.5">
+            <h4 className="text-xs font-medium">Execution details</h4>
+            <dl className="grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-3 [&>div]:min-w-0">
+              <div>
+                <dt className="text-muted-foreground">Transaction</dt>
+                <dd className="mt-1">
+                  <OrderAddress
+                    value={chunk.txHash}
+                    chainId={chainId}
+                    label={`Chunk ${chunk.index} transaction`}
+                    transaction
+                  />
+                </dd>
+              </div>
+              <div>
+                <dt className="text-muted-foreground">Executor</dt>
+                <dd className="mt-1">
+                  <OrderAddress
+                    value={chunk.executor}
+                    chainId={chainId}
+                    label={`Chunk ${chunk.index} executor`}
+                  />
+                </dd>
+              </div>
+              {[
+                ["Solver", chunk.solverReportedOutput?.solverName],
+                ["Reported fee", chunk.displayOnlyFee],
+                [
+                  "Settled",
+                  chunk.settled == null ? undefined : String(chunk.settled),
+                ],
+                ["Transfer fee error", chunk.transferFeeEstimation?.error],
+              ]
+                .filter(([, value]) => value != null && value !== "")
+                .map(([label, value]) => (
+                  <div key={label}>
+                    <dt className="text-muted-foreground">{label}</dt>
+                    <dd className="mt-1 break-words">{value}</dd>
+                  </div>
+                ))}
+            </dl>
+          </section>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -955,7 +953,7 @@ export function OrderTimeline({ full }: { full: Order }) {
           description="The service has not supplied chunk records for this order."
         />
       ) : (
-        <div className="space-y-3">
+        <div className="space-y-2">
           {chunks.slice(0, limit).map((chunk, index) => (
             <ChunkRecord
               key={`${chunk.index}:${index}`}
